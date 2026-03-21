@@ -36,6 +36,18 @@ export default function RootLayout({
               >
                 Tasks
               </Link>
+              <Link
+                href="/submit"
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Submit
+              </Link>
+              <Link
+                href="/about"
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                About
+              </Link>
               <div className="ml-auto">
                 <NavUser />
               </div>

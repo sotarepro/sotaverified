@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAreaSummaries, searchTasks } from "@/lib/queries";
+import { getAreaSummaries, searchTasks, getSiteStats } from "@/lib/queries";
 import type { AreaSummary } from "@/lib/types";
 
 // Accent colors per area — bg, border, text, badge
@@ -64,27 +64,49 @@ export default async function HomePage({
 }) {
   const { q } = await searchParams;
 
-  const [areas, searchResults] = await Promise.all([
+  const [areas, searchResults, stats] = await Promise.all([
     getAreaSummaries(),
     q ? searchTasks(q) : Promise.resolve(null),
+    getSiteStats(),
   ]);
 
   const totalTasks = areas.reduce((s, a) => s + a.task_count, 0);
-  const totalPapers = areas.reduce((s, a) => s + a.paper_count, 0);
 
   return (
     <div>
       {/* Hero */}
       <div className="py-10 mb-8 border-b border-gray-100">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
-          ML Benchmark Tracker
+          The Open Verification Layer for AI Research
         </h1>
-        <p className="text-gray-500 text-sm mb-6 max-w-xl">
-          The community-maintained ML benchmark tracker. Successor to Papers With Code.{" "}
-          <span className="text-gray-400">
-            {totalTasks.toLocaleString()} tasks · {totalPapers.toLocaleString()} papers
-          </span>
+        <p className="text-gray-500 text-sm mb-4 max-w-xl">
+          Tracking SOTA, ingesting arXiv weekly, and building the ground-truth data
+          for autonomous research agents.
         </p>
+
+        {/* Stat bar */}
+        <div className="flex flex-wrap gap-4 mb-5 text-xs text-gray-500">
+          <span>
+            <span className="font-semibold text-gray-800">{stats.paper_count.toLocaleString()}</span>{" "}
+            papers
+          </span>
+          <span>
+            <span className="font-semibold text-gray-800">{stats.code_links_count.toLocaleString()}</span>{" "}
+            code links
+          </span>
+          <span>
+            <span className="font-semibold text-gray-800">{totalTasks.toLocaleString()}</span>{" "}
+            tasks
+          </span>
+        </div>
+
+        {/* Agent console snippet */}
+        <div className="rounded-xl bg-gray-950 border border-gray-800 px-4 py-3 mb-6 max-w-lg">
+          <p className="text-xs text-gray-500 mb-1"># Get verified SOTA for any paper</p>
+          <pre className="text-green-400 text-xs overflow-x-auto">
+            curl https://sotaverified.io/api/v1/papers/2401.12345
+          </pre>
+        </div>
 
         {/* Search */}
         <form method="GET" className="flex gap-2 max-w-md">
