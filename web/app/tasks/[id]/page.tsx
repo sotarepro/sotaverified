@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import {
   getTask,
   getLeaderboard,
   getTaskDatasets,
 } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
+import DatasetPills from "@/components/DatasetPills";
 import type { VerificationTier } from "@/lib/types";
+
+/** Strip PWC attribution spans: <span class="description-source">...</span> */
+function cleanDescription(raw: string): string {
+  return raw.replace(/<span[^>]*class="description-source"[^>]*>[\s\S]*?<\/span>/g, "").trim();
+}
 
 export default async function TaskPage({
   params,
@@ -46,38 +53,19 @@ export default async function TaskPage({
       </nav>
 
       <h1 className="text-2xl font-bold tracking-tight mb-2">{task.name}</h1>
-      {task.description && (
-        <p className="text-gray-600 mb-6 max-w-2xl">{task.description}</p>
-      )}
 
-      {/* Dataset filter pills */}
-      {datasets.length > 1 && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          <Link
-            href={`/tasks/${id}`}
-            className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-              !datasetFilter
-                ? "bg-blue-600 text-white border-blue-600"
-                : "border-gray-300 text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            All datasets
-          </Link>
-          {datasets.map((d) => (
-            <Link
-              key={d.id}
-              href={`/tasks/${id}?dataset=${d.id}`}
-              className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                datasetFilter === d.id
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "border-gray-300 text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              {d.name}
-            </Link>
-          ))}
+      {task.description && (
+        <div className="prose prose-sm prose-gray max-w-2xl mb-6 text-gray-600">
+          <ReactMarkdown>{cleanDescription(task.description)}</ReactMarkdown>
         </div>
       )}
+
+      {/* Dataset filter pills — collapses after 12 */}
+      <DatasetPills
+        taskId={id}
+        datasets={datasets}
+        activeDatasetId={datasetFilter}
+      />
 
       {rows.length === 0 && (
         <p className="text-gray-500">No leaderboard results yet.</p>
@@ -135,8 +123,11 @@ export default async function TaskPage({
                     <td className="px-4 py-2.5 max-w-xs">
                       {row.paper_id ? (
                         <Link
-                          href={`/papers/${row.paper_id}`}
+                          href={row.paper_url_abs ?? `/papers/${row.paper_id}`}
                           className="text-blue-600 hover:underline line-clamp-1"
+                          {...(row.paper_url_abs
+                            ? { target: "_blank", rel: "noopener noreferrer" }
+                            : {})}
                         >
                           {row.paper_title ?? row.paper_id}
                         </Link>

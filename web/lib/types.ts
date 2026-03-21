@@ -30,6 +30,7 @@ export interface LeaderboardRow {
   best_metric_value: number | null;
   paper_id: string | null;
   paper_title: string | null;
+  paper_url_abs: string | null;
   evaluated_on: string | null;
   uses_extra_data: boolean;
   verification: VerificationTier;

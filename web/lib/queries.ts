@@ -117,6 +117,7 @@ export async function getLeaderboard(
       lr.best_metric_value,
       lr.paper_id,
       p.title                 AS paper_title,
+      p.url_abs               AS paper_url_abs,
       lr.evaluated_on::text,
       lr.uses_extra_data,
       lr.verification
