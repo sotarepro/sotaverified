@@ -6,3 +6,5 @@ data/raw/
 __pycache__/
 *.pyc
 .next/
+data/
+.claude/
