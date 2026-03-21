@@ -3,21 +3,17 @@ import type { TaskRow, LeaderboardRow, PaperDetail, CodeLink } from "./types";
 
 export async function getTaskList(page = 1, pageSize = 50): Promise<TaskRow[]> {
   const offset = (page - 1) * pageSize;
-  // paper_count via the junction table is populated in Stage 2.5;
-  // use 0 for now to keep the query fast.
   const rows = await sql<TaskRow[]>`
     SELECT
-      t.id,
-      t.name,
-      t.description,
-      t.parent_id,
-      0::int                     AS paper_count,
-      COUNT(DISTINCT lr.id)::int AS result_count
-    FROM tasks t
-    LEFT JOIN leaderboard_results lr ON lr.task_id = t.id
-    WHERE t.parent_id IS NULL
-    GROUP BY t.id, t.name, t.description, t.parent_id
-    ORDER BY result_count DESC, t.name
+      id,
+      name,
+      description,
+      parent_id,
+      paper_count,
+      result_count
+    FROM tasks
+    WHERE parent_id IS NULL
+    ORDER BY result_count DESC, paper_count DESC, name
     LIMIT ${pageSize} OFFSET ${offset}
   `;
   return rows;
@@ -33,17 +29,15 @@ export async function getTaskCount(): Promise<number> {
 export async function searchTasks(q: string): Promise<TaskRow[]> {
   const rows = await sql<TaskRow[]>`
     SELECT
-      t.id,
-      t.name,
-      t.description,
-      t.parent_id,
-      0::int                     AS paper_count,
-      COUNT(DISTINCT lr.id)::int AS result_count
-    FROM tasks t
-    LEFT JOIN leaderboard_results lr ON lr.task_id = t.id
-    WHERE t.name ILIKE ${"%" + q + "%"}
-    GROUP BY t.id, t.name, t.description, t.parent_id
-    ORDER BY result_count DESC
+      id,
+      name,
+      description,
+      parent_id,
+      paper_count,
+      result_count
+    FROM tasks
+    WHERE name ILIKE ${"%" + q + "%"}
+    ORDER BY result_count DESC, paper_count DESC
     LIMIT 30
   `;
   return rows;
