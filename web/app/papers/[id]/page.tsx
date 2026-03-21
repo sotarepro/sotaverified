@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import {
   getPaper,
   getPaperCodeLinks,
   getPaperLeaderboardEntries,
+  getPaperUpvoteInfo,
   type PaperLbEntry,
 } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
+import UpvoteButton from "@/components/UpvoteButton";
+import CopyJsonButton from "@/components/CopyJsonButton";
+import ReproductionForm from "@/components/ReproductionForm";
+import ReproductionList from "@/components/ReproductionList";
 import type { VerificationTier } from "@/lib/types";
 
 export default async function PaperPage({
@@ -16,10 +23,14 @@ export default async function PaperPage({
 }) {
   const { id } = await params;
 
-  const [paper, codeLinks, lbEntries] = await Promise.all([
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.github_id ?? null;
+
+  const [paper, codeLinks, lbEntries, upvoteInfo] = await Promise.all([
     getPaper(id),
     getPaperCodeLinks(id),
     getPaperLeaderboardEntries(id),
+    getPaperUpvoteInfo(id, userId),
   ]);
 
   if (!paper) notFound();
@@ -37,6 +48,14 @@ export default async function PaperPage({
 
       {/* Title + meta */}
       <h1 className="text-2xl font-bold tracking-tight mb-3">{paper.title}</h1>
+
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <UpvoteButton
+          paperId={id}
+          initialCount={upvoteInfo.count}
+          initialUpvoted={upvoteInfo.upvoted}
+        />
+      </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mb-4">
         {paper.published && (
@@ -168,6 +187,11 @@ export default async function PaperPage({
         </section>
       )}
 
+      {/* API / Agent section */}
+      {paper.arxiv_id && (
+        <CopyJsonButton arxivId={paper.arxiv_id} />
+      )}
+
       {/* Leaderboard appearances */}
       {lbEntries.length > 0 && (
         <section className="mb-8">
@@ -217,6 +241,12 @@ export default async function PaperPage({
           </div>
         </section>
       )}
+      {/* Reproductions */}
+      <section className="mb-8">
+        <h2 className="text-base font-semibold mb-3">Reproductions</h2>
+        <ReproductionForm paperId={id} />
+        <ReproductionList paperId={id} />
+      </section>
     </div>
   );
 }

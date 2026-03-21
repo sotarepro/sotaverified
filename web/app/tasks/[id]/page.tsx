@@ -20,15 +20,16 @@ export default async function TaskPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ dataset?: string }>;
+  searchParams: Promise<{ dataset?: string; sort?: string }>;
 }) {
   const { id } = await params;
-  const { dataset: datasetFilter } = await searchParams;
+  const { dataset: datasetFilter, sort: sortParam } = await searchParams;
+  const sort = sortParam === "upvotes" ? "upvotes" : "metric";
 
   const [task, datasets, rows] = await Promise.all([
     getTask(id),
     getTaskDatasets(id),
-    getLeaderboard(id, datasetFilter),
+    getLeaderboard(id, datasetFilter, sort),
   ]);
 
   if (!task) notFound();
@@ -59,6 +60,23 @@ export default async function TaskPage({
           <ReactMarkdown>{cleanDescription(task.description)}</ReactMarkdown>
         </div>
       )}
+
+      {/* Sort + Dataset filter */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-xs text-gray-500 font-medium">Sort:</span>
+        <a
+          href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=metric`}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === "metric" ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+        >
+          Metric value
+        </a>
+        <a
+          href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=upvotes`}
+          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === "upvotes" ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+        >
+          Upvotes
+        </a>
+      </div>
 
       {/* Dataset filter pills — collapses after 12 */}
       <DatasetPills

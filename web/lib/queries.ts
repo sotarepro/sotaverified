@@ -106,7 +106,8 @@ export async function getTask(
 
 export async function getLeaderboard(
   taskId: string,
-  datasetId?: string
+  datasetId?: string,
+  sort: "metric" | "upvotes" = "metric"
 ): Promise<LeaderboardRow[]> {
   const rows = await sql<LeaderboardRow[]>`
     SELECT
@@ -120,15 +121,22 @@ export async function getLeaderboard(
       p.url_abs               AS paper_url_abs,
       lr.evaluated_on::text,
       lr.uses_extra_data,
-      lr.verification
+      lr.verification,
+      COALESCE(uv.upvote_count, 0) AS paper_upvotes
     FROM leaderboard_results lr
     JOIN datasets d ON d.id = lr.dataset_id
     LEFT JOIN papers p ON p.id = lr.paper_id
+    LEFT JOIN (
+      SELECT paper_id, COUNT(*)::int AS upvote_count
+      FROM upvotes
+      GROUP BY paper_id
+    ) uv ON uv.paper_id = lr.paper_id
     WHERE lr.task_id = ${taskId}
       AND (${datasetId ?? null}::text IS NULL OR lr.dataset_id = ${datasetId ?? null})
       AND lr.best_metric_value IS NOT NULL
       AND lr.best_metric_value < 1e15
-    ORDER BY d.name, lr.best_metric_value DESC
+    ORDER BY d.name,
+      ${sort === "upvotes" ? sql`uv.upvote_count DESC NULLS LAST, lr.best_metric_value DESC` : sql`lr.best_metric_value DESC`}
     LIMIT 200
   `;
   return rows;
@@ -178,6 +186,37 @@ export interface PaperLbEntry {
   best_metric_name: string | null;
   best_metric_value: number | null;
   verification: string;
+}
+
+export async function getPaperUpvoteInfo(
+  paperId: string,
+  userId: string | null
+): Promise<{ count: number; upvoted: boolean }> {
+  const [{ count }] = await sql<[{ count: number }]>`
+    SELECT COUNT(*)::int AS count FROM upvotes WHERE paper_id = ${paperId}
+  `;
+  let upvoted = false;
+  if (userId) {
+    const rows = await sql`
+      SELECT 1 FROM upvotes WHERE paper_id = ${paperId} AND user_id = ${userId}
+    `;
+    upvoted = rows.length > 0;
+  }
+  return { count, upvoted };
+}
+
+export async function getSiteStats(): Promise<{
+  paper_count: number;
+  code_links_count: number;
+}> {
+  const [{ paper_count, code_links_count }] = await sql<
+    [{ paper_count: number; code_links_count: number }]
+  >`
+    SELECT
+      (SELECT COUNT(*)::int FROM papers) AS paper_count,
+      (SELECT COUNT(*)::int FROM paper_code_links) AS code_links_count
+  `;
+  return { paper_count, code_links_count };
 }
 
 export async function getPaperLeaderboardEntries(

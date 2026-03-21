@@ -34,6 +34,7 @@ export interface LeaderboardRow {
   evaluated_on: string | null;
   uses_extra_data: boolean;
   verification: VerificationTier;
+  paper_upvotes?: number;
 }
 
 export interface PaperDetail {
