@@ -77,11 +77,11 @@ export default async function HomePage({
       {/* Hero */}
       <div className="py-10 mb-8 border-b border-gray-100">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
-          The Open Verification Layer for AI Research
+          The Open Verification Layer for ML Research
         </h1>
         <p className="text-gray-500 text-sm mb-4 max-w-xl">
-          Tracking SOTA, ingesting arXiv weekly, and building the ground-truth data
-          for autonomous research agents.
+          Community benchmark tracking and reproducibility verification.
+          Built for researchers and autonomous research agents.
         </p>
 
         {/* Stat bar */}

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "About — PwC Revival",
+  title: "About — SOTAVerified",
 };
 
 export default function AboutPage() {
@@ -19,9 +19,9 @@ export default function AboutPage() {
       <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
         <h2 className="text-base font-semibold text-gray-900">What is this?</h2>
         <p>
-          This is the community-maintained revival. We imported the full dataset (575k papers,
-          242k code links, 59k benchmark results), keep it current via weekly arXiv ingestion,
-          and are adding the reproducibility layer Papers With Code never had.
+          SOTAVerified is the community-maintained successor. We imported the full dataset
+          (575k papers, 242k code links, 59k benchmark results), keep it current via weekly
+          arXiv ingestion, and added the reproducibility layer Papers With Code never had.
         </p>
         <p>
           The goal is open verification infrastructure for ML research — a place where
@@ -76,7 +76,7 @@ export default function AboutPage() {
 
       <section className="text-sm text-gray-600">
         <a
-          href="https://github.com/sotaverified/sotaverified"
+          href="https://github.com/sotarepro/sotaverified"
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 hover:underline"

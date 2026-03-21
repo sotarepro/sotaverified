@@ -8,8 +8,8 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Papers with Code Revival",
-  description: "Community ML benchmark tracker",
+  title: "SOTAVerified",
+  description: "Verified state-of-the-art ML research infrastructure. Open benchmark tracking, reproducibility verification, and SOTA leaderboards for researchers and autonomous agents.",
 };
 
 export default function RootLayout({
@@ -27,14 +27,14 @@ export default function RootLayout({
                 href="/"
                 className="font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap"
               >
-                PwC Revival
+                SOTAVerified
               </Link>
               <span className="text-gray-300">|</span>
               <Link
                 href="/tasks"
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
-                Tasks
+                Browse
               </Link>
               <Link
                 href="/submit"

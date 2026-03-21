@@ -1,4 +1,4 @@
-# PapersWithCode Revival
+# SOTAVerified
 
 ## Mission Statement
 Open verification infrastructure for ML research. Built for humans reproducing
@@ -306,6 +306,47 @@ Production (set in Vercel dashboard):
 2. psql -d pwc -c "\dt"
 3. cd web && npm run dev
 4. Read this file top to bottom before starting work
+
+## Project Name & Branding
+- Project name: SOTAVerified
+- Handle/org everywhere: sotarepro
+- Domain: sotaverified.org (primary), sotaverified.com (redirect)
+- GitHub org: github.com/sotarepro
+- Repo: github.com/sotarepro/sotaverified
+- Twitter/X: @sotarepro
+- Reddit: u/Life-Temperature4068 (display name: SOTA Verified)
+- Tagline: "Verified state-of-the-art ML research infrastructure"
+- Sub-tagline: "Open benchmark tracking, reproducibility verification,
+  and SOTA leaderboards — built for researchers and autonomous agents"
+- Hero copy:
+    Headline: SOTAVerified
+    Subhead: Verified state-of-the-art ML research infrastructure
+    Body: Open benchmark tracking, reproducibility verification, and SOTA
+    leaderboards for researchers and autonomous research agents.
+    Community successor to Papers with Code.
+    CTA: Browse Benchmarks / Sign in with GitHub
+- Do NOT use "Papers with Code" in site name or hero headline —
+  reference only as "successor to Papers with Code" in about page
+  to avoid trademark issues with Meta
+
+Nav:  [SOTAVerified logo]              [Browse] [About] [Sign In]
+
+Hero: "The Open Verification Layer for ML Research"
+Sub:  Community benchmark tracking and reproducibility verification.
+      Built for researchers and autonomous research agents.
+CTA:  [Browse Benchmarks]  [Sign in with GitHub]
+
+## Security Rules (non-negotiable)
+- All SQL queries use parameterized queries ($1, $2). Never interpolate user input.
+- All user-submitted URLs validated against allowlist of domains before storage.
+- run_log_url only allows: github.com, gist.github.com, wandb.ai,
+  colab.research.google.com, huggingface.co
+- Max field lengths enforced server-side: hardware_spec 500 chars, notes 2000 chars
+- Rate limiting on all API endpoints (100/min) and auth endpoints (30/min)
+- Production DB credentials use a limited-privilege role, not superuser
+- Local and production NEXTAUTH_SECRET must be different values
+- Security headers configured in next.config.js (CSP, HSTS, X-Frame-Options)
+- npm audit clean before every deploy
 
 ---
 

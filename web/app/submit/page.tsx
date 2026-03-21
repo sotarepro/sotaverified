@@ -1,7 +1,7 @@
 import SubmitPaperForm from "@/components/SubmitPaperForm";
 
 export const metadata = {
-  title: "Submit a Paper — PwC Revival",
+  title: "Submit a Paper — SOTAVerified",
 };
 
 export default function SubmitPage() {
