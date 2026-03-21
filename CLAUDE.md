@@ -28,6 +28,15 @@ Community-maintained ML paper benchmark tracker and spiritual successor to Paper
 - [ ] Fix paper_tasks junction table — secondary pass through papers.tasks TEXT[] array
 - [ ] Fix paper_methods junction table — same secondary pass
 
+### Stage 2.75 — Homepage Redesign (area grouping)
+- [ ] Populate `tasks.area` via keyword-based SQL UPDATE (CV, NLP, RL, Audio, Graphs, Medical, Time Series, Recommendation, General ML)
+- [ ] Hero section: site name, one-liner, search bar (≤200px tall)
+- [ ] Replace flat task list with responsive area cards grid (3-4 col desktop, 2 tablet, 1 mobile)
+- [ ] Each card: area name, task count, paper count, top 3 task names, accent color
+- [ ] Clicking card navigates to `/tasks?area=X` filtered task list page
+- [ ] Color map: CV=blue, NLP=green, RL=orange, Audio=purple, Graphs=indigo, Medical=rose, Time Series=yellow, Recommendation=teal
+- [ ] Server-rendered, Tailwind only, no heavy JS
+
 ### Stage 3 — Community Verification Layer
 - [ ] GitHub OAuth login
 - [ ] Verification tier system:

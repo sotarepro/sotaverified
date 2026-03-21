@@ -9,8 +9,17 @@ export interface TaskRow {
   name: string;
   description: string | null;
   parent_id: string | null;
+  area: string | null;
   paper_count: number;
   result_count: number;
+}
+
+export interface AreaSummary {
+  area: string;
+  task_count: number;
+  paper_count: number;
+  result_count: number;
+  top_tasks: string[]; // top 3 task names by result_count
 }
 
 export interface LeaderboardRow {

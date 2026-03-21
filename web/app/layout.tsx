@@ -28,7 +28,7 @@ export default function RootLayout({
             </Link>
             <span className="text-gray-300">|</span>
             <Link
-              href="/"
+              href="/tasks"
               className="text-sm text-gray-600 hover:text-gray-900"
             >
               Tasks

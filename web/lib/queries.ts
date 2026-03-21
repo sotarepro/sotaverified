@@ -1,7 +1,54 @@
 import sql from "./db";
-import type { TaskRow, LeaderboardRow, PaperDetail, CodeLink } from "./types";
+import type { TaskRow, LeaderboardRow, PaperDetail, CodeLink, AreaSummary } from "./types";
 
-export async function getTaskList(page = 1, pageSize = 50): Promise<TaskRow[]> {
+export async function getAreaSummaries(): Promise<AreaSummary[]> {
+  const rows = await sql<{
+    area: string;
+    task_count: number;
+    paper_count: number;
+    result_count: number;
+  }[]>`
+    SELECT
+      area,
+      COUNT(*)::int         AS task_count,
+      SUM(paper_count)::int AS paper_count,
+      SUM(result_count)::int AS result_count
+    FROM tasks
+    WHERE parent_id IS NULL AND area IS NOT NULL
+    GROUP BY area
+    ORDER BY paper_count DESC
+  `;
+
+  // Fetch top 3 tasks per area in one query
+  const topTasks = await sql<{ area: string; name: string }[]>`
+    SELECT area, name FROM (
+      SELECT area, name,
+        ROW_NUMBER() OVER (PARTITION BY area ORDER BY result_count DESC, paper_count DESC) AS rn
+      FROM tasks
+      WHERE parent_id IS NULL AND area IS NOT NULL
+    ) sub
+    WHERE rn <= 3
+    ORDER BY area, rn
+  `;
+
+  const tasksByArea = new Map<string, string[]>();
+  for (const t of topTasks) {
+    const list = tasksByArea.get(t.area) ?? [];
+    list.push(t.name);
+    tasksByArea.set(t.area, list);
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    top_tasks: tasksByArea.get(r.area) ?? [],
+  }));
+}
+
+export async function getTaskList(
+  page = 1,
+  pageSize = 50,
+  area?: string
+): Promise<TaskRow[]> {
   const offset = (page - 1) * pageSize;
   const rows = await sql<TaskRow[]>`
     SELECT
@@ -9,19 +56,23 @@ export async function getTaskList(page = 1, pageSize = 50): Promise<TaskRow[]> {
       name,
       description,
       parent_id,
+      area,
       paper_count,
       result_count
     FROM tasks
     WHERE parent_id IS NULL
+      AND (${area ?? null}::text IS NULL OR area = ${area ?? null})
     ORDER BY result_count DESC, paper_count DESC, name
     LIMIT ${pageSize} OFFSET ${offset}
   `;
   return rows;
 }
 
-export async function getTaskCount(): Promise<number> {
+export async function getTaskCount(area?: string): Promise<number> {
   const [row] = await sql`
-    SELECT COUNT(*)::int AS n FROM tasks WHERE parent_id IS NULL
+    SELECT COUNT(*)::int AS n FROM tasks
+    WHERE parent_id IS NULL
+      AND (${area ?? null}::text IS NULL OR area = ${area ?? null})
   `;
   return row.n;
 }
@@ -33,6 +84,7 @@ export async function searchTasks(q: string): Promise<TaskRow[]> {
       name,
       description,
       parent_id,
+      area,
       paper_count,
       result_count
     FROM tasks
