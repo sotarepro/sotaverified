@@ -30,15 +30,15 @@ except ImportError:
 
 
 def stars_to_hype(stars: int) -> int:
-    """Map star count to base hype score using finer buckets."""
+    """Map star count to base hype score. Max base = 15."""
     if stars >= 50000:
-        return 25
-    elif stars >= 25000:
-        return 20
-    elif stars >= 10000:
         return 15
+    elif stars >= 25000:
+        return 13
+    elif stars >= 10000:
+        return 11
     elif stars >= 5000:
-        return 10
+        return 9
     elif stars >= 2000:
         return 7
     elif stars >= 1000:
