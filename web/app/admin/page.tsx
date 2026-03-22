@@ -5,6 +5,8 @@ import sql from "@/lib/db";
 import Link from "next/link";
 import AdminActions from "./AdminActions";
 import AdminAuthorActions from "./AdminAuthorActions";
+import TestTools from "./TestTools";
+import { isTestToolsEnabled } from "@/lib/test-tools";
 
 function isAdmin(githubId: string | undefined): boolean {
   return !!githubId && githubId === process.env.ADMIN_GITHUB_ID;
@@ -62,6 +64,7 @@ export default async function AdminPage({
     username: string | null;
     avatar_url: string | null;
     paper_title: string | null;
+    is_test_user: boolean;
   }[]>`
     SELECT
       al.id::text,
@@ -72,7 +75,8 @@ export default async function AdminPage({
       al.created_at::text,
       u.username,
       u.avatar_url,
-      p.title AS paper_title
+      p.title AS paper_title,
+      COALESCE(u.is_test, false) AS is_test_user
     FROM activity_log al
     LEFT JOIN users u ON u.github_id = al.user_id
     LEFT JOIN papers p ON p.id = al.paper_id
@@ -142,6 +146,9 @@ export default async function AdminPage({
   return (
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Admin</h1>
+
+      {/* Test Tools (dev/staging only) */}
+      {isTestToolsEnabled() && <TestTools />}
 
       {/* Section 1: Pending Author Claims */}
       <section className="mb-10">
@@ -252,7 +259,14 @@ export default async function AdminPage({
                         {badge.label}
                       </span>
                       {ev.username && (
-                        <span className="text-gray-600 text-xs">@{ev.username}</span>
+                        <span className="text-gray-600 text-xs flex items-center gap-1">
+                          {ev.is_test_user && (
+                            <span className="rounded bg-amber-200 px-1 py-0.5 text-xs font-mono text-amber-800 leading-none">
+                              TEST
+                            </span>
+                          )}
+                          @{ev.username}
+                        </span>
                       )}
                       {ev.paper_id && (
                         <Link

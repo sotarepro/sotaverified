@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { logEvent } from "@/lib/activity";
 import { recomputeVerificationScore } from "@/lib/verification";
@@ -9,7 +8,7 @@ export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   if (!session?.user?.github_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

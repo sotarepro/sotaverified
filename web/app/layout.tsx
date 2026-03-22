@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import SessionProvider from "@/components/SessionProvider";
 import NavUser from "@/components/NavUser";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
+import { isTestToolsEnabled } from "@/lib/test-tools";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"] });
@@ -12,15 +15,30 @@ export const metadata: Metadata = {
   description: "Verified state-of-the-art ML research infrastructure. Open benchmark tracking, reproducibility verification, and SOTA leaderboards for researchers and autonomous agents.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  let impersonatingUser: string | null = null;
+  if (isTestToolsEnabled()) {
+    const cookieStore = await cookies();
+    const cookie = cookieStore.get("sv_impersonate");
+    if (cookie) {
+      try {
+        const data = JSON.parse(cookie.value) as { username?: string };
+        impersonatingUser = data.username ?? null;
+      } catch {
+        // ignore malformed cookie
+      }
+    }
+  }
+
   return (
     <html lang="en">
       <body className={`${geist.className} bg-white text-gray-900 antialiased`}>
         <SessionProvider>
+          {impersonatingUser && <ImpersonationBanner username={impersonatingUser} />}
           <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
             <div className="mx-auto max-w-6xl px-4 h-12 flex items-center gap-6">
               <Link

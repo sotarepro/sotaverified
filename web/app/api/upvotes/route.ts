@@ -1,5 +1,4 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
@@ -10,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "paper_id required" }, { status: 400 });
   }
 
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
   const [{ count }] = await sql<[{ count: number }]>`
@@ -29,7 +28,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   if (!session?.user?.github_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

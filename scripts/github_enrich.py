@@ -5,6 +5,8 @@ GitHub enrichment — fetches star and fork counts for repos in paper_code_links
 Usage:
     python scripts/github_enrich.py --limit 500
     python scripts/github_enrich.py --limit 200 --db "dbname=pwc"
+    python scripts/github_enrich.py --since 2023-01-01 --db "dbname=pwc"
+    python scripts/github_enrich.py --since 2020-01-01 --limit 100000 --db "dbname=pwc"
 """
 
 import argparse
@@ -71,6 +73,8 @@ def main():
     parser = argparse.ArgumentParser(description="Enrich paper_code_links with GitHub star/fork counts")
     parser.add_argument("--limit", type=int, default=500,
                         help="Number of repos to process per run (default: 500)")
+    parser.add_argument("--since", default=None,
+                        help="Only enrich links for papers published on or after this date (YYYY-MM-DD)")
     parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "dbname=pwc"),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
@@ -86,18 +90,31 @@ def main():
     conn = psycopg2.connect(args.db)
     cur = conn.cursor()
 
-    cur.execute("""
-        SELECT repo_url
-        FROM paper_code_links
-        WHERE repo_url LIKE '%%github.com%%'
-          AND (last_enriched_at IS NULL
-               OR last_enriched_at < NOW() - INTERVAL '7 days')
-        ORDER BY last_enriched_at NULLS FIRST
+    since_clause = ""
+    query_params: list = [args.limit]
+    if args.since:
+        since_clause = """
+          AND EXISTS (
+            SELECT 1 FROM papers p
+            WHERE p.id = pcl.paper_id
+              AND p.published >= %s
+          )"""
+        query_params = [args.since, args.limit]
+
+    cur.execute(f"""
+        SELECT pcl.repo_url
+        FROM paper_code_links pcl
+        WHERE pcl.repo_url LIKE '%%github.com%%'
+          AND (pcl.last_enriched_at IS NULL
+               OR pcl.last_enriched_at < NOW() - INTERVAL '7 days')
+          {since_clause}
+        ORDER BY pcl.last_enriched_at NULLS FIRST
         LIMIT %s
-    """, (args.limit,))
+    """, query_params)
     repos = [row[0] for row in cur.fetchall()]
 
-    print(f"Processing {len(repos)} repos...")
+    since_msg = f" (papers published since {args.since})" if args.since else ""
+    print(f"Processing {len(repos)} repos{since_msg}...")
 
     updated = 0
     skipped = 0
