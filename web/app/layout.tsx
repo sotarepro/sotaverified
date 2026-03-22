@@ -13,6 +13,10 @@ const geist = Geist({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "SOTAVerified",
   description: "Verified state-of-the-art ML research infrastructure. Open benchmark tracking, reproducibility verification, and SOTA leaderboards for researchers and autonomous agents.",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({
@@ -43,9 +47,11 @@ export default async function RootLayout({
             <div className="mx-auto max-w-6xl px-4 h-12 flex items-center gap-6">
               <Link
                 href="/"
-                className="font-semibold text-blue-600 hover:text-blue-700 whitespace-nowrap"
+                className="flex items-center gap-2 hover:opacity-80 transition-opacity whitespace-nowrap"
               >
-                SOTAVerified
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.svg" alt="" width={24} height={24} className="rounded-md" />
+                <span className="font-semibold text-gray-900">SOTAVerified</span>
               </Link>
               <span className="text-gray-300">|</span>
               <Link
