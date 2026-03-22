@@ -23,7 +23,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         LEFT JOIN upvotes u ON u.paper_id = p.id
@@ -36,7 +36,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         LEFT JOIN upvotes u ON u.paper_id = p.id
@@ -49,7 +49,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         LEFT JOIN upvotes u ON u.paper_id = p.id
@@ -64,7 +64,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         LEFT JOIN upvotes u ON u.paper_id = p.id
@@ -79,7 +79,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         JOIN tasks t ON t.id = pt.task_id
@@ -93,7 +93,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         JOIN tasks t ON t.id = pt.task_id
@@ -107,7 +107,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         JOIN tasks t ON t.id = pt.task_id
@@ -123,7 +123,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         JOIN paper_tasks pt ON pt.paper_id = p.id
         JOIN tasks t ON t.id = pt.task_id
@@ -139,7 +139,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         LEFT JOIN upvotes u ON u.paper_id = p.id
         GROUP BY p.id
@@ -150,7 +150,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         LEFT JOIN upvotes u ON u.paper_id = p.id
         GROUP BY p.id
@@ -161,7 +161,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         LEFT JOIN upvotes u ON u.paper_id = p.id
         WHERE p.verification_score = 0
@@ -174,7 +174,7 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
                p.verification_score,
-               COUNT(u.paper_id)::int AS upvote_count
+               (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
         FROM papers p
         LEFT JOIN upvotes u ON u.paper_id = p.id
         GROUP BY p.id
@@ -261,17 +261,25 @@ export async function getTabPapersCount(
   }
 }
 
-export async function searchPapers(q: string): Promise<TabPaperRow[]> {
+export async function searchPapers(q: string, limit = 20, offset = 0): Promise<TabPaperRow[]> {
   return sql<TabPaperRow[]>`
     SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
-           COUNT(u.paper_id)::int AS upvote_count
+           p.verification_score,
+           (COUNT(u.paper_id)::int + p.hype_score) AS upvote_count
     FROM papers p
     LEFT JOIN upvotes u ON u.paper_id = p.id
     WHERE p.title ILIKE ${"%" + q + "%"}
     GROUP BY p.id
-    ORDER BY upvote_count DESC, p.published DESC NULLS LAST
-    LIMIT 20
+    ORDER BY (COUNT(u.paper_id) + p.hype_score) DESC, p.published DESC NULLS LAST
+    LIMIT ${limit} OFFSET ${offset}
   `;
+}
+
+export async function searchPapersCount(q: string): Promise<number> {
+  const [{ n }] = await sql<[{ n: number }]>`
+    SELECT COUNT(*)::int AS n FROM papers WHERE title ILIKE ${"%" + q + "%"}
+  `;
+  return n;
 }
 
 export async function getAreaSummaries(): Promise<AreaSummary[]> {

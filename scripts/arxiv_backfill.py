@@ -113,6 +113,16 @@ def parse_records(xml_text: str) -> tuple[list[dict], str | None]:
         created_el = arXiv.find("arxiv:created", NS)
         published = created_el.text.strip() if created_el is not None and created_el.text else None
 
+        # Reject papers with future published dates (> 30 days from today)
+        if published:
+            try:
+                pub_date = date.fromisoformat(published[:10])
+                if pub_date > date.today().replace(year=date.today().year + 1):
+                    # More than a year in future — clearly bad data
+                    continue
+            except ValueError:
+                pass  # unparseable date — let it through, DB can handle it
+
         # Filter by target categories
         categories_el = arXiv.find("arxiv:categories", NS)
         cats = categories_el.text.strip().split() if categories_el is not None and categories_el.text else []

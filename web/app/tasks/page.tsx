@@ -3,6 +3,17 @@ import { getTaskList, getTaskCount, getTabPapers } from "@/lib/queries";
 import Pagination from "@/components/Pagination";
 import PaperTabTable from "@/components/PaperTabTable";
 
+/** Strip HTML tags and markdown formatting from a description for plain-text preview */
+function plainText(text: string | null | undefined, maxLen = 60): string {
+  if (!text) return "";
+  const stripped = text
+    .replace(/<[^>]+>/g, " ")           // strip HTML tags
+    .replace(/\*\*?|__?|~~|`{1,3}/g, "") // strip markdown bold/italic/code
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped.length > maxLen ? stripped.slice(0, maxLen) + "…" : stripped;
+}
+
 const PAGE_SIZE = 50;
 
 const AREA_COLORS: Record<string, string> = {
@@ -101,8 +112,8 @@ export default async function TasksPage({
                     {t.name}
                   </Link>
                   {t.description && (
-                    <p className="text-gray-500 text-xs mt-0.5 line-clamp-1">
-                      {t.description}
+                    <p className="text-gray-500 text-xs mt-0.5">
+                      {plainText(t.description)}
                     </p>
                   )}
                 </td>
@@ -111,7 +122,7 @@ export default async function TasksPage({
                     {t.area && (
                       <Link
                         href={`/tasks?area=${encodeURIComponent(t.area)}`}
-                        className={`text-xs rounded-full px-2 py-0.5 hover:opacity-80 ${AREA_COLORS[t.area] ?? "bg-gray-100 text-gray-700"}`}
+                        className={`text-xs rounded-full px-2 py-0.5 whitespace-nowrap hover:opacity-80 inline-block ${AREA_COLORS[t.area] ?? "bg-gray-100 text-gray-700"}`}
                       >
                         {t.area}
                       </Link>
