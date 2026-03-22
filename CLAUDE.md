@@ -7,12 +7,13 @@ the community lost when Papers With Code shut down in July 2025 — and adding
 the reproducibility layer it never had.
 
 ## Tech Stack
-- **Frontend:** Next.js (App Router), Tailwind CSS
+- **Frontend:** Next.js 16 (App Router), Tailwind CSS v4
 - **Database:** PostgreSQL (local: `pwc`, production: Railway)
-- **Auth:** NextAuth.js with GitHub provider
+- **Auth:** NextAuth.js v4 with GitHub provider (JWT strategy)
 - **Hosting:** Vercel (frontend), Railway (Postgres)
 - **Language:** TypeScript (frontend), Python (scripts/ingestion)
-- **Queries:** Raw SQL via `pg` — no ORM
+- **Queries:** Raw SQL via `postgres` npm package (tagged template literals) — no ORM
+- **Testing:** Jest + ts-jest, node environment (no jsdom), all DB/auth mocked
 
 ## Project Overview
 Community-maintained ML paper benchmark tracker and spiritual successor to
@@ -25,637 +26,328 @@ reproduce.
 ---
 
 ## Current State
+
 - Stage 1 ✅ DONE — 575k papers, 242k code links, 59k leaderboard results in Postgres
 - Stage 1.5 ✅ DONE — data cleanup, junction tables, paper detail query fix
 - Stage 2 ✅ DONE — task browser, task detail, paper detail pages
 - Stage 2.5 ✅ DONE — homepage redesign with research area grouping, hero section
 - Stage 3a ✅ DONE — GitHub OAuth auth, users table, session provider, age gate
-- Stage 3b ✅ DONE — upvotes, API v1, "Copy JSON for Agent" button, sort by upvotes
-- Stage 3c ✅ DONE — junction tables populated, arxiv_backfill.py, arxiv_delta.py, submit page
+- Stage 3b ✅ DONE — hype/upvotes, API v1, "Copy JSON for Agent" button
+- Stage 3c ✅ DONE — junction tables populated, arxiv_backfill.py (23,193 new papers inserted 2025-07–2026-03), arxiv_delta.py
 - Stage 3d ✅ DONE — reproductions table, ReproductionForm, ReproductionList, admin page, flag/upvote
 - Stage 3e ✅ DONE — About page, hero refresh with stats + agent snippet, nav links
-- Stage 3d-enrich ✅ DONE — enrichment pipeline: github_enrich.py, semantic_scholar_enrich.py, hype_seed.py, daily_update.py; star counts on paper detail; hype_score in "hyped" tab
-- Stage 3e-author ✅ DONE — paper_authors table, claim-author API, AuthorClaimButton, VerifiedAuthors component, admin author claim queue
-- Stage 3-verification ✅ DONE — two-dimension verification system: verification_score (int) + BadgeType (unverified/code_available/author_verified/community_verified); recomputeVerificationScore() on repro create/flag/approve/remove and author claim; structured metric fields on reproductions; /api/v1/sota endpoint; 146k papers seeded with +5 for official repo
+- Stage 3-enrich ✅ DONE — github_enrich.py (--since flag added), hype_seed.py (57 papers seeded), daily_update.py, semantic_scholar_enrich.py; star counts on paper detail
+- Stage 3-author ✅ DONE — paper_authors table, claim-author API, AuthorClaimButton, VerifiedAuthors, admin author claim queue
+- Stage 3-verification ✅ DONE — two-dimension verification system: verification_score (int) + BadgeType; recomputeVerificationScore() on all events; /api/v1/sota; 146k papers seeded +5 for official repo
+- Stage 3-social ✅ DONE — activity_log table, logEvent() utility, tier-based reputation (T1:+5/T2:+10/T3:+15/T4:+20), trusted threshold at rep≥30, trusted flags (auto-hide at 2 instead of 3), Agent Write API (POST /api/v1/reproductions), PromoteButton, revamped admin dashboard (3 sections + activity feed)
+- Stage 3-test-tools ✅ DONE — admin test tools (dev/ENABLE_TEST_TOOLS=true only): create test users/papers, impersonate, reset; impersonation banner; is_test column on users+papers
 
 ---
 
-## Upcoming Stages
+## Next: Stage 3f — Going Live
 
-## 🚀 The Launch Sprint
-
-### Stage 3a — Identity ✅ DONE
-- [x] Install and configure NextAuth.js with GitHub provider
-- [x] Add users table:
-  - github_id (text, primary key), username, email, avatar_url,
-    account_created_at, created_at, reputation_score (default 0)
-- [x] Session provider wrapper in app layout
-- [x] Login/logout button in nav — shows avatar + username when logged in
-- [x] GitHub account age gate on first login:
-  - Soft check: flag accounts < 60 days old
-    (GITHUB_MIN_ACCOUNT_AGE_DAYS env var, default 60)
-  - Upvoting open to all logged-in users regardless of account age
-  - Reproduction submissions require passing the age gate
-  - Store account_created_at for future policy tuning
-- [x] .env.local for secrets (never commit):
-  - GITHUB_ID, GITHUB_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL,
-    ADMIN_GITHUB_ID, GITHUB_MIN_ACCOUNT_AGE_DAYS
-- [x] .env.example committed to repo with placeholder values
-- [x] Jest unit tests (mocked GitHub provider, no real credentials):
-  - Session creation, unauthenticated redirect, user upsert on first login
-- [x] Manual prereq: create GitHub OAuth App at
-  github.com → Settings → Developer Settings → OAuth Apps → New OAuth App
-  - Homepage URL: http://localhost:3000
-  - Callback URL: http://localhost:3000/api/auth/callback/github
-
-### Stage 3b — Social Signal + Agent Hook ✅ DONE
-**Upvotes:**
-- [x] upvotes table: paper_id, user_id, created_at
-  - Unique constraint on (paper_id, user_id)
-- [x] Toggle upvote on/off — clicking again removes vote, requires login
-- [x] Upvote count visible on paper cards and paper detail page header
-- [x] Sort options on leaderboard pages: by metric value, by upvotes
-
-**API v1 (one route, same stage):**
-- [x] GET /api/v1/papers/{arxiv_id}
-  - Returns structured JSON: title, abstract, authors, tasks,
-    verified leaderboard results, code links
-- [x] "Copy JSON for Agent" button on every paper detail page
-  - Dark-themed code preview showing the response shape
-  - This is the visual signal that this is infrastructure, not a blog
-
-### Stage 3c — Ingestion Heartbeat ✅ DONE
-**Fix junction tables first (enables task/method browsing):**
-- [x] Populate paper_tasks from papers.tasks TEXT[] array (1.09M rows)
-- [x] Populate paper_methods the same way
-- [ ] Add paper_count column to tasks table, update from junction table
-
-**arXiv backfill (run before going live):**
-- [x] Write scripts/arxiv_backfill.py using arXiv OAI-PMH API
-  - Pull papers from 2025-07-01 to today
-  - Categories: cs.CV, cs.LG, cs.CL, cs.AI, cs.NE, stat.ML
-  - ON CONFLICT (arxiv_id) DO NOTHING — safe to re-run
-  - Run: python scripts/arxiv_backfill.py --from 2025-07-01
-
-**Weekly delta:**
-- [x] Write scripts/arxiv_delta.py
-  - Pull papers from last N days (default 7), same categories and upsert logic
-  - Run manually at first: python scripts/arxiv_delta.py --days 7
-
-**Community paper submission:**
-- [x] "Submit a Paper" page — text input takes an arXiv ID
-  - Hits arXiv API, pulls metadata, inserts into papers table
-  - Requires login
-  - Deduplicates on arxiv_id (if exists, redirect to paper page)
-
-### Stage 3d — Social Verification (Post & Flag) ✅ DONE
-**The reproduction flow:**
-- [x] "I reproduced this" button on paper detail page
-  - Requires login + passing account age gate
-- [x] reproductions table:
-  - id SERIAL PRIMARY KEY
-  - paper_id, user_id, tier_claimed (1-4)
-  - hardware_spec TEXT (e.g. "RTX 3090, 24GB, Ubuntu 22.04")
-  - run_log_url TEXT (GitHub gist, wandb run, etc.)
-  - notes TEXT (metrics, observations — keep freeform)
-  - upvote_count INT default 0, flag_count INT default 0
-  - status TEXT default 'community_verified'
-  - created_at, reviewed_at
-- [ ] Submission form — minimal:
-  - Tier claimed (dropdown: 1-4)
-  - Hardware (free text)
-  - Run log URL
-  - Notes (tell people to include metric name + value here)
-
-**Immediate posting, community moderation:**
-- [ ] Submissions go live instantly as "Community Contribution"
-- [ ] Upgrade to "Verified" badge via either path:
-  - 3+ upvotes from users with reputation_score > 50
-  - Admin manual verification (high signal, low volume)
-- [x] "Flag" button on reproductions — requires login
-  - 3 flags auto-hides the post, sends to /admin queue
-- [x] Reputation: +10 for a reproduction that reaches "Verified",
-  -20 for a confirmed spam flag
-
-**Simple /admin page:**
-- [x] Access control: session.user.github_id !== ADMIN_GITHUB_ID → 404
-- [x] Table of flagged/hidden submissions
-- [x] Approve (restore) / Remove buttons
-- [x] Updates status + reviewed_at
-
-### Stage 3e — Launch Polish ✅ DONE
-**About page (/about):**
-- [x] What happened to Papers With Code (2-3 sentences)
-- [x] What this project is and why it exists
-- [x] The verification tier system explained simply
-- [x] The agent vision: "Built for humans and autonomous research agents.
-  Donate your compute to verify papers you care about —
-  verification as a public good."
-- [x] Link to GitHub repo + how to contribute
-
-**Hero section refresh:**
-- [x] Headline: "The Open Verification Layer for AI Research"
-- [x] Sub-headline: "Tracking SOTA, ingesting arXiv weekly, and building
-  the ground-truth data for autonomous research agents."
-- [x] Stat bar with paper count + code links count
-- [x] Agent console snippet on homepage
-- [ ] "Verification Needed" feed: papers sorted by (upvotes / age)
-
-**Pre-launch seeding:**
-- [ ] Seed 2-3 reproductions yourself (use your 3090)
-  so the verification flow isn't empty when people arrive
-- [ ] Pick papers you've actually run — authenticity matters
-
-### Stage 3f — Going Live
+**TODO before deploying:**
+- [ ] Seed 2-3 real reproductions (use your 3090) so flow isn't empty at launch
+- [ ] Run github_enrich.py overnight to get broad star coverage, then re-run hype_seed.py
+  - Currently: 5,583 of 242k code links enriched, 57 papers have hype_score > 0
+  - Command: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py --since 2020-01-01 --limit 250000 --db "dbname=pwc" > /tmp/enrich.log 2>&1 &`
+  - After: `python3 scripts/hype_seed.py --db "dbname=pwc"`
+- [ ] Run semantic_scholar_enrich.py once Semantic Scholar API key obtained
+- [ ] Confirm hero stats aren't showing zeros
+- [ ] npm audit clean
+- [ ] Draft 2-sentence launch pitch before deploying
 
 **Step 1 — Cloud DB (Railway):**
 - [ ] Create account at railway.app, provision Postgres
-- [ ] Migrate: pg_dump -Fc pwc | pg_restore --no-owner -d RAILWAY_URL
+- [ ] Migrate: `pg_dump -Fc pwc | pg_restore --no-owner -d RAILWAY_URL`
 - [ ] Verify row counts match
 
 **Step 2 — Deploy (Vercel):**
-- [ ] Connect GitHub repo, set env vars in Vercel dashboard
+- [ ] Connect GitHub repo (github.com/sotarepro/sotaverified), set env vars in Vercel dashboard
 - [ ] Update GitHub OAuth callback URL to production domain
+- [ ] Set ENABLE_TEST_TOOLS=false (or omit) in production — NEVER true in prod
 - [ ] Auto-deploys on git push to main
 
 **Step 3 — Domain:**
-- [ ] Buy domain (~$12/year — Namecheap or Cloudflare)
-  - Options: paperswithcode.community, sotabench.org, mlpapers.io
-- [ ] Configure DNS in Vercel, update NEXTAUTH_URL + OAuth URLs
+- [ ] sotaverified.org (primary) — buy if not yet owned
+- [ ] Configure DNS in Vercel, update NEXTAUTH_URL + OAuth callback URLs
 
 **Step 4 — Launch day:**
-- [ ] Draft 2-sentence pitch BEFORE deploying — don't wing it
 - [ ] r/MachineLearning — frame around agent verification vision
 - [ ] Hacker News — "Papers With Code is back, built for agents"
-- [ ] Twitter thread: what happened to PWC, what this fixes, the agent future
+- [ ] Twitter/X thread: what happened to PWC, what this fixes, the agent future
 - [ ] MLOps Community Slack
-- [ ] Confirm: About page clean, GitHub README clean, repo public,
-  example reproductions seeded, hero stats not showing zeros
 
 **Estimated monthly cost: ~$5-6 (Railway $5 + domain amortized)**
 
-### Stage 3d — Ingestion & Enrichment Pipeline
+---
 
-**arXiv ingestion (run before going live):**
-- [ ] scripts/arxiv_backfill.py — backfill from 2025-07-01 to today
-  - Categories: cs.CV, cs.LG, cs.CL, cs.AI, cs.NE, stat.ML
-  - ON CONFLICT (arxiv_id) DO NOTHING — safe to re-run
-  - Shortcut: last 30 days only pre-launch, backfill gap async
-
-**Enrichment pipeline:**
-- [ ] scripts/semantic_scholar_enrich.py
-  - For papers missing code links, query Semantic Scholar API
-  - Store found repos in paper_code_links with source='semantic_scholar'
-  - Prioritize: enrich recent papers first (last 6 months),
-    then backfill older papers overnight
-- [ ] scripts/github_enrich.py
-  - For repos in paper_code_links, fetch star/fork counts
-  - Add columns to paper_code_links: stars INT, forks INT,
-    last_enriched_at TIMESTAMP
-  - Display stars on repo cards in paper detail page
-- [ ] scripts/hype_seed.py (ONE-TIME, run before launch)
-  - Convert star counts to initial hype scores:
-    10-100 stars → 1, 100-500 → 3, 500-2000 → 5, 2000+ → 10
-  - Max hype per paper capped at 10
-  - Run once to populate "Most Hyped" tab for launch
-  - After launch, all hype comes from organic user votes only
-  - Reset option if needed: TRUNCATE paper_hype and let it rebuild
-
-**Master script:**
-- [ ] scripts/daily_update.py — runs all steps in sequence:
-  1. arxiv_delta.py → new papers
-  2. semantic_scholar_enrich.py → code links for new papers
-  3. github_enrich.py → star counts for new repos
-  4. hype_seed.py → initial hype for papers with zero organic votes
-- [ ] GitHub Action runs daily_update.py on cron (Stage 3g)
-
-**Community paper submission:**
-- [ ] "Submit a Paper" — arXiv ID input, pulls metadata, deduplicates
-  - Triggers enrichment for submitted paper immediately
-
-**Rate limits to respect:**
-- arXiv OAI-PMH: 1 req/sec max
-- Semantic Scholar: 100 req/sec with API key
-- GitHub: 5000 req/hour with token
-
-**Env vars (add to .env.local and Vercel):**
-- SEMANTIC_SCHOLAR_KEY=free key from semanticscholar.org/product/api
-- GITHUB_TOKEN=personal access token with public_repo read scope
-
-### Stage 3e — Author Verification
-
-**Key insight:** GitHub OAuth + Semantic Scholar repo enrichment enables
-automatic author verification without manual review.
-
-- [ ] paper_authors table:
-  - paper_id, user_id, verified BOOLEAN, verified_at,
-    verification_method TEXT (github_contributor / manual_admin)
-- [ ] "I authored this paper" button on paper detail page (login required)
-- [ ] Verification flow:
-  1. Paper must have an official repo (is_official=true in paper_code_links)
-  2. User clicks "I authored this"
-  3. Backend: GET /repos/{owner}/{repo}/contributors via GitHub API
-  4. If user's github_username is in contributor list → auto-verified
-  5. User added to paper_authors with verified=true,
-     verification_method='github_contributor'
-  6. Verified authors can submit benchmark scores at Tier 2 automatically
-     (trusted without manual review, still logged and visible)
-- [ ] Verified author badge on paper detail page: "Author verified via
-  GitHub" with the author's avatar
-- [ ] If paper has no official repo OR user is not a contributor:
-  - Submission goes to pending queue for admin review
-  - Status: 'pending_admin' in paper_authors table
-
-**Edge cases (handle post-launch):**
-- Author didn't push code → vouching from other verified authors
-- Multiple official repos → check contributors across all
-- Org-owned repos → check org membership as fallback
-
-### Stage 3g — Automation (first week post-launch)
+## Stage 3g — Post-Launch Automation (first week)
 - [ ] GitHub Action: .github/workflows/arxiv-update.yml
-  - Cron weekly + manual trigger, connects to Railway DB
+  - Cron weekly + manual trigger, connects to Railway DB via DATABASE_URL secret
 - [ ] Railway DB backups — enable in dashboard (built-in)
 - [ ] UptimeRobot free tier — pings every 5 min
-
-### Verification System
-
-**Two dimensions, not tiers:**
-
-1. Verification type (categorical badges, human-readable):
-   - "Unverified" — no evidence beyond author's paper
-   - "Code Available" — official repo exists in paper_code_links
-   - "Author Verified" — verified author (via GitHub contributor check)
-     submitted metrics
-   - "Community Verified (N)" — N independent reproductions exist
-   - Display the highest applicable badge + reproduction count
-
-2. Verification score (integer, machine-readable):
-   - Computed from underlying data, used for API sorting
-   - Formula (initial, can tune with real data):
-     - Official code repo exists: +5
-     - Author verified and claimed metrics: +10
-     - Per community reproduction: +10
-     - Per reproduction within 5% of claimed metric: +5 bonus
-     - Per unique hardware config across reproductions: +3
-   - Stored as computed column or materialized view, recalculated
-     on each new reproduction
-   - Exposed in API: GET /api/v1/sota?min_score=50&sort=score
-
-**Data requirements (capture at launch, score formula tunable later):**
-- paper_code_links: repo existence + is_official (already have)
-- paper_authors: author verification status (Stage 3e)
-- reproductions: count per paper, metric values, hardware
-  - Add back optional structured fields to reproduction form:
-    actual_metric_name TEXT, actual_metric_value FLOAT
-    (optional — reproducer can also just put metrics in notes,
-    but structured fields enable automated score calculation)
-- verification_score INT on papers table (recomputed on events)
-
-**Display:**
-- Paper detail page: badge + score + reproduction count
-- Leaderboard rows: badge + score
-- Homepage tables: badge only (keep it clean)
-- API response: score as integer, badge as string,
-  reproduction_count as integer, all sortable/filterable
-
-**Key principle:** Store granular data now, compute scores later.
-The scoring formula will evolve as you see real usage patterns.
-Don't hardcode tiers — keep them as computed views over raw data.
-
-**Migration from current schema:**
-- Replace verification_tier INT (0-4) on leaderboard_results with
-  verification_score INT (computed) on papers table
-- The old tier values (0-4) are all 0 anyway since everything
-  imported from PWC is unverified
-- No data loss from this migration
-
-## Pre-Launch QA
-
-### Automated Tests (delegate to Claude Code)
-Prompt: "Write Jest + React Testing Library tests for the following.
-All tests should be runnable with `npm test` with no external
-dependencies (mock all DB calls, mock GitHub OAuth, mock external APIs).
-Group tests by feature area."
-
-**Auth (Stage 3a):**
-- [ ] Unauthenticated user sees "Sign in with GitHub" button
-- [ ] Authenticated user sees avatar + username in nav
-- [ ] Unauthenticated user cannot access /admin
-- [ ] /admin returns 404 for non-admin authenticated user
-- [ ] Account age gate: user with account < 60 days flagged correctly
-- [ ] User upsert on login: new user created, returning user updated
-
-**Upvotes (Stage 3b):** ✅ `__tests__/upvotes.test.ts`
-- [x] Upvote creates row in upvotes table
-- [x] Second upvote on same paper removes the row (toggle off)
-- [x] Upvote count increments/decrements correctly on paper
-- [x] Unauthenticated user cannot upvote (returns 401)
-- [ ] Unique constraint prevents duplicate (paper_id, user_id)
-
-**API route (Stage 3b):** ✅ `__tests__/api-v1.test.ts`
-- [x] GET /api/v1/papers/{valid_arxiv_id} returns correct JSON shape:
-  title, abstract, authors, tasks, leaderboard results, code links
-- [x] GET /api/v1/papers/{invalid_id} returns 404
-- [x] Response does not include internal IDs or sensitive fields
-
-**Paper detail page (data layer):** ✅ `__tests__/data-layer.test.ts`
-- [x] Query returns paper with all code links from paper_code_links
-- [x] Query returns all leaderboard_results grouped by task/dataset
-- [x] Paper with no code links returns empty array, not error
-- [x] Paper with no leaderboard results returns empty array
-
-**Reproduction submissions (Stage 3d):** ✅ `__tests__/reproductions.test.ts`
-- [x] Submission creates row with status='community_verified'
-- [x] Required fields enforced: tier_claimed, hardware_spec
-- [x] Unauthenticated user cannot submit (401)
-- [x] User failing account age gate cannot submit
-- [x] Flag increments flag_count on reproduction
-- [x] 3 flags auto-sets status to 'flagged' / hidden
-- [x] Admin approve restores hidden reproduction
-- [x] Admin reject keeps it hidden, sets status='rejected'
-- [x] Reputation: +10 on verified reproduction
-
-**Author verification (Stage 3e):** ✅ `__tests__/author-verification.test.ts`
-- [x] "I authored this" with matching GitHub contributor → auto-verified
-- [x] "I authored this" without contributor match → pending_admin
-- [x] Paper with no official repo → pending_admin
-- [ ] Verified author can submit scores at Tier 2
-
-**Ingestion (Stage 3d):**
-- [ ] arxiv_delta: new paper inserted correctly
-- [ ] arxiv_delta: existing paper (ON CONFLICT) skipped
-- [ ] semantic_scholar_enrich: found repo stored in paper_code_links
-- [ ] semantic_scholar_enrich: paper with no repo → no error, skipped
-- [ ] github_enrich: star/fork counts stored on paper_code_links row
-
-**Routing:** ✅ `__tests__/routing.test.ts`
-- [x] All paper title links across site resolve to /papers/[id]
-- [x] No paper title links directly to arXiv
-- [ ] arXiv link only appears on paper detail page
+- [ ] API key generation UI — api_keys table exists, no UI yet to issue keys to users
 
 ---
 
-## 📈 Stage 4 — The Scaling Phase
+## Design Decisions & Implementation Notes
 
-### 4a — Reputation & Delegated Moderation
-- [ ] Users with reputation_score > 100 gain "Moderator Lite" status:
-  - Their flags carry 2x weight (auto-hide at 2 mod flags instead of 3)
-  - Their upvotes count toward "Verified" badge at 2x weight
-- [ ] Automated flagging worker:
-  - Ping run_log_url — 404 or non-code domain → auto-flag
-  - Runs nightly, kills low-effort spam before humans see it
+### Reputation & Trust
+- Trusted threshold: **rep ≥ 30** (not 50 — lowered to make trust achievable early)
+- Tier-based rep awards on reproduction verified: T1:+5, T2:+10, T3:+15, T4:+20
+- Flag weight: trusted users (rep≥30) trigger auto-hide at **2 flags** (regular: 3)
+- Upvote auto-verify: reproduction reaches "verified" when 3+ upvotes from rep≥30 users
+- Penalty for spam: -20 rep when reproduction auto-hidden at 3 flags
 
-### 4b — Trending & Discovery
-- [ ] Trending calculation: upvote velocity over 7-day window
-  (only meaningful once you have real traffic)
-- [ ] Cmd+K command palette for paper search
-- [ ] Research area heatmap: color tiles by activity / new papers this week
-- [ ] Infinite scroll or "Load More" on paper lists
+### Impersonation / Test Tools
+- Enabled when: `NODE_ENV=development` OR `ENABLE_TEST_TOOLS=true`
+- **NEVER enable in production** — test users bypass GitHub OAuth
+- Impersonation cookie: `sv_impersonate` (httpOnly, sameSite=lax, 24h)
+- `lib/effective-session.ts` → `getEffectiveSession()` wraps `getServerSession` and
+  substitutes impersonated user when cookie is present
+- All user-facing action routes use `getEffectiveSession` (not `getServerSession`) so
+  impersonated actions are properly attributed in the activity log
+- Test user presets: `test_new_user` (rep 0, age-gated), `test_trusted_user` (rep 50),
+  `test_author` (rep 10, age 3yr)
+- Reset deletes activity_log entries first (FK is SET NULL, not CASCADE), then users/papers
 
-### 4c — Hardware-Normalized Leaderboards
-- [ ] Introduce metrics: Accuracy / VRAM, Accuracy / FLOPs
-- [ ] Filter leaderboards by hardware class (e.g. "SOTA on consumer GPU")
-- [ ] Nobody has built this — strong differentiator
+### Agent Write API
+- `POST /api/v1/reproductions` — Bearer token auth via SHA-256 key hash in api_keys table
+- Rate limits by reputation: rep<30 → 1/day, rep 30–200 → 5/hr, rep 200+ → 20/hr
+- Agent submissions use `source='api'`, `status='agent_pending'`
+- Trusted users (rep≥30) can promote agent_pending → community via PromoteButton
+- Admin sees agent submissions in a dedicated section (separate from community reproductions)
+
+### Activity Log
+- Append-only `activity_log` table — never update or delete rows
+- `logEvent()` in `lib/activity.ts` swallows all errors (logging never breaks main flow)
+- Events: user_signin, paper_hyped, paper_unhyped, reproduction_submitted,
+  author_claimed, reproduction_flagged, reproduction_unflagged,
+  agent_reproduction_submitted, agent_reproduction_promoted, rate_limit_hit
+
+### Hype vs Upvotes
+- "Hype" is the user-facing name for upvotes throughout the UI
+- `hype_score` column on papers = seeded from GitHub stars (one-time, pre-launch)
+  - Thresholds: 10–99 stars→1, 100–499→3, 500–1999→5, 2000+→10
+- Organic upvotes stored in `upvotes` table, counted at query time
+- "Most Hyped" sort = `COUNT(upvotes) + hype_score DESC`
+- After launch: all hype from organic votes only — don't re-run hype_seed.py
+
+### GitHub Enrichment
+- `github_enrich.py` now has `--since YYYY-MM-DD` flag to filter by paper.published
+- Safe to re-run — skips repos enriched in last 7 days
+- `GITHUB_TOKEN` must be set as shell env var (not .env.local — Python doesn't read it)
+- Pattern: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py ...`
+
+### Submit Page Removed
+- `/submit` page, `SubmitPaperForm` component, and `/api/submit-paper` route were removed
+- Paper ingestion is via scripts only (arxiv_backfill.py, arxiv_delta.py)
+- "Submit" link removed from nav
+
+### Tab Tables (4 tabs everywhere)
+- Tabs: Recent | Most Hyped | Needs Verification | Most Verified
+- All scoped versions (homepage, category, task page) use same PaperTabTable component
+- Pagination: 10/25/50 per page, URL-based (no client JS needed)
+- "Needs Verification" = unverified papers (verification_score=0) with hype>0, sorted by hype
+- Leaderboard datasets ordered by submission count DESC, then alphabetically
+
+### Leaderboard Sort
+- Sort options: metric value (default), verification score, date
+- No hype sort on leaderboard (hype is paper-level, not result-level)
+- Datasets ordered by submission_count DESC within each leaderboard view
 
 ---
 
-## 🤖 Stage 5 — Agentic Integration
+## Database Schema
 
-### 5a — MCP Server
-- [ ] Model Context Protocol server exposing:
-  - query_techniques(architecture, task, dataset_type) → ranked methods
-  - get_paper(arxiv_id) → paper + verification status
-  - submit_verification(arxiv_id, tier, run_log) → create reproduction
-  - list_bounties() → open replication bounties
-- [ ] Queryable by Claude, GPT, autoresearch agents
+### Core tables (from PWC import)
+- `papers` — 658k rows (575k original + 23k arXiv backfill 2025-07–2026-03)
+  - id TEXT PK, arxiv_id, title, abstract, published DATE, authors TEXT[],
+    tasks TEXT[], methods TEXT[], verification verification_tier DEFAULT 'unverified',
+    hype_score INT DEFAULT 0, verification_score INT DEFAULT 0, is_test BOOLEAN DEFAULT false
+- `tasks` — 3,956 rows
+- `methods` — 8,580 rows
+- `datasets` — 18,522 rows
+- `leaderboard_results` — 59,758 rows, metrics JSONB
+- `paper_code_links` — 242k rows
+  - id BIGSERIAL PK, paper_id, repo_url, is_official, framework,
+    stars INT DEFAULT 0, forks INT, last_enriched_at TIMESTAMPTZ
+- `paper_tasks` — populated from papers.tasks TEXT[] array
+- `paper_methods` — populated from papers.methods TEXT[] array
 
-### 5b — Verification Bounties
-- [ ] Bounty board — users flag papers as "High Demand for Verification"
-- [ ] Stripe escrow — funds held until reproduction approved
-- [ ] Community replication pool (Stripe or OpenCollective)
-- [ ] Auto-bounty: papers hitting X upvotes get small pool bounty
-- [ ] Auto-release funds 48h after approval if no dispute
+### Tables added in launch sprint
+- `users` — github_id TEXT PK, username, email, avatar_url, account_created_at,
+  is_flagged_new_account BOOLEAN DEFAULT false, reputation_score INT DEFAULT 0,
+  is_test BOOLEAN DEFAULT false, created_at
+- `upvotes` — paper_id, user_id, created_at (UNIQUE paper_id+user_id)
+- `reproductions` — id SERIAL PK, paper_id, user_id, tier_claimed (1-4),
+  hardware_spec, run_log_url, notes, upvote_count INT DEFAULT 0,
+  flag_count INT DEFAULT 0, status TEXT DEFAULT 'community',
+  actual_metric_name TEXT, actual_metric_value FLOAT,
+  source TEXT DEFAULT 'community', created_at, reviewed_at
+- `reproduction_flags` — reproduction_id, user_id (UNIQUE)
+- `reproduction_upvotes` — reproduction_id, user_id (UNIQUE)
+- `paper_authors` — paper_id, user_id, verified BOOLEAN, verified_at,
+  verification_method TEXT, status TEXT (verified/pending_admin)
+- `activity_log` — id BIGSERIAL PK, event_type, user_id (FK SET NULL),
+  paper_id (FK SET NULL), metadata JSONB, created_at
+- `api_keys` — id SERIAL PK, user_id FK CASCADE, key_hash TEXT (SHA-256),
+  label TEXT, created_at
 
-### 5c — AutoML Integration
-- [ ] API key system for programmatic access
-- [ ] Rate limiting on API endpoints
-- [ ] Hooks for autonomous agents to submit verification logs programmatically
-- [ ] Automated eval in Modal sandbox for ML benchmarks (longer term)
+### Reproduction status values
+- `community` — submitted by user, live immediately
+- `agent_pending` — submitted via API, needs trusted-user promotion
+- `verified` — 3+ upvotes from rep≥30 users OR admin approved
+- `hidden` — auto-hidden by flag threshold (3 flags, or 2 from trusted user)
+- `removed` — admin rejected
 
 ---
-
-## 💡 Stage 6 — Hype Economy (data-informed, post-traction)
-- [ ] Replace simple upvotes with hype balance system
-- [ ] Hype earned through reproductions, spent on papers you want verified
-- [ ] Tier badges: normal → hot 🔥 → trending ⚡ → legendary 💎
-- [ ] Calibrate thresholds from actual upvote data collected in Stage 3b
-- [ ] Verification multiplier: trending papers offer bonus hype for reproduction
-- [ ] Transaction history on user profile page
-
----
-
-## Database Schema Summary
-Existing tables (DB: pwc):
-- papers — 575k rows, arxiv_id, title, abstract, url, tasks TEXT[], methods TEXT[]
-- tasks — 3,956 rows, name, description, area/category
-- methods — 8,580 rows
-- datasets — 18,522 rows
-- leaderboard_results — 59,758 rows, metrics JSONB, verification_tier
-- paper_code_links — 242k rows, is_official, framework
-- paper_tasks — populated in Stage 3c from TEXT[] arrays
-- paper_methods — populated in Stage 3c from TEXT[] arrays
-
-Tables added in launch sprint:
-- users — github_id PK, username, email, avatar_url, account_created_at,
-  created_at, reputation_score
-- upvotes — paper_id, user_id, created_at (unique paper_id + user_id)
-- reproductions — id, paper_id, user_id, tier_claimed, hardware_spec,
-  run_log_url, notes, upvote_count, flag_count, status, created_at, reviewed_at,
-  actual_metric_name TEXT, actual_metric_value FLOAT (structured metric fields)
-- paper_authors — paper_id, user_id, verified, verified_at, verification_method, status
-
-Columns added in verification sprint:
-- papers.verification_score INT NOT NULL DEFAULT 0 — computed score (see lib/verification.ts)
 
 ## Verification System (two-dimension)
-Papers are assessed on two axes:
-1. **verification_score** (integer): computed from repo (+5), verified author (+10),
-   reproductions (+10 each), metric match within 5% (+5 bonus), unique hardware (+3 each).
-   Recomputed via recomputeVerificationScore() on every relevant event.
-2. **BadgeType** (categorical): displayed as a pill badge on paper detail and API responses.
-   - unverified — no repo, no author claim, no reproductions
-   - code_available — has an official repo link
-   - author_verified — a GitHub contributor to the official repo has claimed authorship
-   - community_verified — at least one active (non-hidden/removed) reproduction exists
 
-## Known Data Limitations
-1. stars = 0 everywhere — not in HF parquet export, fixable from original JSON.gz
-2. paper_tasks / paper_methods empty until junction table population in Stage 3c
-3. paper detail leaderboard may have query issues in lib/queries.ts
+Papers assessed on two axes:
+
+1. **verification_score** (integer, machine-readable):
+   - Official code repo exists: +5
+   - Verified author claimed metrics: +10
+   - Per active community reproduction: +10
+   - Per reproduction within 5% of claimed metric: +5 bonus
+   - Per unique hardware config across reproductions: +3
+   - Recomputed via `recomputeVerificationScore(paperId)` in `lib/verification.ts`
+   - Called on: repro create, flag/unflag, admin approve/remove, author claim
+
+2. **BadgeType** (categorical, human-readable):
+   - `unverified` — no repo, no author, no reproductions
+   - `code_available` — has official repo in paper_code_links
+   - `author_verified` — GitHub contributor claimed authorship
+   - `community_verified` — at least one active reproduction exists
+
+---
 
 ## Environment Variables
-Local .env.local (never commit — in .gitignore):
-- DATABASE_URL=postgresql://david@localhost/pwc
-- GITHUB_ID=your_github_oauth_app_client_id
-- GITHUB_SECRET=your_github_oauth_app_client_secret
-- NEXTAUTH_SECRET=run: openssl rand -base64 32
-- NEXTAUTH_URL=http://localhost:3000
-- ADMIN_GITHUB_ID=your_numeric_github_id (api.github.com/users/yourusername)
-- GITHUB_MIN_ACCOUNT_AGE_DAYS=60
 
-Production (set in Vercel dashboard):
-- DATABASE_URL=railway_connection_string
-- GITHUB_ID=same or separate prod OAuth app
-- GITHUB_SECRET=same
-- NEXTAUTH_SECRET=same or new
-- NEXTAUTH_URL=https://yourdomain.com
-- ADMIN_GITHUB_ID=same
+**Local `.env.local` (never commit):**
+```
+DATABASE_URL=postgresql://david@localhost/pwc
+GITHUB_ID=your_github_oauth_app_client_id
+GITHUB_SECRET=your_github_oauth_app_client_secret
+NEXTAUTH_SECRET=run: openssl rand -base64 32
+NEXTAUTH_URL=http://localhost:3000
+ADMIN_GITHUB_ID=your_numeric_github_id
+GITHUB_MIN_ACCOUNT_AGE_DAYS=60
+ENABLE_TEST_TOOLS=true         ← dev only, never in production
+```
+
+**Production (Vercel dashboard):**
+```
+DATABASE_URL=railway_connection_string
+GITHUB_ID=prod_oauth_app_client_id
+GITHUB_SECRET=prod_oauth_app_client_secret
+NEXTAUTH_SECRET=different_from_local
+NEXTAUTH_URL=https://sotaverified.org
+ADMIN_GITHUB_ID=same
+# ENABLE_TEST_TOOLS — omit entirely in production
+```
+
+**Scripts (shell env, not .env.local):**
+```
+GITHUB_TOKEN=ghp_...   ← for github_enrich.py
+SEMANTIC_SCHOLAR_KEY=  ← for semantic_scholar_enrich.py (optional)
+```
+
+---
+
+## Pre-Launch QA — Test Suite Status
+All tests run with `npm test` (no external deps — all DB/auth/API mocked).
+**59 tests, all passing.**
+
+- `__tests__/auth.test.ts` — session, age gate, user upsert (8 tests)
+- `__tests__/upvotes.test.ts` — toggle upvote, auth guard (8 tests)
+- `__tests__/api-v1.test.ts` — GET /api/v1/papers/{id} shape + 404 (6 tests)
+- `__tests__/data-layer.test.ts` — query shapes, empty states (9 tests)
+- `__tests__/reproductions.test.ts` — submit, flag, admin approve/remove (12 tests)
+- `__tests__/author-verification.test.ts` — contributor check, fallback (6 tests)
+- `__tests__/routing.test.ts` — paper links resolve to /papers/[id] (6 tests)
+
+**Remaining uncovered (low priority pre-launch):**
+- Ingestion scripts (arxiv_delta, semantic_scholar_enrich, github_enrich)
+- Unique DB constraints (would need real DB)
+- arXiv link only appears on paper detail page
 
 ---
 
 ## Session Startup Checklist
-1. git log --oneline -5
-2. psql -d pwc -c "\dt"
-3. cd web && npm run dev
+1. `git log --oneline -5`
+2. `psql -d pwc -c "\dt"`
+3. `cd web && npm run dev --webpack` (NOT turbopack — causes FATAL panics in this version)
 4. Read this file top to bottom before starting work
+
+---
 
 ## Project Name & Branding
 - Project name: SOTAVerified
-- Handle/org everywhere: sotarepro
+- Handle/org: sotarepro
 - Domain: sotaverified.org (primary), sotaverified.com (redirect)
-- GitHub org: github.com/sotarepro
-- Repo: github.com/sotarepro/sotaverified
+- GitHub: github.com/sotarepro/sotaverified
 - Twitter/X: @sotarepro
 - Reddit: u/Life-Temperature4068 (display name: SOTA Verified)
-- Tagline: "Verified state-of-the-art ML research infrastructure"
-- Sub-tagline: "Open benchmark tracking, reproducibility verification,
-  and SOTA leaderboards — built for researchers and autonomous agents"
-- Hero copy:
-    Headline: SOTAVerified
-    Subhead: Verified state-of-the-art ML research infrastructure
-    Body: Open benchmark tracking, reproducibility verification, and SOTA
-    leaderboards for researchers and autonomous research agents.
-    Community successor to Papers with Code.
-    CTA: Browse Benchmarks / Sign in with GitHub
 - Do NOT use "Papers with Code" in site name or hero headline —
-  reference only as "successor to Papers with Code" in about page
-  to avoid trademark issues with Meta
+  reference only as "successor to Papers with Code" on the About page
 
-Nav:  [SOTAVerified logo]              [Browse] [About] [Sign In]
+**Nav:** `[SOTAVerified]  Browse  About  [search]  [Sign In / avatar]`
 
-Hero: "The Open Verification Layer for ML Research"
-Sub:  Community benchmark tracking and reproducibility verification.
-      Built for researchers and autonomous research agents.
-CTA:  [Browse Benchmarks]  [Sign in with GitHub]
+**Hero:**
+- Headline: "The Open Verification Layer for ML Research"
+- Sub: Community benchmark tracking and reproducibility verification.
+  Built for researchers and autonomous research agents.
+- CTA: [Browse Benchmarks]  [Sign in with GitHub]
+
+---
 
 ## Security Rules (non-negotiable)
-- All SQL queries use parameterized queries ($1, $2). Never interpolate user input.
-- All user-submitted URLs validated against allowlist of domains before storage.
-- run_log_url only allows: github.com, gist.github.com, wandb.ai,
-  colab.research.google.com, huggingface.co
+- All SQL queries use parameterized queries. Never interpolate user input.
+- User-submitted URLs validated against allowlist before storage:
+  github.com, gist.github.com, wandb.ai, colab.research.google.com, huggingface.co
 - Max field lengths enforced server-side: hardware_spec 500 chars, notes 2000 chars
 - Rate limiting on all API endpoints (100/min) and auth endpoints (30/min)
 - Production DB credentials use a limited-privilege role, not superuser
 - Local and production NEXTAUTH_SECRET must be different values
 - Security headers configured in next.config.js (CSP, HSTS, X-Frame-Options)
 - npm audit clean before every deploy
-
-## User Journey & Page Hierarchy
-
-### Homepage
-- Hero: headline, tagline, CTAs (Browse Benchmarks / Sign in with GitHub)
-- Paper table with tab switching:
-  - "Recently Added" — papers by ingestion date DESC, limit 10
-  - "Most Hyped" — papers by upvote count DESC, limit 10
-    (placeholder until Stage 3b, show Recently Added in both tabs)
-  - "Needs Verification" — papers sorted by (upvotes DESC) WHERE
-    verification_tier = 0, limit 10. Call to action: high-interest
-    papers nobody has verified yet.
-  - Each row: title (links to /papers/[id]), date, task tags,
-    verification tier badge, hype/upvote count
-  - "View all" link below each tab
-- Research area category grid below the table (existing Stage 2.5 design)
-
-### Category Page (e.g., Computer Vision)
-- Same tab-switching table scoped to this category
-  (Recently Added / Most Hyped / Needs Verification)
-- Below: task cards for this category, linking to task pages
-
-### Task Page (e.g., Image Classification)
-- Same tab-switching table scoped to this task
-  - Scoped means: papers that have this task in their tasks[] array
-  - Hype is on the paper itself, not tied to dataset performance
-- Below: dataset leaderboards
-  - Datasets sorted by number of submissions (most populated first)
-  - Default view shows the top dataset's leaderboard expanded
-  - Each leaderboard row: rank, paper title (links to /papers/[id]),
-    claimed metric (author-reported), verified metric (if any
-    reproduction exists — show best verified result),
-    verification tier badge
-  - Leaderboard ranks by claimed metric by default
-  - Future: toggle "Rank by claimed" vs "Rank by verified"
-
-### Paper Detail Page (the canonical hub)
-- Hero: title, authors, published date, verification tier badge
-  (prominent), hype count + hype button, arXiv external link button
-- Verification CTA banner:
-  - Tier 0: "Unverified — Be the first to reproduce this paper"
-  - Tier 1+: shows current tier with explanation
-  - Links to reproduction form (Stage 3d), disabled until then
-- Code repositories section (PROMINENT — first content after CTA):
-  - Query paper_code_links for this paper
-  - Each repo as card: GitHub URL, is_official badge, framework badge
-    (PyTorch/TF/JAX/Other), opens in new tab
-  - Empty state: "No code available yet"
-- Benchmark results section:
-  - All leaderboard_results for this paper, grouped by task → dataset
-  - Each entry: dataset name, metric name, claimed value,
-    verified value (from reproductions if any), rank, tier badge
-  - Gap between claimed and verified is valuable signal — display it
-- Reproduction history section:
-  - All reproduction submissions for this paper
-  - Each: submitter username, tier claimed, hardware, metric values
-    (from notes), run log link, date, status
-  - Empty state: "No reproductions yet — be the first to verify"
-
-### Search
-- Global search bar in nav (always visible)
-- Returns both tasks and papers
-- Paper results link to /papers/[id], task results link to /tasks/[id]
-
-### Key Routing Principle
-Paper titles ALWAYS link to /papers/[id] throughout the entire site —
-homepage tables, leaderboard rows, search results, category pages.
-arXiv is an external link that appears ONLY on the paper detail page.
-We are the hub, not a pass-through.
-
-### Metrics & Verification Philosophy
-- Leaderboards rank by the author's CLAIMED metric
-- When reproductions exist, display the VERIFIED metric alongside
-- The gap between claimed and verified is the core signal
-- Hardware is captured but not strictly matched — any reproduction
-  on any hardware is valuable at this stage
-- Each reproduction displayed individually with hardware context
-- Future: aggregate metrics once volume exists
-- Future: hardware-normalized rankings (accuracy per FLOP / per VRAM)
+- ENABLE_TEST_TOOLS must NEVER be set in production
 
 ---
 
-## Parking Lot (prioritized)
+## Parking Lot
 
 **High impact — build when there's traction:**
 - Trending papers with external signal (GitHub stars, HN, Twitter/X)
-- Embeddings-based paper similarity / recommendation
 - Conference-based filtering (NeurIPS 2025, CVPR 2026 etc.)
+- API key generation UI (api_keys table exists, no UI yet)
+- Embeddings-based paper similarity / recommendation
 
 **Medium — strong differentiators:**
+- Hardware-normalized leaderboards (accuracy/VRAM, accuracy/FLOPs) — nobody has built this
 - Compare two methods head to head across benchmarks
-- Author paper claiming — authors verify they wrote a paper
 - Email digest — weekly newly replicated papers in your areas
+- MCP server exposing query_techniques, get_paper, submit_verification
 
-**Lower priority — build if community asks:**
+**Stage 4 — Reputation & Delegated Moderation:**
+- Users with rep > 100 gain "Moderator Lite": 2x flag weight, 2x upvote weight
+- Automated flagging worker: ping run_log_url nightly, 404 → auto-flag
+
+**Stage 5 — Agentic Integration:**
+- MCP server (see parking lot above)
+- Verification bounty board with Stripe escrow
+- Automated eval in Modal sandbox for ML benchmarks (longer term)
+
+**Stage 6 — Hype Economy (post-traction, data-informed):**
+- Replace simple upvotes with hype balance system
+- Hype earned via reproductions, spent on papers you want verified
+- Calibrate thresholds from real traffic data first
+
+**Lower priority:**
 - Community discussion threads per paper (HN-style)
-- Reading list — save papers to read later
-- Mind map / force-directed graph of research areas
-- Mobile app
-- Integration with Semantic Scholar for citation graph
+- Reading list, Cmd+K search palette, research area heatmap
+- Mobile app, Semantic Scholar citation graph integration
