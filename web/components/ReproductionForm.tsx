@@ -4,11 +4,38 @@ import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 
 const TIER_DESCRIPTIONS: Record<number, string> = {
-  1: "Code matches repo — confirmed code runs",
-  2: "Metrics match paper — replicated reported numbers",
-  3: "Independent reproduction — fresh environment, no author guidance",
-  4: "Multiple verified — confirmed by 2+ independent groups",
+  1: "Code confirmed to run against the linked repository",
+  2: "Reported metrics match the paper's claimed numbers",
+  3: "Independent reproduction in a fresh environment",
+  4: "Confirmed by multiple independent groups",
 };
+
+const ALLOWED_URL_DOMAINS = [
+  "github.com",
+  "gist.github.com",
+  "wandb.ai",
+  "colab.research.google.com",
+  "huggingface.co",
+];
+
+function validateRunLog(value: string): string | null {
+  if (!value.trim()) return "Run log is required";
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    try {
+      const { hostname } = new URL(value);
+      const ok = ALLOWED_URL_DOMAINS.some(
+        (d) => hostname === d || hostname.endsWith("." + d)
+      );
+      if (!ok) {
+        return `URL must be from: ${ALLOWED_URL_DOMAINS.join(", ")}`;
+      }
+    } catch {
+      return "Invalid URL";
+    }
+  }
+  if (value.length > 10000) return "Maximum 10,000 characters";
+  return null;
+}
 
 interface Props {
   paperId: string;
@@ -19,7 +46,7 @@ export default function ReproductionForm({ paperId }: Props) {
   const [open, setOpen] = useState(false);
   const [tierClaimed, setTierClaimed] = useState(2);
   const [hardwareSpec, setHardwareSpec] = useState("");
-  const [runLogUrl, setRunLogUrl] = useState("");
+  const [runLog, setRunLog] = useState("");
   const [notes, setNotes] = useState("");
   const [actualMetricName, setActualMetricName] = useState("");
   const [actualMetricValue, setActualMetricValue] = useState("");
@@ -50,9 +77,12 @@ export default function ReproductionForm({ paperId }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
 
+    const logErr = validateRunLog(runLog);
+    if (logErr) { setError(logErr); return; }
+
+    setLoading(true);
     try {
       const res = await fetch("/api/reproductions", {
         method: "POST",
@@ -61,7 +91,7 @@ export default function ReproductionForm({ paperId }: Props) {
           paper_id: paperId,
           tier_claimed: tierClaimed,
           hardware_spec: hardwareSpec,
-          run_log_url: runLogUrl,
+          run_log_url: runLog,
           notes,
           actual_metric_name: actualMetricName || undefined,
           actual_metric_value: actualMetricValue !== "" ? Number(actualMetricValue) : undefined,
@@ -103,6 +133,7 @@ export default function ReproductionForm({ paperId }: Props) {
             <p className="text-sm text-red-600 rounded bg-red-50 px-3 py-2">{error}</p>
           )}
 
+          {/* Tier */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Tier claimed
@@ -118,8 +149,10 @@ export default function ReproductionForm({ paperId }: Props) {
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-400 mt-1">{TIER_DESCRIPTIONS[tierClaimed]}</p>
           </div>
 
+          {/* Hardware */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Hardware spec
@@ -134,23 +167,32 @@ export default function ReproductionForm({ paperId }: Props) {
             />
           </div>
 
+          {/* Run log — URL or pasted output */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Run log URL
+              Run log{" "}
+              <span className="text-gray-400 font-normal">
+                (paste terminal output, or link to GitHub gist / wandb / colab)
+              </span>
             </label>
-            <input
-              type="url"
-              value={runLogUrl}
-              onChange={(e) => setRunLogUrl(e.target.value)}
+            <textarea
+              value={runLog}
+              onChange={(e) => setRunLog(e.target.value)}
               required
-              placeholder="https://github.com/... or https://wandb.ai/..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={4}
+              placeholder={"Paste run output here, or enter a URL:\nhttps://gist.github.com/...\nhttps://wandb.ai/..."}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
             />
+            <p className="text-xs text-gray-400 mt-0.5">
+              If a URL: must be github.com, gist.github.com, wandb.ai, colab, or huggingface.co
+            </p>
           </div>
 
+          {/* Optional metric */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Reproduced metric <span className="text-gray-400">(optional — enables automated score calculation)</span>
+              Reproduced metric{" "}
+              <span className="text-gray-400 font-normal">(optional — enables automated score calculation)</span>
             </label>
             <div className="flex gap-2">
               <input
@@ -171,9 +213,11 @@ export default function ReproductionForm({ paperId }: Props) {
             </div>
           </div>
 
+          {/* Notes */}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
-              Notes <span className="text-gray-400">(include metric name + value)</span>
+              Notes{" "}
+              <span className="text-gray-400 font-normal">(include metric name + value if not using fields above)</span>
             </label>
             <textarea
               value={notes}
