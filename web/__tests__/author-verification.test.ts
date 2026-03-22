@@ -14,6 +14,10 @@ jest.mock("next-auth", () => ({
   getServerSession: jest.fn(),
 }));
 
+jest.mock("@/lib/verification", () => ({
+  recomputeVerificationScore: jest.fn().mockResolvedValue(0),
+}));
+
 import { getServerSession } from "next-auth";
 import { POST } from "@/app/api/papers/[id]/claim-author/route";
 import { NextRequest } from "next/server";

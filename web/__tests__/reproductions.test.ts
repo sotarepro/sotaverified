@@ -14,6 +14,10 @@ jest.mock("next-auth", () => ({
   getServerSession: jest.fn(),
 }));
 
+jest.mock("@/lib/verification", () => ({
+  recomputeVerificationScore: jest.fn().mockResolvedValue(0),
+}));
+
 import { getServerSession } from "next-auth";
 import { POST } from "@/app/api/reproductions/route";
 import { POST as FLAG_POST } from "@/app/api/reproductions/[id]/flag/route";
@@ -261,6 +265,8 @@ describe("PATCH /api/admin/reproductions/[id]", () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession(ADMIN_ID, "admin"));
     // UPDATE status='removed'
     mockSql.mockResolvedValueOnce([]);
+    // Fetch reproduction to get paper_id (for recomputeVerificationScore)
+    mockSql.mockResolvedValueOnce([{ user_id: "u1", status: "community", paper_id: "paper-1" }]);
 
     const req = makeReq("PATCH", { action: "remove" });
     const params = { params: Promise.resolve({ id: "42" }) };
@@ -269,8 +275,8 @@ describe("PATCH /api/admin/reproductions/[id]", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual({ ok: true });
-    // Only 1 sql call: just the UPDATE (no rep award for remove)
-    expect(mockSql).toHaveBeenCalledTimes(1);
+    // 2 sql calls: UPDATE + fetch for paper_id (recomputeVerificationScore itself is mocked)
+    expect(mockSql).toHaveBeenCalledTimes(2);
   });
 
   it("returns 400 for invalid action", async () => {
