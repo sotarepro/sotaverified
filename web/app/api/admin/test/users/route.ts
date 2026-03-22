@@ -19,7 +19,7 @@ const PRESETS = {
   trusted_user: {
     github_id: "test_trusted_user",
     username: "test_trusted_user",
-    reputation_score: 50,
+    reputation_score: 30,
     age_days: 730,
     is_flagged_new_account: false,
   },

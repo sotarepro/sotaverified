@@ -120,6 +120,11 @@ export async function POST(
         verification_method = 'github_contributor',
         status = 'verified'
     `;
+    // Award +10 rep for auto-verified author claim
+    await sql`
+      UPDATE users SET reputation_score = reputation_score + 10
+      WHERE github_id = ${userId}
+    `;
     await recomputeVerificationScore(paperId);
     await logEvent("author_claimed", {
       userId,
