@@ -276,6 +276,70 @@ automatic author verification without manual review.
 - [ ] Railway DB backups — enable in dashboard (built-in)
 - [ ] UptimeRobot free tier — pings every 5 min
 
+## Pre-Launch QA
+
+### Automated Tests (delegate to Claude Code)
+Prompt: "Write Jest + React Testing Library tests for the following.
+All tests should be runnable with `npm test` with no external
+dependencies (mock all DB calls, mock GitHub OAuth, mock external APIs).
+Group tests by feature area."
+
+**Auth (Stage 3a):**
+- [ ] Unauthenticated user sees "Sign in with GitHub" button
+- [ ] Authenticated user sees avatar + username in nav
+- [ ] Unauthenticated user cannot access /admin
+- [ ] /admin returns 404 for non-admin authenticated user
+- [ ] Account age gate: user with account < 60 days flagged correctly
+- [ ] User upsert on login: new user created, returning user updated
+
+**Upvotes (Stage 3b):** ✅ `__tests__/upvotes.test.ts`
+- [x] Upvote creates row in upvotes table
+- [x] Second upvote on same paper removes the row (toggle off)
+- [x] Upvote count increments/decrements correctly on paper
+- [x] Unauthenticated user cannot upvote (returns 401)
+- [ ] Unique constraint prevents duplicate (paper_id, user_id)
+
+**API route (Stage 3b):** ✅ `__tests__/api-v1.test.ts`
+- [x] GET /api/v1/papers/{valid_arxiv_id} returns correct JSON shape:
+  title, abstract, authors, tasks, leaderboard results, code links
+- [x] GET /api/v1/papers/{invalid_id} returns 404
+- [x] Response does not include internal IDs or sensitive fields
+
+**Paper detail page (data layer):** ✅ `__tests__/data-layer.test.ts`
+- [x] Query returns paper with all code links from paper_code_links
+- [x] Query returns all leaderboard_results grouped by task/dataset
+- [x] Paper with no code links returns empty array, not error
+- [x] Paper with no leaderboard results returns empty array
+
+**Reproduction submissions (Stage 3d):** ✅ `__tests__/reproductions.test.ts`
+- [x] Submission creates row with status='community_verified'
+- [x] Required fields enforced: tier_claimed, hardware_spec
+- [x] Unauthenticated user cannot submit (401)
+- [x] User failing account age gate cannot submit
+- [x] Flag increments flag_count on reproduction
+- [x] 3 flags auto-sets status to 'flagged' / hidden
+- [x] Admin approve restores hidden reproduction
+- [x] Admin reject keeps it hidden, sets status='rejected'
+- [x] Reputation: +10 on verified reproduction
+
+**Author verification (Stage 3e):** ✅ `__tests__/author-verification.test.ts`
+- [x] "I authored this" with matching GitHub contributor → auto-verified
+- [x] "I authored this" without contributor match → pending_admin
+- [x] Paper with no official repo → pending_admin
+- [ ] Verified author can submit scores at Tier 2
+
+**Ingestion (Stage 3d):**
+- [ ] arxiv_delta: new paper inserted correctly
+- [ ] arxiv_delta: existing paper (ON CONFLICT) skipped
+- [ ] semantic_scholar_enrich: found repo stored in paper_code_links
+- [ ] semantic_scholar_enrich: paper with no repo → no error, skipped
+- [ ] github_enrich: star/fork counts stored on paper_code_links row
+
+**Routing:** ✅ `__tests__/routing.test.ts`
+- [x] All paper title links across site resolve to /papers/[id]
+- [x] No paper title links directly to arXiv
+- [ ] arXiv link only appears on paper detail page
+
 ---
 
 ## 📈 Stage 4 — The Scaling Phase
