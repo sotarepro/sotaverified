@@ -10,6 +10,7 @@ import {
   getPaperUpvoteInfo,
   type PaperLbEntry,
 } from "@/lib/queries";
+import { getBadgeData } from "@/lib/verification";
 import VerificationBadge from "@/components/VerificationBadge";
 import UpvoteButton from "@/components/UpvoteButton";
 import CopyJsonButton from "@/components/CopyJsonButton";
@@ -29,11 +30,12 @@ export default async function PaperPage({
   const session = await getServerSession(authOptions);
   const userId = session?.user?.github_id ?? null;
 
-  const [paper, codeLinks, lbEntries, upvoteInfo] = await Promise.all([
+  const [paper, codeLinks, lbEntries, upvoteInfo, badgeData] = await Promise.all([
     getPaper(id),
     getPaperCodeLinks(id),
     getPaperLeaderboardEntries(id),
     getPaperUpvoteInfo(id, userId),
+    getBadgeData(id),
   ]);
 
   // Fetch user's existing author claim for initial state
@@ -69,7 +71,7 @@ export default async function PaperPage({
         {paper.proceeding && (
           <span className="text-sm font-medium text-gray-700">{paper.proceeding}</span>
         )}
-        <VerificationBadge tier={paper.verification as VerificationTier} />
+        <VerificationBadge badge={badgeData.badge} count={badgeData.reproduction_count} score={badgeData.verification_score} />
         <UpvoteButton
           paperId={id}
           initialCount={upvoteInfo.count}
@@ -123,7 +125,7 @@ export default async function PaperPage({
       </div>
 
       {/* Verification CTA banner */}
-      {paper.verification === "unverified" && (
+      {badgeData.badge === "unverified" && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-6 flex items-center justify-between gap-4">
           <p className="text-sm text-amber-800">
             <span className="font-semibold">Unverified</span> — Be the first to reproduce this paper.
@@ -136,7 +138,7 @@ export default async function PaperPage({
           </a>
         </div>
       )}
-      {paper.verification === "community" && (
+      {badgeData.badge === "community_verified" && (
         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 mb-6">
           <p className="text-sm text-green-800">
             <span className="font-semibold">Community Verified</span> — This paper has been reproduced by community members.

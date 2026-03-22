@@ -21,6 +21,8 @@ export default function ReproductionForm({ paperId }: Props) {
   const [hardwareSpec, setHardwareSpec] = useState("");
   const [runLogUrl, setRunLogUrl] = useState("");
   const [notes, setNotes] = useState("");
+  const [actualMetricName, setActualMetricName] = useState("");
+  const [actualMetricValue, setActualMetricValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -61,6 +63,8 @@ export default function ReproductionForm({ paperId }: Props) {
           hardware_spec: hardwareSpec,
           run_log_url: runLogUrl,
           notes,
+          actual_metric_name: actualMetricName || undefined,
+          actual_metric_value: actualMetricValue !== "" ? Number(actualMetricValue) : undefined,
         }),
       });
 
@@ -142,6 +146,29 @@ export default function ReproductionForm({ paperId }: Props) {
               placeholder="https://github.com/... or https://wandb.ai/..."
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Reproduced metric <span className="text-gray-400">(optional — enables automated score calculation)</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={actualMetricName}
+                onChange={(e) => setActualMetricName(e.target.value)}
+                placeholder="e.g. Top-1 Accuracy"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="number"
+                step="any"
+                value={actualMetricValue}
+                onChange={(e) => setActualMetricValue(e.target.value)}
+                placeholder="e.g. 76.3"
+                className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
 
           <div>

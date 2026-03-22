@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
+import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { paper_id, tier_claimed, hardware_spec, run_log_url, notes } = body;
+  const { paper_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value } = body;
 
   if (!paper_id || !tier_claimed || !hardware_spec || !run_log_url) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -69,11 +70,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const metricName = actual_metric_name?.trim() || null;
+  const metricValue = actual_metric_value != null ? Number(actual_metric_value) : null;
+
   const [row] = await sql<[{ id: number }]>`
-    INSERT INTO reproductions (paper_id, user_id, tier_claimed, hardware_spec, run_log_url, notes)
-    VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url}, ${notes ?? null})
+    INSERT INTO reproductions (paper_id, user_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value)
+    VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url}, ${notes ?? null}, ${metricName}, ${metricValue})
     RETURNING id
   `;
+
+  await recomputeVerificationScore(paper_id);
 
   return NextResponse.json({ id: row.id }, { status: 201 });
 }

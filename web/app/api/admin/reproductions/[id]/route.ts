@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
+import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
 function isAdmin(githubId: string | undefined): boolean {
@@ -27,21 +28,28 @@ export async function PATCH(
       WHERE id = ${reproId}
     `;
     // Award rep to author
-    const [r] = await sql<[{ user_id: string; status: string }]>`
-      SELECT user_id, status FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ user_id: string; status: string; paper_id: string }]>`
+      SELECT user_id, status, paper_id FROM reproductions WHERE id = ${reproId}
     `;
     if (r) {
       await sql`
         UPDATE users SET reputation_score = reputation_score + 10
         WHERE github_id = ${r.user_id}
       `;
+      await recomputeVerificationScore(r.paper_id);
     }
   } else if (action === "remove") {
+    const [r] = await sql<[{ paper_id: string }]>`
+      SELECT paper_id FROM reproductions WHERE id = ${reproId}
+    `;
     await sql`
       UPDATE reproductions
       SET status = 'removed', reviewed_at = NOW()
       WHERE id = ${reproId}
     `;
+    if (r) {
+      await recomputeVerificationScore(r.paper_id);
+    }
   } else {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }

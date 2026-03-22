@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
+import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -43,8 +44,8 @@ export async function POST(
       UPDATE reproductions SET flag_count = flag_count + 1 WHERE id = ${reproId}
     `;
 
-    const [r] = await sql<[{ flag_count: number; status: string; user_id: string }]>`
-      SELECT flag_count, status, user_id FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ flag_count: number; status: string; user_id: string; paper_id: string }]>`
+      SELECT flag_count, status, user_id, paper_id FROM reproductions WHERE id = ${reproId}
     `;
 
     // Auto-hide at 3 flags
@@ -57,6 +58,7 @@ export async function POST(
         UPDATE users SET reputation_score = reputation_score - 20
         WHERE github_id = ${r.user_id}
       `;
+      await recomputeVerificationScore(r.paper_id);
     }
 
     return NextResponse.json({ flagged: true, count: r.flag_count });

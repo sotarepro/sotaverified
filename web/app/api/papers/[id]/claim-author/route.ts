@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
+import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
 function extractOwnerRepo(url: string): [string, string] | null {
@@ -109,6 +110,7 @@ export async function POST(
         verification_method = 'github_contributor',
         status = 'verified'
     `;
+    await recomputeVerificationScore(paperId);
     return NextResponse.json({
       status: "verified",
       message: "Verified as GitHub contributor",

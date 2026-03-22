@@ -36,6 +36,7 @@ reproduce.
 - Stage 3e ✅ DONE — About page, hero refresh with stats + agent snippet, nav links
 - Stage 3d-enrich ✅ DONE — enrichment pipeline: github_enrich.py, semantic_scholar_enrich.py, hype_seed.py, daily_update.py; star counts on paper detail; hype_score in "hyped" tab
 - Stage 3e-author ✅ DONE — paper_authors table, claim-author API, AuthorClaimButton, VerifiedAuthors component, admin author claim queue
+- Stage 3-verification ✅ DONE — two-dimension verification system: verification_score (int) + BadgeType (unverified/code_available/author_verified/community_verified); recomputeVerificationScore() on repro create/flag/approve/remove and author claim; structured metric fields on reproductions; /api/v1/sota endpoint; 146k papers seeded with +5 for official repo
 
 ---
 
@@ -276,6 +277,58 @@ automatic author verification without manual review.
 - [ ] Railway DB backups — enable in dashboard (built-in)
 - [ ] UptimeRobot free tier — pings every 5 min
 
+### Verification System
+
+**Two dimensions, not tiers:**
+
+1. Verification type (categorical badges, human-readable):
+   - "Unverified" — no evidence beyond author's paper
+   - "Code Available" — official repo exists in paper_code_links
+   - "Author Verified" — verified author (via GitHub contributor check)
+     submitted metrics
+   - "Community Verified (N)" — N independent reproductions exist
+   - Display the highest applicable badge + reproduction count
+
+2. Verification score (integer, machine-readable):
+   - Computed from underlying data, used for API sorting
+   - Formula (initial, can tune with real data):
+     - Official code repo exists: +5
+     - Author verified and claimed metrics: +10
+     - Per community reproduction: +10
+     - Per reproduction within 5% of claimed metric: +5 bonus
+     - Per unique hardware config across reproductions: +3
+   - Stored as computed column or materialized view, recalculated
+     on each new reproduction
+   - Exposed in API: GET /api/v1/sota?min_score=50&sort=score
+
+**Data requirements (capture at launch, score formula tunable later):**
+- paper_code_links: repo existence + is_official (already have)
+- paper_authors: author verification status (Stage 3e)
+- reproductions: count per paper, metric values, hardware
+  - Add back optional structured fields to reproduction form:
+    actual_metric_name TEXT, actual_metric_value FLOAT
+    (optional — reproducer can also just put metrics in notes,
+    but structured fields enable automated score calculation)
+- verification_score INT on papers table (recomputed on events)
+
+**Display:**
+- Paper detail page: badge + score + reproduction count
+- Leaderboard rows: badge + score
+- Homepage tables: badge only (keep it clean)
+- API response: score as integer, badge as string,
+  reproduction_count as integer, all sortable/filterable
+
+**Key principle:** Store granular data now, compute scores later.
+The scoring formula will evolve as you see real usage patterns.
+Don't hardcode tiers — keep them as computed views over raw data.
+
+**Migration from current schema:**
+- Replace verification_tier INT (0-4) on leaderboard_results with
+  verification_score INT (computed) on papers table
+- The old tier values (0-4) are all 0 anyway since everything
+  imported from PWC is unverified
+- No data loss from this migration
+
 ## Pre-Launch QA
 
 ### Automated Tests (delegate to Claude Code)
@@ -417,7 +470,23 @@ Tables added in launch sprint:
   created_at, reputation_score
 - upvotes — paper_id, user_id, created_at (unique paper_id + user_id)
 - reproductions — id, paper_id, user_id, tier_claimed, hardware_spec,
-  run_log_url, notes, upvote_count, flag_count, status, created_at, reviewed_at
+  run_log_url, notes, upvote_count, flag_count, status, created_at, reviewed_at,
+  actual_metric_name TEXT, actual_metric_value FLOAT (structured metric fields)
+- paper_authors — paper_id, user_id, verified, verified_at, verification_method, status
+
+Columns added in verification sprint:
+- papers.verification_score INT NOT NULL DEFAULT 0 — computed score (see lib/verification.ts)
+
+## Verification System (two-dimension)
+Papers are assessed on two axes:
+1. **verification_score** (integer): computed from repo (+5), verified author (+10),
+   reproductions (+10 each), metric match within 5% (+5 bonus), unique hardware (+3 each).
+   Recomputed via recomputeVerificationScore() on every relevant event.
+2. **BadgeType** (categorical): displayed as a pill badge on paper detail and API responses.
+   - unverified — no repo, no author claim, no reproductions
+   - code_available — has an official repo link
+   - author_verified — a GitHub contributor to the official repo has claimed authorship
+   - community_verified — at least one active (non-hidden/removed) reproduction exists
 
 ## Known Data Limitations
 1. stars = 0 everywhere — not in HF parquet export, fixable from original JSON.gz
