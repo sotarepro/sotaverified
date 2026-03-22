@@ -12,7 +12,7 @@ import DatasetPills from "@/components/DatasetPills";
 import PaperTabTable from "@/components/PaperTabTable";
 import LeaderboardSection from "@/components/LeaderboardSection";
 
-/** Strip PWC attribution spans: <span class="description-source">...</span> */
+/** Strip attribution spans from imported task descriptions: <span class="description-source">...</span> */
 function cleanDescription(raw: string): string {
   return raw.replace(/<span[^>]*class="description-source"[^>]*>[\s\S]*?<\/span>/g, "").trim();
 }

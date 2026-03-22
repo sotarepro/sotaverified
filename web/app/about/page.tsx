@@ -8,24 +8,16 @@ export default function AboutPage() {
       <h1 className="text-2xl font-bold tracking-tight mb-6">About</h1>
 
       <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">What happened to Papers With Code?</h2>
+        <h2 className="text-base font-semibold text-gray-900">What is SOTAVerified?</h2>
         <p>
-          Meta shut down Papers With Code without notice in July 2025. The site tracked
-          state-of-the-art ML benchmark results and was used daily by researchers worldwide.
-          The archived data was released on GitHub and HuggingFace — frozen, but preserved.
-        </p>
-      </section>
-
-      <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">What is this?</h2>
-        <p>
-          SOTAVerified is the community-maintained successor. We imported the full dataset
-          (575k papers, 242k code links, 59k benchmark results), keep it current via weekly
-          arXiv ingestion, and added the reproducibility layer Papers With Code never had.
+          SOTAVerified is open infrastructure for tracking and verifying machine learning
+          research results. We index papers from arXiv weekly, maintain benchmark leaderboards
+          across thousands of ML tasks, and let the community log reproductions so reported
+          results can be independently confirmed.
         </p>
         <p>
-          The goal is open verification infrastructure for ML research — a place where
-          anyone can confirm that reported results actually reproduce.
+          The goal is simple: make it easy to know whether a result actually holds up — on
+          your hardware, in your environment, with your data.
         </p>
       </section>
 
@@ -62,15 +54,14 @@ export default function AboutPage() {
       </section>
 
       <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">The agent vision</h2>
+        <h2 className="text-base font-semibold text-gray-900">Built for agents too</h2>
         <p>
-          Built for humans and autonomous research agents. Donate your compute to verify
-          papers you care about — verification as a public good. Every reproduction logged
-          here becomes ground-truth data that agents can query to decide what techniques
-          actually work.
+          Every reproduction logged here becomes ground-truth data that autonomous research
+          agents can query. Donate your compute to verify papers you care about —
+          verification as a public good.
         </p>
         <div className="rounded-xl bg-gray-950 p-4 text-xs">
-          <pre className="text-green-400">curl https://sotaverified.io/api/v1/papers/2401.12345</pre>
+          <pre className="text-green-400">curl https://sotaverified.org/api/v1/papers/2401.12345</pre>
         </div>
       </section>
 
