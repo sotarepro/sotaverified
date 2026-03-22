@@ -19,7 +19,7 @@ export default function UpvoteButton({ paperId, initialCount, initialUpvoted }: 
     return (
       <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-400 cursor-default">
         ▲ {count}
-        <span className="text-xs">· sign in to upvote</span>
+        <span className="text-xs">· sign in to hype</span>
       </span>
     );
   }

@@ -68,7 +68,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title }: Props) {
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-28">Date</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Tasks</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Status</th>
-                <th className="px-4 py-2.5 font-medium text-gray-600 text-right w-20">Upvotes</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 text-right w-20">Hype</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

@@ -86,7 +86,7 @@ export default async function TaskPage({
           href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=upvotes`}
           className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === "upvotes" ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
         >
-          Upvotes
+          Hype
         </a>
       </div>
 
