@@ -2,7 +2,7 @@
 
 Verified state-of-the-art ML research infrastructure.
 
-Open benchmark tracking, reproducibility verification, and SOTA leaderboards — built for researchers and autonomous research agents. Community successor to Papers With Code, which Meta shut down in July 2025.
+Open benchmark tracking, reproducibility verification, and SOTA leaderboards — built for researchers and autonomous research agents.
 
 ## What it does
 
