@@ -135,9 +135,12 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - "Hype" is the user-facing name for upvotes throughout the UI
 - `hype_score` column on papers = seeded from GitHub stars (one-time, pre-launch)
   - Thresholds: 10–99 stars→1, 100–499→3, 500–1999→5, 2000+→10
+  - Recency multipliers: 2024+: 1.0x, 2022-23: 0.5x, pre-2022: 0.25x
+  - Re-seeded with recency weighting: 18,320 papers have hype_score > 0
 - Organic upvotes stored in `upvotes` table, counted at query time
 - "Most Hyped" sort = `COUNT(upvotes) + hype_score DESC`
 - After launch: all hype from organic votes only — don't re-run hype_seed.py
+- hype_seed.py has --reset flag to zero all scores before re-seeding
 
 ### GitHub Enrichment
 - `github_enrich.py` now has `--since YYYY-MM-DD` flag to filter by paper.published
@@ -153,9 +156,14 @@ reported results actually reproduce — for humans and autonomous agents alike.
 ### Tab Tables (4 tabs everywhere)
 - Tabs: Recent | Most Hyped | Needs Verification | Most Verified
 - All scoped versions (homepage, category, task page) use same PaperTabTable component
-- Pagination: 10/25/50 per page, URL-based (no client JS needed)
+- Pagination: 10/25/50 per page, URL-based; links include `#paper-table` hash so browser
+  scrolls to table position after navigation (section has scroll-mt-16)
 - "Needs Verification" = unverified papers (verification_score=0) with hype>0, sorted by hype
 - Leaderboard datasets ordered by submission count DESC, then alphabetically
+- Hype column has InlineHypeButton (client component) — heart icon, toggles on click,
+  tooltip for unauthenticated users, optimistic count update
+- Paper titles in table have LaTeX stripped (stripLatex() removes $...$, \commands)
+- Homepage is force-dynamic (no caching) so hype counts are always fresh
 
 ### Leaderboard Sort
 - Sort options: metric value (default), verification score, date
@@ -279,6 +287,7 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 - Ingestion scripts (arxiv_delta, semantic_scholar_enrich, github_enrich)
 - Unique DB constraints (would need real DB)
 - arXiv link only appears on paper detail page
+- InlineHypeButton (client component, no jsdom in test env)
 
 ---
 
@@ -299,13 +308,15 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 - Reddit: u/Life-Temperature4068 (display name: SOTA Verified)
 - Do NOT reference other projects in site copy — SOTAVerified stands on its own
 
-**Nav:** `[SOTAVerified]  Browse  About  [search]  [Sign In / avatar]`
+**Nav:** `[SOTAVerified]  Agents  Browse  About  [search]  [Sign In / avatar]`
+- Browse links to `/#browse` (homepage anchor), not /tasks
+- View All Tasks accessible via link next to "Browse by Research Area" heading
 
 **Hero:**
 - Headline: "The Open Verification Layer for ML Research"
 - Sub: Community benchmark tracking and reproducibility verification.
   Built for researchers and autonomous research agents.
-- CTA: [Browse Benchmarks]  [Sign in with GitHub]
+- No CTA buttons (removed — redundant with nav)
 
 ---
 
