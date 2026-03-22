@@ -66,6 +66,12 @@ export default async function RootLayout({
               >
                 About
               </Link>
+              <Link
+                href="/agents"
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Agents
+              </Link>
               <form method="GET" action="/search" className="flex-1 max-w-xs mx-4">
                 <input
                   type="search"

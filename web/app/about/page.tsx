@@ -16,7 +16,7 @@ export default function AboutPage() {
           results can be independently confirmed.
         </p>
         <p>
-          The goal is simple: make it easy to know whether a result actually holds up — on
+          The goal is simple: make it easy to know whether a result actually holds up on
           your hardware, in your environment, with your data.
         </p>
       </section>
@@ -38,7 +38,7 @@ export default function AboutPage() {
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-medium">2</td>
-                <td className="px-4 py-2.5 text-gray-600">Reported metrics match the paper&apos;s numbers</td>
+                <td className="px-4 py-2.5 text-gray-600">Reported metrics match the paper&apos;s claimed numbers</td>
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-medium">3</td>
@@ -54,28 +54,67 @@ export default function AboutPage() {
       </section>
 
       <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">Built for agents too</h2>
+        <h2 className="text-base font-semibold text-gray-900">Built for agents</h2>
         <p>
-          Every reproduction logged here becomes ground-truth data that autonomous research
-          agents can query. Donate your compute to verify papers you care about —
-          verification as a public good.
+          SOTAVerified is infrastructure for both humans and autonomous research agents.
+          Every reproduction logged here becomes ground-truth data that an agent can query
+          before citing a result. If you are building a research pipeline, point it at
+          our API to check verification scores before trusting reported numbers.
+        </p>
+        <p>
+          Donate your compute to verify papers you care about. Verification is a public good.
         </p>
         <div className="rounded-xl bg-gray-950 p-4 text-xs">
           <pre className="text-green-400">curl https://sotaverified.org/api/v1/papers/2401.12345</pre>
         </div>
+        <a href="/agents" className="text-blue-600 hover:underline text-sm">
+          Full API documentation and agent integration guide
+        </a>
       </section>
 
-      <section className="text-sm text-gray-600">
-        <a
-          href="https://github.com/sotarepro/sotaverified"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:underline"
-        >
-          GitHub repo
-        </a>
-        {" — "}
-        contributions welcome. Open an issue or PR.
+      <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
+        <h2 className="text-base font-semibold text-gray-900">How to contribute</h2>
+        <p>
+          Run a benchmark, submit the log, and the verification score updates for everyone.
+          You can also contribute code, report issues, or add papers via the community
+          submission form.
+        </p>
+      </section>
+
+      <section className="text-sm text-gray-600 space-y-2">
+        <h2 className="text-base font-semibold text-gray-900 mb-3">Links</h2>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <a
+            href="https://github.com/sotarepro/sotaverified"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            GitHub
+          </a>
+          <a
+            href="https://twitter.com/sotarepro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            X / @sotarepro
+          </a>
+          <a
+            href="https://reddit.com/user/sotarepro"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            Reddit
+          </a>
+          <a
+            href="mailto:support@sotaverified.org"
+            className="text-blue-600 hover:underline"
+          >
+            support@sotaverified.org
+          </a>
+        </div>
       </section>
     </div>
   );
