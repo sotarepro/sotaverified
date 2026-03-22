@@ -80,6 +80,6 @@ export async function POST(
       await recomputeVerificationScore(r.paper_id);
     }
 
-    return NextResponse.json({ flagged: true, count: r.flag_count });
+    return NextResponse.json({ flagged: true, count: r.flag_count, hidden: shouldHide && r.status !== "hidden" });
   }
 }

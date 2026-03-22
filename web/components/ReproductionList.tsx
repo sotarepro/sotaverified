@@ -40,6 +40,7 @@ export default function ReproductionList({ paperId }: Props) {
   const [items, setItems] = useState<Reproduction[]>([]);
   const [loading, setLoading] = useState(true);
   const [userVotes, setUserVotes] = useState<Record<number, boolean>>({});
+  const [userFlags, setUserFlags] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetch(`/api/reproductions?paper_id=${paperId}`)
@@ -65,14 +66,27 @@ export default function ReproductionList({ paperId }: Props) {
 
   async function handleFlag(id: number) {
     if (!session) return;
-    if (!confirm("Flag this reproduction as spam or incorrect?")) return;
+    const alreadyFlagged = userFlags[id];
+    if (!alreadyFlagged && !confirm("Flag this reproduction as spam or incorrect?")) return;
+
     const res = await fetch(`/api/reproductions/${id}/flag`, { method: "POST" });
     if (res.ok) {
       const data = await res.json();
-      if (data.flagged) {
+      setUserFlags((prev) => ({ ...prev, [id]: data.flagged }));
+      if (data.hidden) {
+        // Auto-hidden by threshold — remove from list
         setItems((prev) => prev.filter((r) => r.id !== id));
+      } else {
+        // Update flag count in place
+        setItems((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, flag_count: data.count } : r))
+        );
       }
     }
+  }
+
+  function isUrl(s: string) {
+    return s.startsWith("http://") || s.startsWith("https://");
   }
 
   if (loading) return null;
@@ -133,9 +147,17 @@ export default function ReproductionList({ paperId }: Props) {
               {session && (
                 <button
                   onClick={() => handleFlag(r.id)}
-                  className="text-xs rounded px-2 py-0.5 border border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-red-500 transition-colors"
+                  disabled={userFlags[r.id]}
+                  className={`text-xs rounded px-2 py-0.5 border transition-colors ${
+                    userFlags[r.id]
+                      ? "border-red-200 bg-red-50 text-red-500 cursor-default"
+                      : "border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-red-500"
+                  }`}
                 >
-                  Flag
+                  {userFlags[r.id] ? "Flagged" : "Flag"}
+                  {r.flag_count > 0 && (
+                    <span className="ml-1 text-gray-400">({r.flag_count})</span>
+                  )}
                 </button>
               )}
             </div>
@@ -147,14 +169,20 @@ export default function ReproductionList({ paperId }: Props) {
 
           <div className="text-gray-500 text-xs mb-2">
             Log:{" "}
-            <a
-              href={r.run_log_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline font-mono truncate"
-            >
-              {r.run_log_url.replace(/^https?:\/\/(www\.)?/, "")}
-            </a>
+            {isUrl(r.run_log_url) ? (
+              <a
+                href={r.run_log_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline font-mono truncate"
+              >
+                {r.run_log_url.replace(/^https?:\/\/(www\.)?/, "")}
+              </a>
+            ) : (
+              <span className="text-gray-700 font-mono text-xs whitespace-pre-wrap break-all">
+                {r.run_log_url.slice(0, 300)}{r.run_log_url.length > 300 ? "…" : ""}
+              </span>
+            )}
           </div>
 
           {r.notes && (

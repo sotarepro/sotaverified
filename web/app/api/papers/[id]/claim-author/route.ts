@@ -56,55 +56,35 @@ export async function POST(
   const officialRepoUrl = repoRows[0]?.repo_url ?? null;
 
   if (!officialRepoUrl) {
-    // No official repo — pending_admin
-    await sql`
-      INSERT INTO paper_authors (paper_id, user_id, verified, status)
-      VALUES (${paperId}, ${userId}, false, 'pending_admin')
-      ON CONFLICT (paper_id, user_id) DO UPDATE SET
-        status = 'pending_admin',
-        verified = false,
-        verified_at = NULL,
-        verification_method = NULL
-    `;
-    await logEvent("author_claimed", {
-      userId,
-      paperId,
-      metadata: { status: "pending_admin" },
-    });
+    // No repo — don't create a pending claim, just explain
     return NextResponse.json({
-      status: "pending_admin",
-      message: "No official repo found — submitted for admin review",
+      status: "no_repo",
+      message: "This paper has no linked code repository. Author verification requires a GitHub repo. Contact support@sotaverified.org for manual verification.",
     });
   }
 
   const parsed = extractOwnerRepo(officialRepoUrl);
   if (!parsed) {
-    await sql`
-      INSERT INTO paper_authors (paper_id, user_id, verified, status)
-      VALUES (${paperId}, ${userId}, false, 'pending_admin')
-      ON CONFLICT (paper_id, user_id) DO UPDATE SET
-        status = 'pending_admin',
-        verified = false,
-        verified_at = NULL,
-        verification_method = NULL
-    `;
-    await logEvent("author_claimed", {
-      userId,
-      paperId,
-      metadata: { status: "pending_admin" },
-    });
     return NextResponse.json({
-      status: "pending_admin",
-      message: "Could not parse repo URL — submitted for admin review",
+      status: "no_repo",
+      message: "Could not parse the linked repository URL. Contact support@sotaverified.org for manual verification.",
     });
   }
 
   const [owner, repo] = parsed;
   let contributors: string[] = [];
+  let checkFailed = false;
   try {
     contributors = await getGitHubContributors(owner, repo);
   } catch {
-    // If we can't fetch contributors, fall back to pending_admin
+    checkFailed = true;
+  }
+
+  if (checkFailed) {
+    return NextResponse.json({
+      status: "check_failed",
+      message: "Could not reach GitHub to verify contributor status. Please try again later.",
+    });
   }
 
   const isContributor =
@@ -136,23 +116,10 @@ export async function POST(
       message: "Verified as GitHub contributor",
     });
   } else {
-    await sql`
-      INSERT INTO paper_authors (paper_id, user_id, verified, status)
-      VALUES (${paperId}, ${userId}, false, 'pending_admin')
-      ON CONFLICT (paper_id, user_id) DO UPDATE SET
-        status = 'pending_admin',
-        verified = false,
-        verified_at = NULL,
-        verification_method = NULL
-    `;
-    await logEvent("author_claimed", {
-      userId,
-      paperId,
-      metadata: { status: "pending_admin" },
-    });
+    // Not a contributor — don't create a pending claim
     return NextResponse.json({
-      status: "pending_admin",
-      message: "Not found in contributors — submitted for admin review",
+      status: "not_contributor",
+      message: `We verify authorship by checking if your GitHub account (@${username}) is a contributor to the linked repository (${owner}/${repo}). Your account was not found in the contributor list. If you believe this is an error, contact support@sotaverified.org`,
     });
   }
 }

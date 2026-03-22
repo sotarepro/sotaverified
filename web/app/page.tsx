@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAreaSummaries, searchTasks, getSiteStats, getTabPapers } from "@/lib/queries";
+import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount } from "@/lib/queries";
 import type { AreaSummary } from "@/lib/types";
 import PaperTabTable from "@/components/PaperTabTable";
 
@@ -58,19 +58,28 @@ function AreaCard({ area }: { area: AreaSummary }) {
   );
 }
 
+type Tab = "recent" | "hyped" | "unverified" | "verified";
+
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string; pageSize?: string }>;
 }) {
-  const { q, tab: tabParam } = await searchParams;
-  const tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? "")) ? tabParam as "recent" | "hyped" | "unverified" | "verified" : "recent" as const;
+  const { tab: tabParam, page: pageStr, pageSize: pageSizeStr } = await searchParams;
+  const tab: Tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? ""))
+    ? (tabParam as Tab)
+    : "recent";
+  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const pageSize = [10, 25, 50].includes(parseInt(pageSizeStr ?? "10", 10))
+    ? parseInt(pageSizeStr!, 10)
+    : 10;
+  const offset = (page - 1) * pageSize;
 
-  const [areas, searchResults, stats, tabPapers] = await Promise.all([
+  const [areas, stats, tabPapers, tabTotal] = await Promise.all([
     getAreaSummaries(),
-    q ? searchTasks(q) : Promise.resolve(null),
     getSiteStats(),
-    getTabPapers(tab, 10),
+    getTabPapers(tab, pageSize, undefined, offset),
+    getTabPapersCount(tab),
   ]);
 
   const totalTasks = areas.reduce((s, a) => s + a.task_count, 0);
@@ -78,7 +87,7 @@ export default async function HomePage({
   return (
     <div>
       {/* Hero */}
-      <div className="py-10 mb-8 border-b border-gray-100">
+      <div className="py-6 mb-6 border-b border-gray-100">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
           The Open Verification Layer for ML Research
         </h1>
@@ -103,129 +112,50 @@ export default async function HomePage({
           </span>
         </div>
 
-        {/* Agent console snippet */}
-        <div className="rounded-xl bg-gray-950 border border-gray-800 px-4 py-3 mb-6 max-w-lg">
-          <p className="text-xs text-gray-500 mb-1"># Get verified SOTA for any paper</p>
-          <pre className="text-green-400 text-xs overflow-x-auto">
-            curl https://sotaverified.io/api/v1/papers/2401.12345
-          </pre>
-        </div>
-
         {/* CTA buttons */}
-        <div className="flex flex-wrap gap-3 mb-5">
-          <Link
-            href="/tasks"
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="#browse"
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
           >
             Browse Benchmarks
-          </Link>
-          <a
-            href="/api/auth/signin"
+          </a>
+          <Link
+            href="/agents"
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Sign in with GitHub
-          </a>
+            Agent API →
+          </Link>
         </div>
-
-        {/* Search */}
-        <form method="GET" action="/search" className="flex gap-2 max-w-md">
-          <input
-            type="search"
-            name="q"
-            defaultValue={q}
-            placeholder="Search papers &amp; tasks…"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Search
-          </button>
-        </form>
       </div>
 
-      {/* Paper tab table — always shown when no search query */}
-      {searchResults === null && (
-        <PaperTabTable
-          tab={tab}
-          papers={tabPapers}
-          baseHref="/"
-          title="Papers"
-          page={1}
-          pageSize={10}
-          total={tabPapers.length}
-        />
-      )}
-
-      {/* Search results */}
-      {searchResults !== null && (
-        <div>
-          <p className="text-sm text-gray-500 mb-4">
-            {searchResults.length} task result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{q}&rdquo;
-          </p>
-          {searchResults.length === 0 ? (
-            <p className="text-gray-400 text-sm">No tasks found.</p>
-          ) : (
-            <div className="rounded-xl border border-gray-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                    <th className="px-4 py-3 font-medium text-gray-600">Task</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Area</th>
-                    <th className="px-4 py-3 font-medium text-gray-600 text-right w-28">Papers</th>
-                    <th className="px-4 py-3 font-medium text-gray-600 text-right w-28">Results</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {searchResults.map((t) => {
-                    const colors = AREA_COLORS[t.area ?? ""] ?? DEFAULT_COLOR;
-                    return (
-                      <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <Link
-                            href={`/tasks/${t.id}`}
-                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
-                          >
-                            {t.name}
-                          </Link>
-                        </td>
-                        <td className="px-4 py-3">
-                          {t.area && (
-                            <span className={`text-xs rounded-full px-2 py-0.5 ${colors.badge}`}>
-                              {t.area}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
-                          {t.paper_count.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
-                          {t.result_count.toLocaleString()}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Paper tab table */}
+      <PaperTabTable
+        tab={tab}
+        papers={tabPapers}
+        baseHref="/"
+        title="Papers"
+        page={page}
+        pageSize={pageSize}
+        total={tabTotal}
+      />
 
       {/* Area cards grid */}
-      {searchResults === null && (
-        <>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+      <div id="browse" className="scroll-mt-16">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
             Browse by Research Area
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {areas.map((area) => (
-              <AreaCard key={area.area} area={area} />
-            ))}
-          </div>
-        </>
-      )}
+          <Link href="/tasks" className="text-xs text-blue-600 hover:underline">
+            View All Tasks →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {areas.map((area) => (
+            <AreaCard key={area.area} area={area} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

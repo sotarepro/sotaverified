@@ -13,6 +13,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
   const [claim, setClaim] = useState<{ status: string } | null>(initialClaim);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<"info" | "error">("info");
 
   const isLoggedIn = status === "authenticated" && !!session?.user?.github_id;
 
@@ -25,41 +26,39 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
         method: "POST",
       });
       const data = (await resp.json()) as { status: string; message: string };
-      setClaim({ status: data.status });
-      setMessage(data.message);
+
+      if (data.status === "verified") {
+        setClaim({ status: "verified" });
+      } else if (data.status === "not_contributor" || data.status === "no_repo" || data.status === "check_failed") {
+        setMessage(data.message);
+        setMessageType("error");
+      }
     } catch {
       setMessage("Something went wrong. Please try again.");
+      setMessageType("error");
     } finally {
       setLoading(false);
     }
   }
 
-  // Already claimed — show status
-  if (claim) {
-    if (claim.status === "verified") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-800 font-medium">
-          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 14l-4.121-4.121a1 1 0 011.414-1.414L8.414 11.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
-          </svg>
-          Verified Author via GitHub
-        </span>
-      );
-    }
-    if (claim.status === "pending_admin") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-800">
-          Authorship claim submitted for review
-        </span>
-      );
-    }
-    if (claim.status === "rejected") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm text-gray-600">
-          Authorship claim rejected
-        </span>
-      );
-    }
+  // Already verified — show badge
+  if (claim?.status === "verified") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-green-300 bg-green-50 px-3 py-1.5 text-sm text-green-800 font-medium">
+        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 14l-4.121-4.121a1 1 0 011.414-1.414L8.414 11.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
+        </svg>
+        Verified Author via GitHub
+      </span>
+    );
+  }
+
+  if (claim?.status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 text-sm text-gray-600">
+        Authorship claim rejected
+      </span>
+    );
   }
 
   if (!isLoggedIn) {
@@ -78,7 +77,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <button
         onClick={handleClaim}
         disabled={loading}
@@ -90,7 +89,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Verifying...
+            Checking GitHub contributors...
           </>
         ) : (
           <>
@@ -102,7 +101,13 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
         )}
       </button>
       {message && (
-        <p className="text-xs text-gray-500">{message}</p>
+        <p className={`text-xs leading-relaxed rounded-lg px-3 py-2 ${
+          messageType === "error"
+            ? "bg-amber-50 text-amber-800 border border-amber-200"
+            : "text-gray-500"
+        }`}>
+          {message}
+        </p>
       )}
     </div>
   );
