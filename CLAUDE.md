@@ -1,5 +1,14 @@
 # SOTAVerified
 
+## Workflow (follow this every session)
+1. **Before working:** Read new instructions/spec changes → update CLAUDE.md first
+   (add to Current State, Design Decisions, TODOs as appropriate), then start work
+2. **While working:** Keep CLAUDE.md in sync as design decisions get made
+3. **Before committing:** Check progress against CLAUDE.md — if items are incomplete,
+   keep working; if done, mark them complete in CLAUDE.md
+4. **When done:** Update CLAUDE.md (mark completed, add any new decisions), then commit
+   and push
+
 ## Mission Statement
 Open verification infrastructure for ML research. Built for humans reproducing
 papers and agents verifying techniques at scale. Restoring the SOTA tracking
