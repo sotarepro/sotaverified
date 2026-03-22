@@ -41,11 +41,12 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Stage 3c ✅ DONE — junction tables populated, arxiv_backfill.py (23,193 new papers inserted 2025-07–2026-03), arxiv_delta.py
 - Stage 3d ✅ DONE — reproductions table, ReproductionForm, ReproductionList, admin page, flag/upvote
 - Stage 3e ✅ DONE — About page, hero refresh with stats + agent snippet, nav links
-- Stage 3-enrich ✅ DONE — github_enrich.py (--since flag added), hype_seed.py (57 papers seeded), daily_update.py, semantic_scholar_enrich.py; star counts on paper detail
+- Stage 3-enrich ✅ DONE — github_enrich.py (--since flag added), hype_seed.py (18,320 papers seeded with recency weighting), daily_update.py, semantic_scholar_enrich.py; star counts on paper detail
 - Stage 3-author ✅ DONE — paper_authors table, claim-author API, AuthorClaimButton, VerifiedAuthors, admin author claim queue
 - Stage 3-verification ✅ DONE — two-dimension verification system: verification_score (int) + BadgeType; recomputeVerificationScore() on all events; /api/v1/sota; 146k papers seeded +5 for official repo
 - Stage 3-social ✅ DONE — activity_log table, logEvent() utility, tier-based reputation (T1:+5/T2:+10/T3:+15/T4:+20), trusted threshold at rep≥30, trusted flags (auto-hide at 2 instead of 3), Agent Write API (POST /api/v1/reproductions), PromoteButton, revamped admin dashboard (3 sections + activity feed)
 - Stage 3-test-tools ✅ DONE — admin test tools (dev/ENABLE_TEST_TOOLS=true only): create test users/papers, impersonate, reset; impersonation banner; is_test column on users+papers
+- Stage 3-taxonomy ✅ DONE — research area taxonomy migrated from 9→12 areas; General ML dissolved (active tasks reassigned); 3 duplicate task merges; 32 MMLU subtasks collapsed to canonical 'mmlu'; AREA_COLORS updated in all frontend files
 
 ---
 
@@ -54,7 +55,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
 **TODO before deploying:**
 - [ ] Seed 2-3 real reproductions (use your 3090) so flow isn't empty at launch
 - [ ] Run github_enrich.py overnight to get broad star coverage, then re-run hype_seed.py
-  - Currently: 5,583 of 242k code links enriched, 57 papers have hype_score > 0
+  - Currently: 5,583 of 242k code links enriched, 18,320 papers have hype_score > 0 (recency-weighted)
   - Command: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py --since 2020-01-01 --limit 250000 --db "dbname=pwc" > /tmp/enrich.log 2>&1 &`
   - After: `python3 scripts/hype_seed.py --db "dbname=pwc"`
 - [ ] Run semantic_scholar_enrich.py once Semantic Scholar API key obtained
@@ -337,6 +338,24 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 ## Parking Lot
 
 **High impact — build when there's traction:**
+- Community paper→task tagging
+  Problem: arxiv-ingested papers have no task assignments, so they never
+  appear in area browsing or leaderboards. ~50-80k backfilled papers are task-less stubs.
+  Solution (3 tiers, implement in order):
+  Tier 1 — Admin tagging UI
+    - Admin page gets "Untagged Papers" tab
+    - Shows recent papers with tasks = '{}'
+    - Admin can assign 1+ tasks from existing task list via autocomplete
+    - Updates papers.tasks array and paper_tasks junction table
+  Tier 2 — Community tagging (reputation-gated)
+    - Users with rep >= 10 can suggest task tags for papers
+    - New table: paper_task_suggestions (paper_id, user_id, task_name, created_at)
+    - Suggestions shown to admin for approval, or auto-approved after N=3 votes
+  Tier 3 — Auto-classification
+    - On ingestion, run lightweight classifier (title + abstract → task)
+    - Use existing task list as label set; assign above confidence threshold
+    - Claude API option: send title+abstract, get back task names
+    - Or simpler: keyword matching against task names (good enough for ~80%)
 - Trending papers with external signal (GitHub stars, HN, Twitter/X)
 - Conference-based filtering (NeurIPS 2025, CVPR 2026 etc.)
 - API key generation UI (api_keys table exists, no UI yet)

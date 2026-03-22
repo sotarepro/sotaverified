@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import {
   getTask,
   getLeaderboard,
   getTaskDatasets,
   getTabPapers,
   getTabPapersCount,
+  getUserHypedSet,
 } from "@/lib/queries";
 import DatasetPills from "@/components/DatasetPills";
 import PaperTabTable from "@/components/PaperTabTable";
@@ -53,6 +56,9 @@ export default async function TaskPage({
     : 10;
   const offset = (page - 1) * pageSize;
 
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.github_id ?? null;
+
   const [task, datasets, rows, tabPapers, tabTotal] = await Promise.all([
     getTask(id),
     getTaskDatasets(id),
@@ -62,6 +68,9 @@ export default async function TaskPage({
   ]);
 
   if (!task) notFound();
+
+  const hypedSet = await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id));
+  const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
 
   // Group leaderboard by dataset
   const byDataset = new Map<string, typeof rows>();
@@ -93,7 +102,7 @@ export default async function TaskPage({
       {/* Paper tab table */}
       <PaperTabTable
         tab={tab}
-        papers={tabPapers}
+        papers={papers}
         baseHref={`/tasks/${id}`}
         title="Papers"
         page={page}

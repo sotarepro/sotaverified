@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount } from "@/lib/queries";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount, getUserHypedSet } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 import type { AreaSummary } from "@/lib/types";
@@ -7,15 +9,19 @@ import PaperTabTable from "@/components/PaperTabTable";
 
 // Accent colors per area — bg, border, text, badge
 const AREA_COLORS: Record<string, { bg: string; border: string; badge: string; dot: string }> = {
-  "Computer Vision":       { bg: "bg-blue-50",   border: "border-blue-200",  badge: "bg-blue-100 text-blue-700",  dot: "bg-blue-500"   },
-  "NLP":                   { bg: "bg-green-50",  border: "border-green-200", badge: "bg-green-100 text-green-700", dot: "bg-green-500"  },
-  "Reinforcement Learning":{ bg: "bg-orange-50", border: "border-orange-200",badge: "bg-orange-100 text-orange-700",dot: "bg-orange-500"},
-  "Audio & Speech":        { bg: "bg-purple-50", border: "border-purple-200",badge: "bg-purple-100 text-purple-700",dot: "bg-purple-500" },
-  "Graphs & Networks":     { bg: "bg-indigo-50", border: "border-indigo-200",badge: "bg-indigo-100 text-indigo-700",dot: "bg-indigo-500" },
-  "Medical":               { bg: "bg-rose-50",   border: "border-rose-200",  badge: "bg-rose-100 text-rose-700",  dot: "bg-rose-500"   },
-  "Time Series":           { bg: "bg-yellow-50", border: "border-yellow-200",badge: "bg-yellow-100 text-yellow-800",dot: "bg-yellow-500"},
-  "Recommendation":        { bg: "bg-teal-50",   border: "border-teal-200",  badge: "bg-teal-100 text-teal-700",  dot: "bg-teal-500"   },
-  "General ML":            { bg: "bg-gray-50",   border: "border-gray-200",  badge: "bg-gray-100 text-gray-700",  dot: "bg-gray-400"   },
+  "Computer Vision":                 { bg: "bg-blue-50",   border: "border-blue-200",  badge: "bg-blue-100 text-blue-700",   dot: "bg-blue-500"   },
+  "Language & Reasoning":            { bg: "bg-green-50",  border: "border-green-200", badge: "bg-green-100 text-green-700", dot: "bg-green-500"  },
+  "Reinforcement Learning & Robotics":{ bg: "bg-orange-50",border: "border-orange-200",badge: "bg-orange-100 text-orange-700",dot: "bg-orange-500"},
+  "Audio & Speech":                  { bg: "bg-purple-50", border: "border-purple-200",badge: "bg-purple-100 text-purple-700",dot: "bg-purple-500" },
+  "Graphs & Structured Data":        { bg: "bg-indigo-50", border: "border-indigo-200",badge: "bg-indigo-100 text-indigo-700",dot: "bg-indigo-500" },
+  "Medical & Scientific":            { bg: "bg-rose-50",   border: "border-rose-200",  badge: "bg-rose-100 text-rose-700",  dot: "bg-rose-500"   },
+  "Time Series & Forecasting":       { bg: "bg-yellow-50", border: "border-yellow-200",badge: "bg-yellow-100 text-yellow-800",dot: "bg-yellow-500"},
+  "Recommendation & Retrieval":      { bg: "bg-teal-50",   border: "border-teal-200",  badge: "bg-teal-100 text-teal-700",  dot: "bg-teal-500"   },
+  "Foundations & Efficiency":        { bg: "bg-slate-50",  border: "border-slate-200", badge: "bg-slate-100 text-slate-700", dot: "bg-slate-500"  },
+  "Generative Models":               { bg: "bg-pink-50",   border: "border-pink-200",  badge: "bg-pink-100 text-pink-700",  dot: "bg-pink-500"   },
+  "Multimodal & Vision-Language":    { bg: "bg-violet-50", border: "border-violet-200",badge: "bg-violet-100 text-violet-700",dot: "bg-violet-500" },
+  "Code & Math":                     { bg: "bg-amber-50",  border: "border-amber-200", badge: "bg-amber-100 text-amber-700", dot: "bg-amber-500"  },
+  "General ML":                      { bg: "bg-gray-50",   border: "border-gray-200",  badge: "bg-gray-100 text-gray-700",  dot: "bg-gray-400"   },
 };
 
 const DEFAULT_COLOR = AREA_COLORS["General ML"];
@@ -76,12 +82,18 @@ export default async function HomePage({
   const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
   const offset = (page - 1) * pageSize;
 
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.github_id ?? null;
+
   const [areas, stats, tabPapers, tabTotal] = await Promise.all([
     getAreaSummaries(),
     getSiteStats(),
     getTabPapers(tab, pageSize, undefined, offset),
     getTabPapersCount(tab),
   ]);
+
+  const hypedSet = await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id));
+  const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
 
   const totalTasks = areas.reduce((s, a) => s + a.task_count, 0);
 
@@ -118,7 +130,7 @@ export default async function HomePage({
       {/* Paper tab table */}
       <PaperTabTable
         tab={tab}
-        papers={tabPapers}
+        papers={papers}
         baseHref="/"
         title="Papers"
         page={page}

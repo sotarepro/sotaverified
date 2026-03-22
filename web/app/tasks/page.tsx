@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getTaskList, getTaskCount, getTabPapers } from "@/lib/queries";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getTaskList, getTaskCount, getTabPapers, getUserHypedSet } from "@/lib/queries";
 import Pagination from "@/components/Pagination";
 import PaperTabTable from "@/components/PaperTabTable";
 
@@ -17,15 +19,19 @@ function plainText(text: string | null | undefined, maxLen = 60): string {
 const PAGE_SIZE = 50;
 
 const AREA_COLORS: Record<string, string> = {
-  "Computer Vision":        "bg-blue-100 text-blue-700",
-  "NLP":                    "bg-green-100 text-green-700",
-  "Reinforcement Learning": "bg-orange-100 text-orange-700",
-  "Audio & Speech":         "bg-purple-100 text-purple-700",
-  "Graphs & Networks":      "bg-indigo-100 text-indigo-700",
-  "Medical":                "bg-rose-100 text-rose-700",
-  "Time Series":            "bg-yellow-100 text-yellow-800",
-  "Recommendation":         "bg-teal-100 text-teal-700",
-  "General ML":             "bg-gray-100 text-gray-700",
+  "Computer Vision":                  "bg-blue-100 text-blue-700",
+  "Language & Reasoning":             "bg-green-100 text-green-700",
+  "Reinforcement Learning & Robotics":"bg-orange-100 text-orange-700",
+  "Audio & Speech":                   "bg-purple-100 text-purple-700",
+  "Graphs & Structured Data":         "bg-indigo-100 text-indigo-700",
+  "Medical & Scientific":             "bg-rose-100 text-rose-700",
+  "Time Series & Forecasting":        "bg-yellow-100 text-yellow-800",
+  "Recommendation & Retrieval":       "bg-teal-100 text-teal-700",
+  "Foundations & Efficiency":         "bg-slate-100 text-slate-700",
+  "Generative Models":                "bg-pink-100 text-pink-700",
+  "Multimodal & Vision-Language":     "bg-violet-100 text-violet-700",
+  "Code & Math":                      "bg-amber-100 text-amber-700",
+  "General ML":                       "bg-gray-100 text-gray-700",
 };
 
 export default async function TasksPage({
@@ -39,11 +45,20 @@ export default async function TasksPage({
 
   const baseHref = area ? `/tasks?area=${encodeURIComponent(area)}` : "/tasks";
 
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.github_id ?? null;
+
   const [tasks, total, tabPapers] = await Promise.all([
     getTaskList(page, PAGE_SIZE, area),
     getTaskCount(area),
     area ? getTabPapers(tab, 10, { area }) : Promise.resolve(null),
   ]);
+
+  const areaPapers = tabPapers
+    ? await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id)).then(
+        (hypedSet) => tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }))
+      )
+    : null;
 
   return (
     <div>
@@ -70,15 +85,15 @@ export default async function TasksPage({
       </div>
 
       {/* Paper tab table — shown only when area is selected */}
-      {area && tabPapers && (
+      {area && areaPapers && (
         <PaperTabTable
           tab={tab}
-          papers={tabPapers}
+          papers={areaPapers}
           baseHref={`/tasks?area=${encodeURIComponent(area)}`}
           title="Papers in this area"
           page={1}
           pageSize={10}
-          total={tabPapers.length}
+          total={areaPapers.length}
         />
       )}
 

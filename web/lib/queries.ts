@@ -10,7 +10,18 @@ export type TabPaperRow = {
   verification: string;
   upvote_count: number;
   verification_score: number;
+  user_hyped: boolean; // set by server pages after getUserHypedSet(); defaults to false
 };
+
+/** Returns the set of paper IDs the user has hyped, from the given list. */
+export async function getUserHypedSet(userId: string, paperIds: string[]): Promise<Set<string>> {
+  if (!userId || paperIds.length === 0) return new Set();
+  const rows = await sql<{ paper_id: string }[]>`
+    SELECT paper_id FROM upvotes
+    WHERE user_id = ${userId} AND paper_id = ANY(${paperIds})
+  `;
+  return new Set(rows.map((r) => r.paper_id));
+}
 
 export async function getTabPapers(
   tab: "recent" | "hyped" | "unverified" | "verified",

@@ -146,7 +146,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                         <VerificationBadge tier={p.verification as VerificationTier} />
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
-                        <InlineHypeButton paperId={p.id} initialCount={p.upvote_count} />
+                        <InlineHypeButton paperId={p.id} initialCount={p.upvote_count} initialHyped={p.user_hyped} />
                       </td>
                       {tab === "verified" && (
                         <td className="px-4 py-2.5 text-right tabular-nums text-gray-400 text-xs">

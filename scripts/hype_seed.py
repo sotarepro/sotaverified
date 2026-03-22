@@ -2,10 +2,14 @@
 """
 One-time hype seeding script — converts GitHub star counts to hype_score.
 
-Applies recency multipliers to reduce old-paper bias:
+Uses a finer star bucket scale and applies recency multipliers:
   - Papers 2024+:  full score (1.0x)
   - Papers 2022–2023: 0.5x
   - Papers pre-2022: 0.25x
+
+Shared repos (is_shared_repo = true) are excluded — any repo URL that appears
+in > 5 paper_code_links rows is a framework/monorepo whose stars don't reflect
+individual paper quality. Papers with ONLY shared repo links get hype_score = 0.
 
 Usage:
     python scripts/hype_seed.py --db "dbname=pwc"
@@ -26,12 +30,25 @@ except ImportError:
 
 
 def stars_to_hype(stars: int) -> int:
-    if stars >= 2000:
+    """Map star count to base hype score using finer buckets."""
+    if stars >= 50000:
+        return 25
+    elif stars >= 25000:
+        return 20
+    elif stars >= 10000:
+        return 15
+    elif stars >= 5000:
         return 10
-    elif stars >= 500:
+    elif stars >= 2000:
+        return 7
+    elif stars >= 1000:
         return 5
-    elif stars >= 100:
+    elif stars >= 500:
+        return 4
+    elif stars >= 200:
         return 3
+    elif stars >= 50:
+        return 2
     elif stars >= 10:
         return 1
     else:
@@ -52,13 +69,12 @@ def recency_multiplier(published: date | None) -> float:
 
 
 def apply_multiplier(base_score: int, multiplier: float) -> int:
-    """Apply multiplier and round to nearest valid hype value (0,1,3,5,10)."""
+    """Apply multiplier, round up, clamp to minimum of 1."""
+    import math
     raw = base_score * multiplier
     if raw <= 0:
         return 0
-    # Round to nearest valid tier
-    tiers = [1, 3, 5, 10]
-    return min(tiers, key=lambda t: abs(t - raw))
+    return max(1, math.ceil(raw))
 
 
 def main():
@@ -82,23 +98,23 @@ def main():
             conn.commit()
             print("Reset all hype_score to 0")
 
-    # Get max stars per paper + publication date
+    # Max stars per paper from NON-shared repos only
     cur.execute("""
         SELECT p.id, p.published, COALESCE(MAX(pcl.stars), 0) AS max_stars
         FROM papers p
         LEFT JOIN paper_code_links pcl ON pcl.paper_id = p.id
+            AND pcl.is_shared_repo = false
         WHERE p.hype_score = 0
         GROUP BY p.id, p.published
         HAVING MAX(pcl.stars) > 0
     """)
     rows = cur.fetchall()
 
-    print(f"Found {len(rows)} papers with star data and hype_score = 0")
+    print(f"Found {len(rows)} papers with non-shared-repo star data and hype_score = 0")
+    print("(Papers with only shared-repo links are skipped — they get hype_score = 0)")
 
-    # Compute recency-weighted scores
     updates = []
     score_dist: dict[int, int] = {}
-    skipped_recency = 0
 
     for paper_id, published, max_stars in rows:
         base_score = stars_to_hype(max_stars)
@@ -106,16 +122,13 @@ def main():
             continue
         mult = recency_multiplier(published)
         final_score = apply_multiplier(base_score, mult)
-        if mult < 1.0:
-            skipped_recency += 1 if final_score == 0 else 0
         score_dist[final_score] = score_dist.get(final_score, 0) + 1
         if final_score > 0:
             updates.append((final_score, paper_id))
 
     print(f"\nScore distribution (papers that will be updated, recency-weighted):")
     for score in sorted(score_dist.keys()):
-        labels = {0: "0", 1: "1", 3: "3", 5: "5", 10: "10"}
-        print(f"  hype_score={labels.get(score, str(score))}: {score_dist[score]} papers")
+        print(f"  hype_score={score}: {score_dist[score]} papers")
 
     print(f"\nMultiplier breakdown:")
     print("  2024+: 1.0x  |  2022-2023: 0.5x  |  pre-2022: 0.25x")
@@ -126,7 +139,6 @@ def main():
         conn.close()
         return
 
-    # Apply updates in batches
     batch_size = 500
     total_updated = 0
 
