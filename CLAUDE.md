@@ -11,9 +11,8 @@
 
 ## Mission Statement
 Open verification infrastructure for ML research. Built for humans reproducing
-papers and agents verifying techniques at scale. Restoring the SOTA tracking
-the community lost when Papers With Code shut down in July 2025 — and adding
-the reproducibility layer it never had.
+papers and agents verifying techniques at scale. Tracking SOTA benchmarks and
+adding the reproducibility layer the field has always needed.
 
 ## Tech Stack
 - **Frontend:** Next.js 16 (App Router), Tailwind CSS v4
@@ -25,12 +24,9 @@ the reproducibility layer it never had.
 - **Testing:** Jest + ts-jest, node environment (no jsdom), all DB/auth mocked
 
 ## Project Overview
-Community-maintained ML paper benchmark tracker and spiritual successor to
-Papers With Code. Meta shut it down without notice in July 2025. The archived
-data lives on GitHub/HuggingFace but is frozen. We restore it, keep it current
-via arXiv ingestion, and add verification tiers so the community (and
-eventually autonomous agents) can confirm that reported results actually
-reproduce.
+Community-maintained ML paper benchmark tracker. Open infrastructure for
+indexing arXiv papers, tracking benchmark leaderboards, and verifying that
+reported results actually reproduce — for humans and autonomous agents alike.
 
 ---
 
@@ -83,8 +79,8 @@ reproduce.
 
 **Step 4 — Launch day:**
 - [ ] r/MachineLearning — frame around agent verification vision
-- [ ] Hacker News — "Papers With Code is back, built for agents"
-- [ ] Twitter/X thread: what happened to PWC, what this fixes, the agent future
+- [ ] Hacker News — open benchmark tracking + reproducibility for agents
+- [ ] Twitter/X thread: the reproducibility problem in ML, what this fixes, the agent future
 - [ ] MLOps Community Slack
 
 **Estimated monthly cost: ~$5-6 (Railway $5 + domain amortized)**
@@ -301,8 +297,7 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 - GitHub: github.com/sotarepro/sotaverified
 - Twitter/X: @sotarepro
 - Reddit: u/Life-Temperature4068 (display name: SOTA Verified)
-- Do NOT use "Papers with Code" in site name or hero headline —
-  reference only as "successor to Papers with Code" on the About page
+- Do NOT reference other projects in site copy — SOTAVerified stands on its own
 
 **Nav:** `[SOTAVerified]  Browse  About  [search]  [Sign In / avatar]`
 

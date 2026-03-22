@@ -2,15 +2,15 @@
 
 **Verified state-of-the-art ML research infrastructure.**
 
-Open benchmark tracking, reproducibility verification, and SOTA leaderboards — built for researchers and autonomous research agents. Community successor to [Papers With Code](https://paperswithcode.com), which Meta shut down without notice in July 2025.
+Open benchmark tracking, reproducibility verification, and SOTA leaderboards — built for researchers and autonomous research agents.
 
 ---
 
 ## What it is
 
-SOTAVerified restores what the ML community lost and adds the reproducibility layer Papers With Code never had:
+SOTAVerified is open infrastructure for tracking and verifying machine learning research results:
 
-- **658k+ papers** from the PWC archive, updated weekly via arXiv ingestion
+- **658k+ papers** indexed from arXiv, updated weekly
 - **Benchmark leaderboards** across 3,900+ ML tasks and 18,500+ datasets
 - **Two-dimension verification** — every paper gets a machine-readable score *and* a human-readable badge
 - **Community reproductions** — log hardware specs, run logs, and metric values; earn reputation
