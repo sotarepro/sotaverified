@@ -1,6 +1,151 @@
 import sql from "./db";
 import type { TaskRow, LeaderboardRow, PaperDetail, CodeLink, AreaSummary } from "./types";
 
+export type TabPaperRow = {
+  id: string;
+  arxiv_id: string | null;
+  title: string;
+  published: string | null;
+  tasks: string[];
+  verification: string;
+  upvote_count: number;
+};
+
+export async function getTabPapers(
+  tab: "recent" | "hyped" | "unverified",
+  limit = 10,
+  scope?: { taskId?: string; area?: string }
+): Promise<TabPaperRow[]> {
+  if (scope?.taskId) {
+    if (tab === "recent") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        JOIN paper_tasks pt ON pt.paper_id = p.id
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE pt.task_id = ${scope.taskId}
+        GROUP BY p.id
+        ORDER BY p.published DESC NULLS LAST, p.created_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (tab === "hyped") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        JOIN paper_tasks pt ON pt.paper_id = p.id
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE pt.task_id = ${scope.taskId}
+        GROUP BY p.id
+        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        LIMIT ${limit}
+      `;
+    } else {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        JOIN paper_tasks pt ON pt.paper_id = p.id
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE pt.task_id = ${scope.taskId}
+          AND p.verification = 'unverified'
+        GROUP BY p.id
+        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        LIMIT ${limit}
+      `;
+    }
+  } else if (scope?.area) {
+    if (tab === "recent") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        JOIN paper_tasks pt ON pt.paper_id = p.id
+        JOIN tasks t ON t.id = pt.task_id
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE t.area = ${scope.area}
+        GROUP BY p.id
+        ORDER BY p.published DESC NULLS LAST, p.created_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (tab === "hyped") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        JOIN paper_tasks pt ON pt.paper_id = p.id
+        JOIN tasks t ON t.id = pt.task_id
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE t.area = ${scope.area}
+        GROUP BY p.id
+        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        LIMIT ${limit}
+      `;
+    } else {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        JOIN paper_tasks pt ON pt.paper_id = p.id
+        JOIN tasks t ON t.id = pt.task_id
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE t.area = ${scope.area}
+          AND p.verification = 'unverified'
+        GROUP BY p.id
+        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        LIMIT ${limit}
+      `;
+    }
+  } else {
+    if (tab === "recent") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        GROUP BY p.id
+        ORDER BY p.published DESC NULLS LAST, p.created_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (tab === "hyped") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        GROUP BY p.id
+        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        LIMIT ${limit}
+      `;
+    } else {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+               COUNT(u.paper_id)::int AS upvote_count
+        FROM papers p
+        LEFT JOIN upvotes u ON u.paper_id = p.id
+        WHERE p.verification = 'unverified'
+        GROUP BY p.id
+        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        LIMIT ${limit}
+      `;
+    }
+  }
+}
+
+export async function searchPapers(q: string): Promise<TabPaperRow[]> {
+  return sql<TabPaperRow[]>`
+    SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
+           COUNT(u.paper_id)::int AS upvote_count
+    FROM papers p
+    LEFT JOIN upvotes u ON u.paper_id = p.id
+    WHERE p.title ILIKE ${"%" + q + "%"}
+    GROUP BY p.id
+    ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+    LIMIT 20
+  `;
+}
+
 export async function getAreaSummaries(): Promise<AreaSummary[]> {
   const rows = await sql<{
     area: string;

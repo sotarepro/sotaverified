@@ -46,10 +46,17 @@ export default async function PaperPage({
         <span className="text-gray-700 line-clamp-1">{paper.title}</span>
       </nav>
 
-      {/* Title + meta */}
+      {/* Title + meta row */}
       <h1 className="text-2xl font-bold tracking-tight mb-3">{paper.title}</h1>
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
+        {paper.published && (
+          <span className="text-sm text-gray-500">{paper.published.slice(0, 10)}</span>
+        )}
+        {paper.proceeding && (
+          <span className="text-sm font-medium text-gray-700">{paper.proceeding}</span>
+        )}
+        <VerificationBadge tier={paper.verification as VerificationTier} />
         <UpvoteButton
           paperId={id}
           initialCount={upvoteInfo.count}
@@ -57,16 +64,7 @@ export default async function PaperPage({
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 mb-4">
-        {paper.published && (
-          <span>{paper.published.slice(0, 10)}</span>
-        )}
-        {paper.proceeding && (
-          <span className="font-medium text-gray-700">{paper.proceeding}</span>
-        )}
-        <VerificationBadge tier={paper.verification as VerificationTier} />
-      </div>
-
+      {/* Authors */}
       {paper.authors.length > 0 && (
         <p className="text-sm text-gray-600 mb-5">
           {paper.authors.join(", ")}
@@ -103,15 +101,29 @@ export default async function PaperPage({
         )}
       </div>
 
-      {/* Abstract */}
-      {paper.abstract && (
-        <section className="mb-8">
-          <h2 className="text-base font-semibold mb-2">Abstract</h2>
-          <p className="text-gray-700 leading-relaxed text-sm">{paper.abstract}</p>
-        </section>
+      {/* Verification CTA banner */}
+      {paper.verification === "unverified" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-6 flex items-center justify-between gap-4">
+          <p className="text-sm text-amber-800">
+            <span className="font-semibold">Unverified</span> — Be the first to reproduce this paper.
+          </p>
+          <a
+            href="#reproduce"
+            className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 transition-colors"
+          >
+            Reproduce
+          </a>
+        </div>
+      )}
+      {paper.verification === "community" && (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 mb-6">
+          <p className="text-sm text-green-800">
+            <span className="font-semibold">Community Verified</span> — This paper has been reproduced by community members.
+          </p>
+        </div>
       )}
 
-      {/* Code links */}
+      {/* Code links — first content section */}
       {codeLinks.length > 0 && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">Code</h2>
@@ -149,6 +161,14 @@ export default async function PaperPage({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Abstract */}
+      {paper.abstract && (
+        <section className="mb-8">
+          <h2 className="text-base font-semibold mb-2">Abstract</h2>
+          <p className="text-gray-700 leading-relaxed text-sm">{paper.abstract}</p>
         </section>
       )}
 
@@ -242,7 +262,7 @@ export default async function PaperPage({
         </section>
       )}
       {/* Reproductions */}
-      <section className="mb-8">
+      <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
         <ReproductionForm paperId={id} />
         <ReproductionList paperId={id} />

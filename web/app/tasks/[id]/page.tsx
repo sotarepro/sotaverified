@@ -5,9 +5,11 @@ import {
   getTask,
   getLeaderboard,
   getTaskDatasets,
+  getTabPapers,
 } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
 import DatasetPills from "@/components/DatasetPills";
+import PaperTabTable from "@/components/PaperTabTable";
 import type { VerificationTier } from "@/lib/types";
 
 /** Strip PWC attribution spans: <span class="description-source">...</span> */
@@ -20,16 +22,18 @@ export default async function TaskPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ dataset?: string; sort?: string }>;
+  searchParams: Promise<{ dataset?: string; sort?: string; tab?: string }>;
 }) {
   const { id } = await params;
-  const { dataset: datasetFilter, sort: sortParam } = await searchParams;
+  const { dataset: datasetFilter, sort: sortParam, tab: tabParam } = await searchParams;
   const sort = sortParam === "upvotes" ? "upvotes" : "metric";
+  const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
 
-  const [task, datasets, rows] = await Promise.all([
+  const [task, datasets, rows, tabPapers] = await Promise.all([
     getTask(id),
     getTaskDatasets(id),
     getLeaderboard(id, datasetFilter, sort),
+    getTabPapers(tab, 10, { taskId: id }),
   ]);
 
   if (!task) notFound();
@@ -60,6 +64,14 @@ export default async function TaskPage({
           <ReactMarkdown>{cleanDescription(task.description)}</ReactMarkdown>
         </div>
       )}
+
+      {/* Paper tab table */}
+      <PaperTabTable
+        tab={tab}
+        papers={tabPapers}
+        baseHref={`/tasks/${id}`}
+        title="Papers"
+      />
 
       {/* Sort + Dataset filter */}
       <div className="flex items-center gap-3 mb-4">
@@ -141,11 +153,8 @@ export default async function TaskPage({
                     <td className="px-4 py-2.5 max-w-xs">
                       {row.paper_id ? (
                         <Link
-                          href={row.paper_url_abs ?? `/papers/${row.paper_id}`}
+                          href={`/papers/${row.paper_id}`}
                           className="text-blue-600 hover:underline line-clamp-1"
-                          {...(row.paper_url_abs
-                            ? { target: "_blank", rel: "noopener noreferrer" }
-                            : {})}
                         >
                           {row.paper_title ?? row.paper_id}
                         </Link>

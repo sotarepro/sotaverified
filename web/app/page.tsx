@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { getAreaSummaries, searchTasks, getSiteStats } from "@/lib/queries";
+import { getAreaSummaries, searchTasks, getSiteStats, getTabPapers } from "@/lib/queries";
 import type { AreaSummary } from "@/lib/types";
+import PaperTabTable from "@/components/PaperTabTable";
 
 // Accent colors per area — bg, border, text, badge
 const AREA_COLORS: Record<string, { bg: string; border: string; badge: string; dot: string }> = {
@@ -60,14 +61,16 @@ function AreaCard({ area }: { area: AreaSummary }) {
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; tab?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, tab: tabParam } = await searchParams;
+  const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
 
-  const [areas, searchResults, stats] = await Promise.all([
+  const [areas, searchResults, stats, tabPapers] = await Promise.all([
     getAreaSummaries(),
     q ? searchTasks(q) : Promise.resolve(null),
     getSiteStats(),
+    getTabPapers(tab, 10),
   ]);
 
   const totalTasks = areas.reduce((s, a) => s + a.task_count, 0);
@@ -108,15 +111,30 @@ export default async function HomePage({
           </pre>
         </div>
 
+        {/* CTA buttons */}
+        <div className="flex flex-wrap gap-3 mb-5">
+          <Link
+            href="/tasks"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          >
+            Browse Benchmarks
+          </Link>
+          <a
+            href="/api/auth/signin"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Sign in with GitHub
+          </a>
+        </div>
+
         {/* Search */}
-        <form method="GET" className="flex gap-2 max-w-md">
+        <form method="GET" action="/search" className="flex gap-2 max-w-md">
           <input
             type="search"
             name="q"
             defaultValue={q}
-            placeholder="Search tasks…"
+            placeholder="Search papers &amp; tasks…"
             className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus={!!q}
           />
           <button
             type="submit"
@@ -124,22 +142,24 @@ export default async function HomePage({
           >
             Search
           </button>
-          {q && (
-            <Link
-              href="/"
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50"
-            >
-              Clear
-            </Link>
-          )}
         </form>
       </div>
+
+      {/* Paper tab table — always shown when no search query */}
+      {searchResults === null && (
+        <PaperTabTable
+          tab={tab}
+          papers={tabPapers}
+          baseHref="/"
+          title="Papers"
+        />
+      )}
 
       {/* Search results */}
       {searchResults !== null && (
         <div>
           <p className="text-sm text-gray-500 mb-4">
-            {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{q}&rdquo;
+            {searchResults.length} task result{searchResults.length !== 1 ? "s" : ""} for &ldquo;{q}&rdquo;
           </p>
           {searchResults.length === 0 ? (
             <p className="text-gray-400 text-sm">No tasks found.</p>

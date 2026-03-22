@@ -48,6 +48,14 @@ export default function RootLayout({
               >
                 About
               </Link>
+              <form method="GET" action="/search" className="flex-1 max-w-xs mx-4">
+                <input
+                  type="search"
+                  name="q"
+                  placeholder="Search papers &amp; tasks…"
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </form>
               <div className="ml-auto">
                 <NavUser />
               </div>

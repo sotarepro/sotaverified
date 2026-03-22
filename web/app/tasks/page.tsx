@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { getTaskList, getTaskCount } from "@/lib/queries";
+import { getTaskList, getTaskCount, getTabPapers } from "@/lib/queries";
 import Pagination from "@/components/Pagination";
+import PaperTabTable from "@/components/PaperTabTable";
 
 const PAGE_SIZE = 50;
 
@@ -19,17 +20,19 @@ const AREA_COLORS: Record<string, string> = {
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; area?: string }>;
+  searchParams: Promise<{ page?: string; area?: string; tab?: string }>;
 }) {
-  const { page: pageStr, area } = await searchParams;
+  const { page: pageStr, area, tab: tabParam } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
-
-  const [tasks, total] = await Promise.all([
-    getTaskList(page, PAGE_SIZE, area),
-    getTaskCount(area),
-  ]);
+  const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
 
   const baseHref = area ? `/tasks?area=${encodeURIComponent(area)}` : "/tasks";
+
+  const [tasks, total, tabPapers] = await Promise.all([
+    getTaskList(page, PAGE_SIZE, area),
+    getTaskCount(area),
+    area ? getTabPapers(tab, 10, { area }) : Promise.resolve(null),
+  ]);
 
   return (
     <div>
@@ -54,6 +57,16 @@ export default async function TasksPage({
           )}
         </p>
       </div>
+
+      {/* Paper tab table — shown only when area is selected */}
+      {area && tabPapers && (
+        <PaperTabTable
+          tab={tab}
+          papers={tabPapers}
+          baseHref={`/tasks?area=${encodeURIComponent(area)}`}
+          title="Papers in this area"
+        />
+      )}
 
       <div className="rounded-xl border border-gray-200 overflow-hidden mb-6">
         <table className="w-full text-sm">
