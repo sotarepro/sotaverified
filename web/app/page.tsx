@@ -64,7 +64,7 @@ export default async function HomePage({
   searchParams: Promise<{ q?: string; tab?: string }>;
 }) {
   const { q, tab: tabParam } = await searchParams;
-  const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
+  const tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? "")) ? tabParam as "recent" | "hyped" | "unverified" | "verified" : "recent" as const;
 
   const [areas, searchResults, stats, tabPapers] = await Promise.all([
     getAreaSummaries(),
@@ -152,6 +152,9 @@ export default async function HomePage({
           papers={tabPapers}
           baseHref="/"
           title="Papers"
+          page={1}
+          pageSize={10}
+          total={tabPapers.length}
         />
       )}
 

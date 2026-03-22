@@ -43,8 +43,13 @@ describe("File scan: tasks/[id]/page.tsx paper links", () => {
     const content = fs.readFileSync(tasksPagePath, "utf-8");
     // Should NOT link directly to arxiv in paper title column
     expect(content).not.toMatch(/href=\{row\.paper_url_abs/);
-    // Should use internal paper link pattern
-    expect(content).toMatch(/\/papers\/\$\{/);
+    // Leaderboard links may be in the task page itself or in LeaderboardSection component
+    const leaderboardSectionPath = path.join(__dirname, "../components/LeaderboardSection.tsx");
+    const componentContent = fs.existsSync(leaderboardSectionPath)
+      ? fs.readFileSync(leaderboardSectionPath, "utf-8")
+      : "";
+    const combinedContent = content + componentContent;
+    expect(combinedContent).toMatch(/\/papers\/\$\{/);
   });
 
   it("does not use paper_url_abs as a direct href for paper titles", () => {
@@ -56,14 +61,17 @@ describe("File scan: tasks/[id]/page.tsx paper links", () => {
 });
 
 describe("File scan: leaderboard rows use paper_id for internal links", () => {
-  const tasksPagePath = path.join(
-    __dirname,
-    "../app/tasks/[id]/page.tsx"
-  );
-
-  it("paper_id is used to construct the /papers/ link", () => {
-    const content = fs.readFileSync(tasksPagePath, "utf-8");
+  it("paper_id is used to construct the /papers/ link (in task page or LeaderboardSection)", () => {
+    const tasksPagePath = path.join(__dirname, "../app/tasks/[id]/page.tsx");
+    const leaderboardSectionPath = path.join(__dirname, "../components/LeaderboardSection.tsx");
+    const taskContent = fs.existsSync(tasksPagePath)
+      ? fs.readFileSync(tasksPagePath, "utf-8")
+      : "";
+    const componentContent = fs.existsSync(leaderboardSectionPath)
+      ? fs.readFileSync(leaderboardSectionPath, "utf-8")
+      : "";
+    const combinedContent = taskContent + componentContent;
     // Should see /papers/${...paper_id...} pattern
-    expect(content).toMatch(/\/papers\/\$\{.*paper_id/);
+    expect(combinedContent).toMatch(/\/papers\/\$\{.*paper_id/);
   });
 });

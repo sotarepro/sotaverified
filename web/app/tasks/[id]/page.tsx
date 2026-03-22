@@ -6,34 +6,59 @@ import {
   getLeaderboard,
   getTaskDatasets,
   getTabPapers,
+  getTabPapersCount,
 } from "@/lib/queries";
-import VerificationBadge from "@/components/VerificationBadge";
 import DatasetPills from "@/components/DatasetPills";
 import PaperTabTable from "@/components/PaperTabTable";
-import type { VerificationTier } from "@/lib/types";
+import LeaderboardSection from "@/components/LeaderboardSection";
 
 /** Strip PWC attribution spans: <span class="description-source">...</span> */
 function cleanDescription(raw: string): string {
   return raw.replace(/<span[^>]*class="description-source"[^>]*>[\s\S]*?<\/span>/g, "").trim();
 }
 
+function isLowerBetterMetric(metricName: string | null): boolean {
+  if (!metricName) return false;
+  const lower = metricName.toLowerCase();
+  return ["error", "loss", "perplexity", "fid", "fpr", "mae", "mse", "rmse", "wer", "cer"].some(
+    (k) => lower.includes(k)
+  );
+}
+
+type Tab = "recent" | "hyped" | "unverified" | "verified";
+
 export default async function TaskPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ dataset?: string; sort?: string; tab?: string }>;
+  searchParams: Promise<{ dataset?: string; sort?: string; tab?: string; page?: string; pageSize?: string }>;
 }) {
   const { id } = await params;
-  const { dataset: datasetFilter, sort: sortParam, tab: tabParam } = await searchParams;
-  const sort = sortParam === "verification" ? "verification" : sortParam === "date" ? "date" : "metric";
-  const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
+  const {
+    dataset: datasetFilter,
+    sort: sortParam,
+    tab: tabParam,
+    page: pageStr,
+    pageSize: pageSizeStr,
+  } = await searchParams;
 
-  const [task, datasets, rows, tabPapers] = await Promise.all([
+  const sort = sortParam === "verification" ? "verification" : sortParam === "date" ? "date" : "metric";
+  const tab: Tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? ""))
+    ? (tabParam as Tab)
+    : "recent";
+  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const pageSize = [10, 25, 50].includes(parseInt(pageSizeStr ?? "10", 10))
+    ? parseInt(pageSizeStr!, 10)
+    : 10;
+  const offset = (page - 1) * pageSize;
+
+  const [task, datasets, rows, tabPapers, tabTotal] = await Promise.all([
     getTask(id),
     getTaskDatasets(id),
     getLeaderboard(id, datasetFilter, sort),
-    getTabPapers(tab, 10, { taskId: id }),
+    getTabPapers(tab, pageSize, { taskId: id }, offset),
+    getTabPapersCount(tab, { taskId: id }),
   ]);
 
   if (!task) notFound();
@@ -71,21 +96,10 @@ export default async function TaskPage({
         papers={tabPapers}
         baseHref={`/tasks/${id}`}
         title="Papers"
+        page={page}
+        pageSize={pageSize}
+        total={tabTotal}
       />
-
-      {/* Sort + Dataset filter */}
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs text-gray-500 font-medium">Sort:</span>
-        {(["metric", "verification", "date"] as const).map((s) => (
-          <a
-            key={s}
-            href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=${s}`}
-            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === s ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
-          >
-            {s === "metric" ? "Metric value" : s === "verification" ? "Verification" : "Date"}
-          </a>
-        ))}
-      </div>
 
       {/* Dataset filter pills — collapses after 12 */}
       <DatasetPills
@@ -98,79 +112,26 @@ export default async function TaskPage({
         <p className="text-gray-500">No leaderboard results yet.</p>
       )}
 
-      {/* Leaderboard — one table per dataset */}
-      {[...byDataset.entries()].map(([dsName, dsRows]) => (
-        <div key={dsName} className="mb-10">
-          <h2 className="text-lg font-semibold mb-3">{dsName}</h2>
-          <div className="rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-600 w-8 text-right">
-                    #
-                  </th>
-                  <th className="px-4 py-3 font-medium text-gray-600">
-                    Method / Model
-                  </th>
-                  <th className="px-4 py-3 font-medium text-gray-600">
-                    Metric
-                  </th>
-                  <th className="px-4 py-3 font-medium text-gray-600 text-right">
-                    Value
-                  </th>
-                  <th className="px-4 py-3 font-medium text-gray-600">
-                    Paper
-                  </th>
-                  <th className="px-4 py-3 font-medium text-gray-600">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {dsRows.map((row, idx) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 py-2.5 text-right text-gray-400 tabular-nums">
-                      {idx + 1}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium">{row.model_name}</td>
-                    <td className="px-4 py-2.5 text-gray-500 text-xs">
-                      {row.best_metric_name ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-mono">
-                      {row.best_metric_value != null
-                        ? Number(row.best_metric_value).toLocaleString(
-                            undefined,
-                            { maximumFractionDigits: 2 }
-                          )
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 max-w-xs">
-                      {row.paper_id ? (
-                        <Link
-                          href={`/papers/${row.paper_id}`}
-                          className="text-blue-600 hover:underline line-clamp-1"
-                        >
-                          {row.paper_title ?? row.paper_id}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <VerificationBadge
-                        tier={row.verification as VerificationTier}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Dataset leaderboards */}
+      {rows.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Benchmark Results</h2>
+          {[...byDataset.entries()].map(([dsName, dsRows], idx) => {
+            // Detect metric direction from first row with a metric name
+            const firstMetricName = dsRows.find((r) => r.best_metric_name)?.best_metric_name ?? null;
+            return (
+              <LeaderboardSection
+                key={dsName}
+                datasetName={dsName}
+                rows={dsRows}
+                submissionCount={dsRows.length}
+                defaultExpanded={idx === 0}
+                isLowerBetter={isLowerBetterMetric(firstMetricName)}
+              />
+            );
+          })}
         </div>
-      ))}
+      )}
     </div>
   );
 }

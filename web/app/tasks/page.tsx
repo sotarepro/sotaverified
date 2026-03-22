@@ -24,7 +24,7 @@ export default async function TasksPage({
 }) {
   const { page: pageStr, area, tab: tabParam } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
-  const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
+  const tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? "")) ? tabParam as "recent" | "hyped" | "unverified" | "verified" : "recent" as const;
 
   const baseHref = area ? `/tasks?area=${encodeURIComponent(area)}` : "/tasks";
 
@@ -65,6 +65,9 @@ export default async function TasksPage({
           papers={tabPapers}
           baseHref={`/tasks?area=${encodeURIComponent(area)}`}
           title="Papers in this area"
+          page={1}
+          pageSize={10}
+          total={tabPapers.length}
         />
       )}
 
