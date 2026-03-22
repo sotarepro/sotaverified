@@ -26,7 +26,7 @@ export default async function TaskPage({
 }) {
   const { id } = await params;
   const { dataset: datasetFilter, sort: sortParam, tab: tabParam } = await searchParams;
-  const sort = sortParam === "upvotes" ? "upvotes" : "metric";
+  const sort = sortParam === "verification" ? "verification" : sortParam === "date" ? "date" : "metric";
   const tab = (tabParam === "hyped" || tabParam === "unverified") ? tabParam : "recent";
 
   const [task, datasets, rows, tabPapers] = await Promise.all([
@@ -76,18 +76,15 @@ export default async function TaskPage({
       {/* Sort + Dataset filter */}
       <div className="flex items-center gap-3 mb-4">
         <span className="text-xs text-gray-500 font-medium">Sort:</span>
-        <a
-          href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=metric`}
-          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === "metric" ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
-        >
-          Metric value
-        </a>
-        <a
-          href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=upvotes`}
-          className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === "upvotes" ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
-        >
-          Hype
-        </a>
+        {(["metric", "verification", "date"] as const).map((s) => (
+          <a
+            key={s}
+            href={`/tasks/${id}${datasetFilter ? `?dataset=${datasetFilter}&` : "?"}sort=${s}`}
+            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sort === s ? "border-blue-400 bg-blue-50 text-blue-700" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+          >
+            {s === "metric" ? "Metric value" : s === "verification" ? "Verification" : "Date"}
+          </a>
+        ))}
       </div>
 
       {/* Dataset filter pills — collapses after 12 */}

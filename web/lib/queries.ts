@@ -252,8 +252,21 @@ export async function getTask(
 export async function getLeaderboard(
   taskId: string,
   datasetId?: string,
-  sort: "metric" | "upvotes" = "metric"
+  sort: "metric" | "verification" | "date" = "metric"
 ): Promise<LeaderboardRow[]> {
+  const orderBy =
+    sort === "verification"
+      ? sql`
+          CASE lr.verification
+            WHEN 'official'       THEN 1
+            WHEN 'community'      THEN 2
+            WHEN 'auto_verified'  THEN 3
+            ELSE                       4
+          END ASC, lr.best_metric_value DESC`
+      : sort === "date"
+      ? sql`lr.evaluated_on DESC NULLS LAST, lr.best_metric_value DESC`
+      : sql`lr.best_metric_value DESC`;
+
   const rows = await sql<LeaderboardRow[]>`
     SELECT
       lr.id,
@@ -267,21 +280,22 @@ export async function getLeaderboard(
       lr.evaluated_on::text,
       lr.uses_extra_data,
       lr.verification,
-      COALESCE(uv.upvote_count, 0) AS paper_upvotes
+      ds_counts.submission_count
     FROM leaderboard_results lr
     JOIN datasets d ON d.id = lr.dataset_id
     LEFT JOIN papers p ON p.id = lr.paper_id
-    LEFT JOIN (
-      SELECT paper_id, COUNT(*)::int AS upvote_count
-      FROM upvotes
-      GROUP BY paper_id
-    ) uv ON uv.paper_id = lr.paper_id
+    JOIN (
+      SELECT dataset_id, COUNT(*)::int AS submission_count
+      FROM leaderboard_results
+      WHERE task_id = ${taskId}
+        AND best_metric_value IS NOT NULL
+      GROUP BY dataset_id
+    ) ds_counts ON ds_counts.dataset_id = lr.dataset_id
     WHERE lr.task_id = ${taskId}
       AND (${datasetId ?? null}::text IS NULL OR lr.dataset_id = ${datasetId ?? null})
       AND lr.best_metric_value IS NOT NULL
       AND lr.best_metric_value < 1e15
-    ORDER BY d.name,
-      ${sort === "upvotes" ? sql`uv.upvote_count DESC NULLS LAST, lr.best_metric_value DESC` : sql`lr.best_metric_value DESC`}
+    ORDER BY ds_counts.submission_count DESC, d.name, ${orderBy}
     LIMIT 200
   `;
   return rows;
@@ -289,14 +303,15 @@ export async function getLeaderboard(
 
 export async function getTaskDatasets(
   taskId: string
-): Promise<{ id: string; name: string }[]> {
+): Promise<{ id: string; name: string; submission_count: number }[]> {
   return sql`
-    SELECT DISTINCT d.id, d.name
+    SELECT d.id, d.name, COUNT(*)::int AS submission_count
     FROM leaderboard_results lr
     JOIN datasets d ON d.id = lr.dataset_id
     WHERE lr.task_id = ${taskId}
       AND lr.best_metric_value IS NOT NULL
-    ORDER BY d.name
+    GROUP BY d.id, d.name
+    ORDER BY submission_count DESC, d.name
   `;
 }
 
