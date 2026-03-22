@@ -37,12 +37,6 @@ export default function RootLayout({
                 Browse
               </Link>
               <Link
-                href="/submit"
-                className="text-sm text-gray-600 hover:text-gray-900"
-              >
-                Submit
-              </Link>
-              <Link
                 href="/about"
                 className="text-sm text-gray-600 hover:text-gray-900"
               >

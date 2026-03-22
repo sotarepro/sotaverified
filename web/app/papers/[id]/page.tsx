@@ -18,6 +18,7 @@ import ReproductionForm from "@/components/ReproductionForm";
 import ReproductionList from "@/components/ReproductionList";
 import AuthorClaimButton from "@/components/AuthorClaimButton";
 import VerifiedAuthors from "@/components/VerifiedAuthors";
+import PromoteButton from "@/components/PromoteButton";
 import type { VerificationTier } from "@/lib/types";
 
 export default async function PaperPage({
@@ -46,6 +47,39 @@ export default async function PaperPage({
       WHERE paper_id = ${id} AND user_id = ${userId}
     `;
     userClaim = rows[0] ?? null;
+  }
+
+  // Fetch agent reproductions (pending review)
+  const agentRepros = await sql<{
+    id: number;
+    tier_claimed: number;
+    hardware_spec: string;
+    run_log_url: string;
+    notes: string | null;
+    actual_metric_value: number | null;
+    actual_metric_name: string | null;
+    created_at: string;
+    username: string | null;
+    avatar_url: string | null;
+  }[]>`
+    SELECT r.id, r.tier_claimed, r.hardware_spec, r.run_log_url, r.notes,
+           r.actual_metric_value, r.actual_metric_name, r.created_at::text,
+           u.username, u.avatar_url
+    FROM reproductions r
+    LEFT JOIN users u ON u.github_id = r.user_id
+    WHERE r.paper_id = ${id}
+      AND r.source = 'api'
+      AND r.status = 'agent_pending'
+    ORDER BY r.created_at DESC
+  `;
+
+  // Check if current user is trusted (rep >= 30)
+  let isTrustedUser = false;
+  if (userId) {
+    const [uRow] = await sql<[{ reputation_score: number }]>`
+      SELECT reputation_score FROM users WHERE github_id = ${userId}
+    `;
+    isTrustedUser = (uRow?.reputation_score ?? 0) >= 30;
   }
 
   if (!paper) notFound();
@@ -295,6 +329,68 @@ export default async function PaperPage({
         <ReproductionForm paperId={id} />
         <ReproductionList paperId={id} />
       </section>
+
+      {/* Agent Verifications */}
+      {agentRepros.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-base font-semibold mb-3 text-gray-300">Agent Verifications</h2>
+          <div className="rounded-xl border border-gray-700 bg-gray-950 p-4 space-y-3">
+            {agentRepros.map((r) => {
+              const tierColors: Record<number, string> = {
+                1: "bg-gray-800 text-gray-300",
+                2: "bg-blue-950 text-blue-300",
+                3: "bg-green-950 text-green-300",
+                4: "bg-purple-950 text-purple-300",
+              };
+              const tierLabels: Record<number, string> = {
+                1: "Code runs",
+                2: "Metrics match",
+                3: "Independent",
+                4: "Multi-verified",
+              };
+              return (
+                <div key={r.id} className="border border-gray-800 rounded-lg p-3 text-sm">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${tierColors[r.tier_claimed] ?? "bg-gray-800 text-gray-300"}`}>
+                        Tier {r.tier_claimed} — {tierLabels[r.tier_claimed]}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(r.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {isTrustedUser && (
+                      <PromoteButton reproductionId={r.id} />
+                    )}
+                  </div>
+                  <div className="text-gray-400 text-xs mb-1">
+                    Hardware: <span className="text-gray-300">{r.hardware_spec}</span>
+                  </div>
+                  {r.actual_metric_name && r.actual_metric_value != null && (
+                    <div className="text-gray-400 text-xs mb-1">
+                      Result: <span className="text-gray-300 font-mono">{r.actual_metric_value} {r.actual_metric_name}</span>
+                    </div>
+                  )}
+                  <div className="text-gray-400 text-xs mb-1">
+                    Log:{" "}
+                    <a
+                      href={r.run_log_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-400 hover:underline font-mono"
+                    >
+                      {r.run_log_url.replace(/^https?:\/\/(www\.)?/, "")}
+                    </a>
+                  </div>
+                  {r.notes && (
+                    <p className="text-gray-500 text-xs leading-relaxed">{r.notes}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

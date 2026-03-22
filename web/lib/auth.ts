@@ -65,6 +65,15 @@ export const authOptions: NextAuthOptions = {
           avatar_url             = EXCLUDED.avatar_url
       `;
 
+      try {
+        await sql`
+          INSERT INTO activity_log (event_type, user_id, metadata)
+          VALUES ('user_signin', ${String(p.id)}, ${JSON.stringify({ account_age_days: Math.floor(ageInDays) })})
+        `;
+      } catch {
+        // Never let logging failures break sign-in
+      }
+
       return true; // Soft gate only — never hard-block
     },
 

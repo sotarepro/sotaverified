@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
+import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -56,6 +57,11 @@ export async function POST(req: NextRequest) {
   const [{ count }] = await sql<[{ count: number }]>`
     SELECT COUNT(*)::int AS count FROM upvotes WHERE paper_id = ${paper_id}
   `;
+
+  await logEvent(existing.length > 0 ? "paper_unhyped" : "paper_hyped", {
+    userId,
+    paperId: paper_id,
+  });
 
   return NextResponse.json({ upvoted: existing.length === 0, count });
 }

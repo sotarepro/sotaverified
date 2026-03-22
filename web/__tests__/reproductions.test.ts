@@ -109,12 +109,14 @@ describe("POST /api/reproductions", () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession());
     mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]);
     mockSql.mockResolvedValueOnce([{ id: 99 }]);
+    // logEvent INSERT (activity_log)
+    mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", validReproBody);
     await POST(req);
 
-    // Called twice: user lookup + INSERT
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // Called 3 times: user lookup + INSERT + logEvent
+    expect(mockSql).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -145,7 +147,11 @@ describe("POST /api/reproductions/[id]/flag", () => {
     // UPDATE increment
     mockSql.mockResolvedValueOnce([]);
     // Fetch current state (count < 3, no auto-hide)
-    mockSql.mockResolvedValueOnce([{ flag_count: 1, status: "community", user_id: "u1" }]);
+    mockSql.mockResolvedValueOnce([{ flag_count: 1, status: "community", user_id: "u1", paper_id: "paper-1" }]);
+    // logEvent INSERT (activity_log)
+    mockSql.mockResolvedValueOnce([]);
+    // SELECT reputation_score (not trusted, count=1 < 2)
+    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
 
     const req = makeReq("POST");
     const params = { params: Promise.resolve({ id: "42" }) };
@@ -165,8 +171,10 @@ describe("POST /api/reproductions/[id]/flag", () => {
     mockSql.mockResolvedValueOnce([]);
     // UPDATE decrement
     mockSql.mockResolvedValueOnce([]);
-    // Fetch updated count
-    mockSql.mockResolvedValueOnce([{ flag_count: 0 }]);
+    // Fetch updated count + paper_id (unflag path)
+    mockSql.mockResolvedValueOnce([{ flag_count: 0, paper_id: "paper-1" }]);
+    // logEvent INSERT (activity_log)
+    mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST");
     const params = { params: Promise.resolve({ id: "42" }) };
@@ -187,7 +195,11 @@ describe("POST /api/reproductions/[id]/flag", () => {
     // UPDATE increment
     mockSql.mockResolvedValueOnce([]);
     // Fetch current state → 3 flags, still community status
-    mockSql.mockResolvedValueOnce([{ flag_count: 3, status: "community", user_id: "u1" }]);
+    mockSql.mockResolvedValueOnce([{ flag_count: 3, status: "community", user_id: "u1", paper_id: "paper-1" }]);
+    // logEvent INSERT (activity_log)
+    mockSql.mockResolvedValueOnce([]);
+    // SELECT reputation_score for trusted check (not trusted, but count=3 >= 3 so auto-hide anyway)
+    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     // UPDATE status='hidden'
     mockSql.mockResolvedValueOnce([]);
     // UPDATE user rep -20
@@ -201,9 +213,8 @@ describe("POST /api/reproductions/[id]/flag", () => {
     expect(res.status).toBe(200);
     expect(json.flagged).toBe(true);
     expect(json.count).toBe(3);
-    // Verify extra UPDATE for hidden status was called
-    // Total calls: check + insert + update_count + fetch + update_hidden + update_rep = 6
-    expect(mockSql).toHaveBeenCalledTimes(6);
+    // Total calls: check + insert + update_count + fetch + logEvent + rep_check + update_hidden + update_rep = 8
+    expect(mockSql).toHaveBeenCalledTimes(8);
   });
 });
 
@@ -241,13 +252,13 @@ describe("PATCH /api/admin/reproductions/[id]", () => {
     expect(res.status).toBe(403);
   });
 
-  it("admin approve: updates status to verified and awards +10 rep, returns {ok: true}", async () => {
+  it("admin approve: updates status to verified and awards tier-based rep, returns {ok: true}", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession(ADMIN_ID, "admin"));
     // UPDATE status='verified'
     mockSql.mockResolvedValueOnce([]);
-    // Fetch reproduction (user_id + status)
-    mockSql.mockResolvedValueOnce([{ user_id: "u1", status: "community" }]);
-    // UPDATE rep +10
+    // Fetch reproduction (user_id + status + tier_claimed + paper_id)
+    mockSql.mockResolvedValueOnce([{ user_id: "u1", status: "community", tier_claimed: 2, paper_id: "paper-1" }]);
+    // UPDATE rep (tier 2 = +10)
     mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("PATCH", { action: "approve" });

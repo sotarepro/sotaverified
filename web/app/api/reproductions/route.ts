@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -80,6 +81,12 @@ export async function POST(req: NextRequest) {
   `;
 
   await recomputeVerificationScore(paper_id);
+
+  await logEvent("reproduction_submitted", {
+    userId: session.user.github_id,
+    paperId: paper_id,
+    metadata: { tier_claimed, hardware_spec: hardware_spec.substring(0, 100) },
+  });
 
   return NextResponse.json({ id: row.id }, { status: 201 });
 }

@@ -67,7 +67,8 @@ describe("signIn callback", () => {
     });
 
     expect(result).toBe(true);
-    expect(mockSql).toHaveBeenCalledTimes(1);
+    // 2 calls: upsert + activity_log insert
+    expect(mockSql).toHaveBeenCalledTimes(2);
   });
 
   it("returns true even for non-github providers without calling DB", async () => {

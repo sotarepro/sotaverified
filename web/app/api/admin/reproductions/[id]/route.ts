@@ -27,13 +27,14 @@ export async function PATCH(
       SET status = 'verified', reviewed_at = NOW()
       WHERE id = ${reproId}
     `;
-    // Award rep to author
-    const [r] = await sql<[{ user_id: string; status: string; paper_id: string }]>`
-      SELECT user_id, status, paper_id FROM reproductions WHERE id = ${reproId}
+    // Award tier-based rep to author
+    const [r] = await sql<[{ user_id: string; status: string; tier_claimed: number; paper_id: string }]>`
+      SELECT user_id, status, tier_claimed, paper_id FROM reproductions WHERE id = ${reproId}
     `;
     if (r) {
+      const repGain = r.tier_claimed === 4 ? 20 : r.tier_claimed === 3 ? 15 : r.tier_claimed === 2 ? 10 : 5;
       await sql`
-        UPDATE users SET reputation_score = reputation_score + 10
+        UPDATE users SET reputation_score = reputation_score + ${repGain}
         WHERE github_id = ${r.user_id}
       `;
       await recomputeVerificationScore(r.paper_id);

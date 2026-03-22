@@ -129,6 +129,8 @@ describe("POST /api/upvotes", () => {
     mockSql.mockResolvedValueOnce([]);
     // Call 3: count
     mockSql.mockResolvedValueOnce([{ count: 1 }]);
+    // Call 4: logEvent INSERT (activity_log)
+    mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", { paper_id: "paper-abc" });
     const res = await POST(req);
@@ -137,7 +139,7 @@ describe("POST /api/upvotes", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     expect(json.count).toBe(1);
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    expect(mockSql).toHaveBeenCalledTimes(4);
   });
 
   it("deletes upvote when prior vote exists → {upvoted: false, count: 0}", async () => {
@@ -148,6 +150,8 @@ describe("POST /api/upvotes", () => {
     mockSql.mockResolvedValueOnce([]);
     // Call 3: count
     mockSql.mockResolvedValueOnce([{ count: 0 }]);
+    // Call 4: logEvent INSERT (activity_log)
+    mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", { paper_id: "paper-abc" });
     const res = await POST(req);
@@ -156,6 +160,6 @@ describe("POST /api/upvotes", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(false);
     expect(json.count).toBe(0);
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    expect(mockSql).toHaveBeenCalledTimes(4);
   });
 });

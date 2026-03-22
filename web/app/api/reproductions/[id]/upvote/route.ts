@@ -42,26 +42,28 @@ export async function POST(
       UPDATE reproductions SET upvote_count = upvote_count + 1 WHERE id = ${reproId}
     `;
 
-    const [r] = await sql<[{ upvote_count: number; status: string; user_id: string }]>`
-      SELECT upvote_count, status, user_id FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ upvote_count: number; status: string; user_id: string; tier_claimed: number }]>`
+      SELECT upvote_count, status, user_id, tier_claimed FROM reproductions WHERE id = ${reproId}
     `;
 
-    // Check if should be auto-verified: 3+ upvotes from users with reputation > 50
+    // Check if should be auto-verified: 3+ upvotes from trusted users (rep >= 30)
     if (r.upvote_count >= 3 && r.status === "community") {
       const [{ qualified_count }] = await sql<[{ qualified_count: number }]>`
         SELECT COUNT(*)::int AS qualified_count
         FROM reproduction_upvotes ru
         JOIN users u ON u.github_id = ru.user_id
-        WHERE ru.reproduction_id = ${reproId} AND u.reputation_score > 50
+        WHERE ru.reproduction_id = ${reproId} AND u.reputation_score >= 30
       `;
 
       if (qualified_count >= 3) {
         await sql`
           UPDATE reproductions SET status = 'verified' WHERE id = ${reproId}
         `;
-        // Award +10 rep to reproduction author
+        // Award tier-based rep to reproduction author
+        const tier = r.tier_claimed;
+        const repGain = tier === 4 ? 20 : tier === 3 ? 15 : tier === 2 ? 10 : 5;
         await sql`
-          UPDATE users SET reputation_score = reputation_score + 10
+          UPDATE users SET reputation_score = reputation_score + ${repGain}
           WHERE github_id = ${r.user_id}
         `;
       }

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
 function extractOwnerRepo(url: string): [string, string] | null {
@@ -66,6 +67,11 @@ export async function POST(
         verified_at = NULL,
         verification_method = NULL
     `;
+    await logEvent("author_claimed", {
+      userId,
+      paperId,
+      metadata: { status: "pending_admin" },
+    });
     return NextResponse.json({
       status: "pending_admin",
       message: "No official repo found — submitted for admin review",
@@ -83,6 +89,11 @@ export async function POST(
         verified_at = NULL,
         verification_method = NULL
     `;
+    await logEvent("author_claimed", {
+      userId,
+      paperId,
+      metadata: { status: "pending_admin" },
+    });
     return NextResponse.json({
       status: "pending_admin",
       message: "Could not parse repo URL — submitted for admin review",
@@ -111,6 +122,11 @@ export async function POST(
         status = 'verified'
     `;
     await recomputeVerificationScore(paperId);
+    await logEvent("author_claimed", {
+      userId,
+      paperId,
+      metadata: { status: "verified" },
+    });
     return NextResponse.json({
       status: "verified",
       message: "Verified as GitHub contributor",
@@ -125,6 +141,11 @@ export async function POST(
         verified_at = NULL,
         verification_method = NULL
     `;
+    await logEvent("author_claimed", {
+      userId,
+      paperId,
+      metadata: { status: "pending_admin" },
+    });
     return NextResponse.json({
       status: "pending_admin",
       message: "Not found in contributors — submitted for admin review",

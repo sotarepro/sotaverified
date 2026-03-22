@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -31,9 +32,14 @@ export async function POST(
     await sql`
       UPDATE reproductions SET flag_count = GREATEST(0, flag_count - 1) WHERE id = ${reproId}
     `;
-    const [r] = await sql<[{ flag_count: number }]>`
-      SELECT flag_count FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ flag_count: number; paper_id: string }]>`
+      SELECT flag_count, paper_id FROM reproductions WHERE id = ${reproId}
     `;
+    await logEvent("reproduction_unflagged", {
+      userId,
+      paperId: r?.paper_id,
+      metadata: { reproduction_id: reproId, flag_count: r?.flag_count },
+    });
     return NextResponse.json({ flagged: false, count: r.flag_count });
   } else {
     await sql`
@@ -48,8 +54,22 @@ export async function POST(
       SELECT flag_count, status, user_id, paper_id FROM reproductions WHERE id = ${reproId}
     `;
 
-    // Auto-hide at 3 flags
-    if (r.flag_count >= 3 && r.status !== 'hidden') {
+    await logEvent("reproduction_flagged", {
+      userId,
+      paperId: r.paper_id,
+      metadata: { reproduction_id: reproId, flag_count: r.flag_count },
+    });
+
+    // Check flagging user's reputation for trusted flag weight
+    const [flaggingUser] = await sql<[{ reputation_score: number }]>`
+      SELECT reputation_score FROM users WHERE github_id = ${userId}
+    `;
+    const isTrusted = (flaggingUser?.reputation_score ?? 0) >= 30;
+
+    // Auto-hide: 3 regular flags OR trusted user flag + 2 total flags
+    const shouldHide = r.flag_count >= 3 || (isTrusted && r.flag_count >= 2);
+
+    if (shouldHide && r.status !== 'hidden') {
       await sql`
         UPDATE reproductions SET status = 'hidden' WHERE id = ${reproId}
       `;
