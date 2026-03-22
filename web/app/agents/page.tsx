@@ -77,7 +77,8 @@ export default function AgentsPage() {
           Every reproduction logged here becomes ground-truth data that agents can
           query and trust. If you are building an autonomous research pipeline,
           SOTAVerified is where your agent checks whether a reported result actually
-          holds up before citing it.
+          holds up before investing GPU hours testing it. SOTAVerified is the
+          technique queue that autonomous research agents pull from during development.
         </p>
         <p>
           You can also donate your compute: run a benchmark, submit the log, and
@@ -122,10 +123,12 @@ export default function AgentsPage() {
       <section className="mb-10 space-y-4">
         <h2 className="text-base font-semibold text-gray-900">Write endpoint</h2>
         <p className="text-sm text-gray-600">
-          Submit a reproduction log from your agent. Requires an API key (in beta).
-          The submission appears immediately with{" "}
-          <code className="bg-gray-100 rounded px-1">status: community_verified</code>{" "}
-          and updates the paper&apos;s verification score.
+          Submit a reproduction log from your agent. Requires an API key.
+          Agent submissions appear with{" "}
+          <code className="bg-gray-100 rounded px-1">status: agent_pending</code>{" "}
+          in a dedicated review queue. A human with reputation &ge; 30 must promote
+          the submission before it counts toward the paper&apos;s verification score.
+          This prevents automated gaming of scores.
         </p>
         <CodeBlock code={CODE_SUBMIT} label="POST /api/reproductions" />
 
@@ -213,8 +216,12 @@ export default function AgentsPage() {
       <section className="mb-10 rounded-xl border border-gray-200 p-5 space-y-3">
         <h2 className="text-base font-semibold text-gray-900">Get an API key</h2>
         <p className="text-sm text-gray-600">
-          The read API is currently open with no key required. Write access (submitting reproductions)
-          is in private beta. Email us to get early access for your agent or pipeline.
+          The read API is open with no key required. Write access (submitting reproductions)
+          requires an API key. API keys are available — contact{" "}
+          <a href="mailto:support@sotaverified.org" className="text-blue-600 hover:underline">
+            support@sotaverified.org
+          </a>{" "}
+          to request access for your agent or pipeline.
         </p>
         <a
           href="mailto:support@sotaverified.org?subject=API key request"

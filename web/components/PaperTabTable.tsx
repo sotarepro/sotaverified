@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { TabPaperRow } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
+import InlineHypeButton from "@/components/InlineHypeButton";
 import type { VerificationTier } from "@/lib/types";
 
 type Props = {
@@ -33,6 +34,17 @@ function buildUrl(baseHref: string, params: Record<string, string | number>): st
 
 function buildTabHref(baseHref: string, tab: string, pageSize: number): string {
   return buildUrl(baseHref, { tab, pageSize, page: 1 });
+}
+
+function stripLatex(text: string): string {
+  return text
+    .replace(/\$\$[\s\S]*?\$\$/g, " ")  // $$...$$ block math
+    .replace(/\$[^$]*?\$/g, " ")         // $...$ inline math
+    .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1") // \cmd{content} → content
+    .replace(/\\[a-zA-Z]+/g, " ")        // remaining \commands
+    .replace(/[{}]/g, "")                // stray braces
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function formatDate(published: string | null): string {
@@ -111,7 +123,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                           href={`/papers/${p.id}`}
                           className="font-medium text-blue-600 hover:text-blue-800 hover:underline line-clamp-2"
                         >
-                          {p.title}
+                          {stripLatex(p.title)}
                         </Link>
                       </td>
                       <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
@@ -133,8 +145,8 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                       <td className="px-4 py-2.5">
                         <VerificationBadge tier={p.verification as VerificationTier} />
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-gray-600">
-                        {p.upvote_count}
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        <InlineHypeButton paperId={p.id} initialCount={p.upvote_count} />
                       </td>
                       {tab === "verified" && (
                         <td className="px-4 py-2.5 text-right tabular-nums text-gray-400 text-xs">

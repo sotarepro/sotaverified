@@ -54,11 +54,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { paper_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value } = body;
 
-  if (!paper_id || !tier_claimed || !hardware_spec || !run_log_url) {
+  if (!paper_id || !tier_claimed || !hardware_spec) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  // Validate run_log_url: URL or plain text (pasted terminal output)
+  // Validate run_log_url: URL or plain text (pasted terminal output) — optional
   const ALLOWED_DOMAINS = [
     "github.com",
     "gist.github.com",
@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
     "colab.research.google.com",
     "huggingface.co",
   ];
-  if (typeof run_log_url !== "string" || run_log_url.length > 10000) {
+  if (run_log_url && (typeof run_log_url !== "string" || run_log_url.length > 10000)) {
     return NextResponse.json({ error: "Run log exceeds maximum length" }, { status: 400 });
   }
-  if (run_log_url.startsWith("http://") || run_log_url.startsWith("https://")) {
+  if (run_log_url && (run_log_url.startsWith("http://") || run_log_url.startsWith("https://"))) {
     try {
       const { hostname } = new URL(run_log_url);
       const ok = ALLOWED_DOMAINS.some((d) => hostname === d || hostname.endsWith("." + d));

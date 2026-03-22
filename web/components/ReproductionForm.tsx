@@ -19,7 +19,7 @@ const ALLOWED_URL_DOMAINS = [
 ];
 
 function validateRunLog(value: string): string | null {
-  if (!value.trim()) return "Run log is required";
+  if (!value.trim()) return null; // optional
   if (value.startsWith("http://") || value.startsWith("https://")) {
     try {
       const { hostname } = new URL(value);
@@ -172,13 +172,12 @@ export default function ReproductionForm({ paperId }: Props) {
             <label className="block text-xs font-medium text-gray-700 mb-1">
               Run log{" "}
               <span className="text-gray-400 font-normal">
-                (paste terminal output, or link to GitHub gist / wandb / colab)
+                (optional — paste terminal output, or link to GitHub gist / wandb / colab)
               </span>
             </label>
             <textarea
               value={runLog}
               onChange={(e) => setRunLog(e.target.value)}
-              required
               rows={4}
               placeholder={"Paste run output here, or enter a URL:\nhttps://gist.github.com/...\nhttps://wandb.ai/..."}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
