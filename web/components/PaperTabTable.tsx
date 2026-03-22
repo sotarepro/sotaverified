@@ -28,7 +28,7 @@ function buildUrl(baseHref: string, params: Record<string, string | number>): st
     : {};
   const merged = { ...base, ...params };
   const qs = new URLSearchParams(Object.entries(merged).map(([k, v]) => [k, String(v)]));
-  return `${url}?${qs}`;
+  return `${url}?${qs}#paper-table`;
 }
 
 function buildTabHref(baseHref: string, tab: string, pageSize: number): string {
@@ -53,7 +53,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
   const nextHref = page < totalPages ? buildUrl(baseHref, { tab, pageSize, page: page + 1 }) : null;
 
   return (
-    <section className="mb-8">
+    <section id="paper-table" className="mb-8 scroll-mt-16">
       {title && (
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
           {title}

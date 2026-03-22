@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount } from "@/lib/queries";
+
+export const dynamic = "force-dynamic";
 import type { AreaSummary } from "@/lib/types";
 import PaperTabTable from "@/components/PaperTabTable";
 
