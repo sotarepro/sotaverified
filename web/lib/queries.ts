@@ -38,7 +38,7 @@ export async function getTabPapers(
         LEFT JOIN upvotes u ON u.paper_id = p.id
         WHERE pt.task_id = ${scope.taskId}
         GROUP BY p.id
-        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        ORDER BY (COUNT(u.paper_id) + p.hype_score) DESC, p.published DESC NULLS LAST
         LIMIT ${limit}
       `;
     } else {
@@ -79,7 +79,7 @@ export async function getTabPapers(
         LEFT JOIN upvotes u ON u.paper_id = p.id
         WHERE t.area = ${scope.area}
         GROUP BY p.id
-        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        ORDER BY (COUNT(u.paper_id) + p.hype_score) DESC, p.published DESC NULLS LAST
         LIMIT ${limit}
       `;
     } else {
@@ -115,7 +115,7 @@ export async function getTabPapers(
         FROM papers p
         LEFT JOIN upvotes u ON u.paper_id = p.id
         GROUP BY p.id
-        ORDER BY upvote_count DESC, p.published DESC NULLS LAST
+        ORDER BY (COUNT(u.paper_id) + p.hype_score) DESC, p.published DESC NULLS LAST
         LIMIT ${limit}
       `;
     } else {
@@ -316,7 +316,7 @@ export async function getPaper(id: string): Promise<PaperDetail | null> {
 
 export async function getPaperCodeLinks(paperId: string): Promise<CodeLink[]> {
   return sql<CodeLink[]>`
-    SELECT repo_url, framework, is_official, mentioned_in_paper
+    SELECT repo_url, framework, is_official, mentioned_in_paper, stars, forks
     FROM paper_code_links
     WHERE paper_id = ${paperId}
     ORDER BY is_official DESC, mentioned_in_paper DESC

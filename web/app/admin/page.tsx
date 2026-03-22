@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import AdminActions from "./AdminActions";
+import AdminAuthorActions from "./AdminAuthorActions";
 
 function isAdmin(githubId: string | undefined): boolean {
   return !!githubId && githubId === process.env.ADMIN_GITHUB_ID;
@@ -13,6 +14,28 @@ export default async function AdminPage() {
   if (!isAdmin(session?.user?.github_id)) {
     notFound();
   }
+
+  const pendingAuthors = await sql<{
+    paper_id: string;
+    paper_title: string | null;
+    user_id: string;
+    username: string | null;
+    avatar_url: string | null;
+    created_at: string;
+  }[]>`
+    SELECT
+      pa.paper_id,
+      p.title AS paper_title,
+      pa.user_id,
+      u.username,
+      u.avatar_url,
+      pa.created_at::text
+    FROM paper_authors pa
+    LEFT JOIN papers p ON p.id = pa.paper_id
+    LEFT JOIN users u ON u.github_id = pa.user_id
+    WHERE pa.status = 'pending_admin'
+    ORDER BY pa.created_at ASC
+  `;
 
   const flagged = await sql<{
     id: number;
@@ -52,7 +75,36 @@ export default async function AdminPage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold tracking-tight mb-6">Admin — Flagged Reproductions</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-6">Admin</h1>
+
+      {/* Pending Author Claims */}
+      <section className="mb-10">
+        <h2 className="text-lg font-semibold mb-4">Pending Author Claims</h2>
+        {pendingAuthors.length === 0 ? (
+          <p className="text-gray-500 text-sm">No pending claims.</p>
+        ) : (
+          <div className="space-y-3">
+            {pendingAuthors.map((a) => (
+              <div
+                key={`${a.paper_id}-${a.user_id}`}
+                className="rounded-xl border border-gray-200 p-4 text-sm flex items-start justify-between gap-4"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {a.paper_title ?? a.paper_id}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    claimed by @{a.username ?? a.user_id} · {a.created_at.slice(0, 10)}
+                  </p>
+                </div>
+                <AdminAuthorActions paperId={a.paper_id} userId={a.user_id} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <h2 className="text-lg font-semibold mb-4">Flagged Reproductions</h2>
 
       {flagged.length === 0 ? (
         <p className="text-gray-500">Nothing in the queue.</p>

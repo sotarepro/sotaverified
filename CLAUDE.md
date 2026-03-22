@@ -34,6 +34,8 @@ reproduce.
 - Stage 3c ✅ DONE — junction tables populated, arxiv_backfill.py, arxiv_delta.py, submit page
 - Stage 3d ✅ DONE — reproductions table, ReproductionForm, ReproductionList, admin page, flag/upvote
 - Stage 3e ✅ DONE — About page, hero refresh with stats + agent snippet, nav links
+- Stage 3d-enrich ✅ DONE — enrichment pipeline: github_enrich.py, semantic_scholar_enrich.py, hype_seed.py, daily_update.py; star counts on paper detail; hype_score in "hyped" tab
+- Stage 3e-author ✅ DONE — paper_authors table, claim-author API, AuthorClaimButton, VerifiedAuthors component, admin author claim queue
 
 ---
 
@@ -191,6 +193,83 @@ reproduce.
 
 **Estimated monthly cost: ~$5-6 (Railway $5 + domain amortized)**
 
+### Stage 3d — Ingestion & Enrichment Pipeline
+
+**arXiv ingestion (run before going live):**
+- [ ] scripts/arxiv_backfill.py — backfill from 2025-07-01 to today
+  - Categories: cs.CV, cs.LG, cs.CL, cs.AI, cs.NE, stat.ML
+  - ON CONFLICT (arxiv_id) DO NOTHING — safe to re-run
+  - Shortcut: last 30 days only pre-launch, backfill gap async
+
+**Enrichment pipeline:**
+- [ ] scripts/semantic_scholar_enrich.py
+  - For papers missing code links, query Semantic Scholar API
+  - Store found repos in paper_code_links with source='semantic_scholar'
+  - Prioritize: enrich recent papers first (last 6 months),
+    then backfill older papers overnight
+- [ ] scripts/github_enrich.py
+  - For repos in paper_code_links, fetch star/fork counts
+  - Add columns to paper_code_links: stars INT, forks INT,
+    last_enriched_at TIMESTAMP
+  - Display stars on repo cards in paper detail page
+- [ ] scripts/hype_seed.py (ONE-TIME, run before launch)
+  - Convert star counts to initial hype scores:
+    10-100 stars → 1, 100-500 → 3, 500-2000 → 5, 2000+ → 10
+  - Max hype per paper capped at 10
+  - Run once to populate "Most Hyped" tab for launch
+  - After launch, all hype comes from organic user votes only
+  - Reset option if needed: TRUNCATE paper_hype and let it rebuild
+
+**Master script:**
+- [ ] scripts/daily_update.py — runs all steps in sequence:
+  1. arxiv_delta.py → new papers
+  2. semantic_scholar_enrich.py → code links for new papers
+  3. github_enrich.py → star counts for new repos
+  4. hype_seed.py → initial hype for papers with zero organic votes
+- [ ] GitHub Action runs daily_update.py on cron (Stage 3g)
+
+**Community paper submission:**
+- [ ] "Submit a Paper" — arXiv ID input, pulls metadata, deduplicates
+  - Triggers enrichment for submitted paper immediately
+
+**Rate limits to respect:**
+- arXiv OAI-PMH: 1 req/sec max
+- Semantic Scholar: 100 req/sec with API key
+- GitHub: 5000 req/hour with token
+
+**Env vars (add to .env.local and Vercel):**
+- SEMANTIC_SCHOLAR_KEY=free key from semanticscholar.org/product/api
+- GITHUB_TOKEN=personal access token with public_repo read scope
+
+### Stage 3e — Author Verification
+
+**Key insight:** GitHub OAuth + Semantic Scholar repo enrichment enables
+automatic author verification without manual review.
+
+- [ ] paper_authors table:
+  - paper_id, user_id, verified BOOLEAN, verified_at,
+    verification_method TEXT (github_contributor / manual_admin)
+- [ ] "I authored this paper" button on paper detail page (login required)
+- [ ] Verification flow:
+  1. Paper must have an official repo (is_official=true in paper_code_links)
+  2. User clicks "I authored this"
+  3. Backend: GET /repos/{owner}/{repo}/contributors via GitHub API
+  4. If user's github_username is in contributor list → auto-verified
+  5. User added to paper_authors with verified=true,
+     verification_method='github_contributor'
+  6. Verified authors can submit benchmark scores at Tier 2 automatically
+     (trusted without manual review, still logged and visible)
+- [ ] Verified author badge on paper detail page: "Author verified via
+  GitHub" with the author's avatar
+- [ ] If paper has no official repo OR user is not a contributor:
+  - Submission goes to pending queue for admin review
+  - Status: 'pending_admin' in paper_authors table
+
+**Edge cases (handle post-launch):**
+- Author didn't push code → vouching from other verified authors
+- Multiple official repos → check contributors across all
+- Org-owned repos → check org membership as fallback
+
 ### Stage 3g — Automation (first week post-launch)
 - [ ] GitHub Action: .github/workflows/arxiv-update.yml
   - Cron weekly + manual trigger, connects to Railway DB
@@ -347,6 +426,85 @@ CTA:  [Browse Benchmarks]  [Sign in with GitHub]
 - Local and production NEXTAUTH_SECRET must be different values
 - Security headers configured in next.config.js (CSP, HSTS, X-Frame-Options)
 - npm audit clean before every deploy
+
+## User Journey & Page Hierarchy
+
+### Homepage
+- Hero: headline, tagline, CTAs (Browse Benchmarks / Sign in with GitHub)
+- Paper table with tab switching:
+  - "Recently Added" — papers by ingestion date DESC, limit 10
+  - "Most Hyped" — papers by upvote count DESC, limit 10
+    (placeholder until Stage 3b, show Recently Added in both tabs)
+  - "Needs Verification" — papers sorted by (upvotes DESC) WHERE
+    verification_tier = 0, limit 10. Call to action: high-interest
+    papers nobody has verified yet.
+  - Each row: title (links to /papers/[id]), date, task tags,
+    verification tier badge, hype/upvote count
+  - "View all" link below each tab
+- Research area category grid below the table (existing Stage 2.5 design)
+
+### Category Page (e.g., Computer Vision)
+- Same tab-switching table scoped to this category
+  (Recently Added / Most Hyped / Needs Verification)
+- Below: task cards for this category, linking to task pages
+
+### Task Page (e.g., Image Classification)
+- Same tab-switching table scoped to this task
+  - Scoped means: papers that have this task in their tasks[] array
+  - Hype is on the paper itself, not tied to dataset performance
+- Below: dataset leaderboards
+  - Datasets sorted by number of submissions (most populated first)
+  - Default view shows the top dataset's leaderboard expanded
+  - Each leaderboard row: rank, paper title (links to /papers/[id]),
+    claimed metric (author-reported), verified metric (if any
+    reproduction exists — show best verified result),
+    verification tier badge
+  - Leaderboard ranks by claimed metric by default
+  - Future: toggle "Rank by claimed" vs "Rank by verified"
+
+### Paper Detail Page (the canonical hub)
+- Hero: title, authors, published date, verification tier badge
+  (prominent), hype count + hype button, arXiv external link button
+- Verification CTA banner:
+  - Tier 0: "Unverified — Be the first to reproduce this paper"
+  - Tier 1+: shows current tier with explanation
+  - Links to reproduction form (Stage 3d), disabled until then
+- Code repositories section (PROMINENT — first content after CTA):
+  - Query paper_code_links for this paper
+  - Each repo as card: GitHub URL, is_official badge, framework badge
+    (PyTorch/TF/JAX/Other), opens in new tab
+  - Empty state: "No code available yet"
+- Benchmark results section:
+  - All leaderboard_results for this paper, grouped by task → dataset
+  - Each entry: dataset name, metric name, claimed value,
+    verified value (from reproductions if any), rank, tier badge
+  - Gap between claimed and verified is valuable signal — display it
+- Reproduction history section:
+  - All reproduction submissions for this paper
+  - Each: submitter username, tier claimed, hardware, metric values
+    (from notes), run log link, date, status
+  - Empty state: "No reproductions yet — be the first to verify"
+
+### Search
+- Global search bar in nav (always visible)
+- Returns both tasks and papers
+- Paper results link to /papers/[id], task results link to /tasks/[id]
+
+### Key Routing Principle
+Paper titles ALWAYS link to /papers/[id] throughout the entire site —
+homepage tables, leaderboard rows, search results, category pages.
+arXiv is an external link that appears ONLY on the paper detail page.
+We are the hub, not a pass-through.
+
+### Metrics & Verification Philosophy
+- Leaderboards rank by the author's CLAIMED metric
+- When reproductions exist, display the VERIFIED metric alongside
+- The gap between claimed and verified is the core signal
+- Hardware is captured but not strictly matched — any reproduction
+  on any hardware is valuable at this stage
+- Each reproduction displayed individually with hardware context
+- Future: aggregate metrics once volume exists
+- Future: hardware-normalized rankings (accuracy per FLOP / per VRAM)
 
 ---
 

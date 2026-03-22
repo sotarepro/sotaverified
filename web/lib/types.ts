@@ -57,4 +57,6 @@ export interface CodeLink {
   framework: string | null;
   is_official: boolean;
   mentioned_in_paper: boolean;
+  stars: number | null;
+  forks: number | null;
 }

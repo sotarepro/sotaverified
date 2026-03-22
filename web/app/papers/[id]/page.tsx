@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import sql from "@/lib/db";
 import {
   getPaper,
   getPaperCodeLinks,
@@ -14,6 +15,8 @@ import UpvoteButton from "@/components/UpvoteButton";
 import CopyJsonButton from "@/components/CopyJsonButton";
 import ReproductionForm from "@/components/ReproductionForm";
 import ReproductionList from "@/components/ReproductionList";
+import AuthorClaimButton from "@/components/AuthorClaimButton";
+import VerifiedAuthors from "@/components/VerifiedAuthors";
 import type { VerificationTier } from "@/lib/types";
 
 export default async function PaperPage({
@@ -32,6 +35,16 @@ export default async function PaperPage({
     getPaperLeaderboardEntries(id),
     getPaperUpvoteInfo(id, userId),
   ]);
+
+  // Fetch user's existing author claim for initial state
+  let userClaim: { status: string } | null = null;
+  if (userId) {
+    const rows = await sql<[{ status: string }]>`
+      SELECT status FROM paper_authors
+      WHERE paper_id = ${id} AND user_id = ${userId}
+    `;
+    userClaim = rows[0] ?? null;
+  }
 
   if (!paper) notFound();
 
@@ -66,10 +79,18 @@ export default async function PaperPage({
 
       {/* Authors */}
       {paper.authors.length > 0 && (
-        <p className="text-sm text-gray-600 mb-5">
+        <p className="text-sm text-gray-600 mb-3">
           {paper.authors.join(", ")}
         </p>
       )}
+
+      {/* Verified authors display */}
+      <VerifiedAuthors paperId={id} />
+
+      {/* Author claim button */}
+      <div className="mb-5">
+        <AuthorClaimButton paperId={id} initialClaim={userClaim} />
+      </div>
 
       {/* Links row */}
       <div className="flex flex-wrap gap-2 mb-6">
@@ -155,6 +176,11 @@ export default async function PaperPage({
                   {cl.framework && (
                     <span className="rounded px-1.5 py-0.5 text-xs bg-purple-50 text-purple-700 border border-purple-200">
                       {cl.framework}
+                    </span>
+                  )}
+                  {cl.stars != null && (
+                    <span className="rounded px-1.5 py-0.5 text-xs bg-gray-50 text-gray-500 border border-gray-200">
+                      ★ {cl.stars.toLocaleString()}
                     </span>
                   )}
                 </div>
