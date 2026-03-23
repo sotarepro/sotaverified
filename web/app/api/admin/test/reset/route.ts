@@ -27,6 +27,9 @@ export async function POST() {
   // Delete test users (cascades: upvotes, reproductions, author claims, etc.)
   await sql`DELETE FROM users WHERE is_test = true`;
 
+  // Delete leaderboard_results for test papers (FK is NO ACTION, not CASCADE)
+  await sql`DELETE FROM leaderboard_results WHERE paper_id IN (SELECT id FROM papers WHERE is_test = true)`;
+
   // Delete test papers (cascades: paper_code_links, paper_tasks, etc.)
   await sql`DELETE FROM papers WHERE is_test = true`;
 

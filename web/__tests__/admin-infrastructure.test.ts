@@ -215,12 +215,13 @@ describe("POST /api/admin/test/reset", () => {
     mockGSS.mockResolvedValueOnce(adminSession());
     mockSql.mockResolvedValueOnce([]); // DELETE activity_log
     mockSql.mockResolvedValueOnce([]); // DELETE users
+    mockSql.mockResolvedValueOnce([]); // DELETE leaderboard_results
     mockSql.mockResolvedValueOnce([]); // DELETE papers
     const res = await RESET_POST();
     const json = await res.json();
     expect(res.status).toBe(200);
     expect(json.ok).toBe(true);
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    expect(mockSql).toHaveBeenCalledTimes(4);
     expect(mockCookieStore.delete).toHaveBeenCalledWith("sv_impersonate");
   });
 
