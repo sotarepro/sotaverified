@@ -257,8 +257,22 @@ GITHUB_SECRET=your_github_oauth_app_client_secret
 NEXTAUTH_SECRET=run: openssl rand -base64 32
 NEXTAUTH_URL=http://localhost:3000
 ADMIN_GITHUB_ID=your_numeric_github_id
-GITHUB_MIN_ACCOUNT_AGE_DAYS=60
 ENABLE_TEST_TOOLS=true         ← dev only, never in production
+
+# Thresholds (change without code deploy — restart server to pick up)
+GITHUB_MIN_ACCOUNT_AGE_DAYS=30
+UPVOTES_TO_VERIFY=1
+FLAGS_TO_HIDE=2
+PROMOTES_TO_ACTIVATE=1
+AGENT_SUBMISSIONS_PER_DAY=2
+REP_TIER_1=2
+REP_TIER_2=5
+REP_TIER_3=10
+REP_TIER_4=15
+REP_METRIC_MATCH_BONUS=5
+REP_PER_UPVOTE=1
+REP_AUTHOR_VERIFIED=5
+REP_SPAM_PENALTY=-20
 ```
 
 **Production (Vercel dashboard):**
@@ -270,6 +284,21 @@ NEXTAUTH_SECRET=different_from_local
 NEXTAUTH_URL=https://sotaverified.org
 ADMIN_GITHUB_ID=same
 # ENABLE_TEST_TOOLS — omit entirely in production
+
+# Thresholds (same defaults as lib/thresholds.ts — override here to tune)
+GITHUB_MIN_ACCOUNT_AGE_DAYS=30
+UPVOTES_TO_VERIFY=1
+FLAGS_TO_HIDE=2
+PROMOTES_TO_ACTIVATE=1
+AGENT_SUBMISSIONS_PER_DAY=2
+REP_TIER_1=2
+REP_TIER_2=5
+REP_TIER_3=10
+REP_TIER_4=15
+REP_METRIC_MATCH_BONUS=5
+REP_PER_UPVOTE=1
+REP_AUTHOR_VERIFIED=5
+REP_SPAM_PENALTY=-20
 ```
 
 **Scripts (shell env, not .env.local):**
