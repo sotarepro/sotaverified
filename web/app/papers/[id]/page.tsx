@@ -185,10 +185,32 @@ export default async function PaperPage({
           </a>
         </div>
       )}
-      {badgeData.badge === "community_verified" && (
+      {(badgeData.badge === "code_available" || badgeData.badge === "author_verified") && badgeData.reproduction_count === 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-6 flex items-center justify-between gap-4">
+          <p className="text-sm text-blue-800">
+            {badgeData.badge === "author_verified"
+              ? <><span className="font-semibold">Author Verified</span> — Help verify by reproducing this paper.</>
+              : <><span className="font-semibold">Code Available</span> — Be the first to reproduce this paper.</>}
+          </p>
+          <a
+            href="#reproduce"
+            className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+          >
+            Reproduce
+          </a>
+        </div>
+      )}
+      {badgeData.badge === "community_verified" && badgeData.verification_score < 30 && (
+        <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 mb-6">
+          <p className="text-sm text-teal-800">
+            <span className="font-semibold">Community Verified ({badgeData.reproduction_count})</span> — Help verify: review reproductions and upvote if they look legit.
+          </p>
+        </div>
+      )}
+      {badgeData.badge === "community_verified" && badgeData.verification_score >= 30 && (
         <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 mb-6">
           <p className="text-sm text-green-800">
-            <span className="font-semibold">Community Verified</span> — This paper has been reproduced by community members.
+            <span className="font-semibold">Community Verified ({badgeData.reproduction_count})</span> — This paper has been reproduced by community members.
           </p>
         </div>
       )}

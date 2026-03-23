@@ -83,34 +83,16 @@ describe("signIn callback", () => {
     expect(mockSql).not.toHaveBeenCalled();
   });
 
-  it("flags accounts younger than GITHUB_MIN_ACCOUNT_AGE_DAYS", async () => {
-    // Account created yesterday
+  it("allows approved users through even if account is young", async () => {
     const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
     const profile = makeGithubProfile({ created_at: yesterday.toISOString() });
 
-    // Capture the sql call args via the mock
-    let capturedArgs: unknown[] = [];
-    mockSql.mockImplementation((...args: unknown[]) => {
-      capturedArgs = args;
-      return Promise.resolve([]);
-    });
-
-    await signIn({
-      user: { id: "12345" },
-      account: makeAccount(),
-      profile,
-      credentials: undefined,
-    });
-
-    // Should still allow sign-in (soft gate)
-    // The DB call should have happened (upsert ran)
-    expect(mockSql).toHaveBeenCalled();
-    void capturedArgs; // suppress unused warning — content tested via DB call count
-  });
-
-  it("does NOT hard-reject new accounts (soft gate only)", async () => {
-    const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
-    const profile = makeGithubProfile({ created_at: yesterday.toISOString() });
+    // allowlist check → found (approved)
+    mockSql.mockResolvedValueOnce([{ id: 1 }]);
+    // upsert user
+    mockSql.mockResolvedValueOnce([]);
+    // activity_log
+    mockSql.mockResolvedValueOnce([]);
 
     const result = await signIn({
       user: { id: "12345" },
@@ -120,6 +102,24 @@ describe("signIn callback", () => {
     });
 
     expect(result).toBe(true);
+  });
+
+  it("hard-rejects new accounts and creates sign-up request", async () => {
+    const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
+    const profile = makeGithubProfile({ created_at: yesterday.toISOString() });
+    // allowlist check → empty (not approved)
+    mockSql.mockResolvedValueOnce([]);
+    // INSERT sign_up_requests
+    mockSql.mockResolvedValueOnce([]);
+
+    const result = await signIn({
+      user: { id: "12345" },
+      account: makeAccount(),
+      profile,
+      credentials: undefined,
+    });
+
+    expect(result).toBe("/auth/too-new");
   });
 });
 

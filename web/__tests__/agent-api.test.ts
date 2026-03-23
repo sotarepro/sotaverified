@@ -74,15 +74,15 @@ describe("POST /api/v1/reproductions", () => {
 
   // ── Rate Limiting (flat 1/day per key) ────────────────────────────────
 
-  it("rate-limits at 1 submission per day", async () => {
+  it("rate-limits at 2 submissions per day", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);    // key lookup
-    mockSql.mockResolvedValueOnce([{ recent_count: 1 }]);            // already hit 1/day
+    mockSql.mockResolvedValueOnce([{ recent_count: 2 }]);            // already hit 2/day
     mockSql.mockResolvedValueOnce([]);                                // logEvent for rate_limit_hit
 
     const res = await POST(makeReq(validBody));
     expect(res.status).toBe(429);
     const json = await res.json();
-    expect(json.limit).toBe(1);
+    expect(json.limit).toBe(2);
     expect(json.window_seconds).toBe(86400);
   });
 

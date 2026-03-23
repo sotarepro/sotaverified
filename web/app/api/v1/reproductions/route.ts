@@ -4,8 +4,8 @@ import { logEvent } from "@/lib/activity";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
-// Flat rate limit: 1 submission per day per API key
-const RATE_LIMIT = { count: 1, windowSeconds: 86400 };
+// Flat rate limit: 2 submissions per day per API key
+const RATE_LIMIT = { count: 2, windowSeconds: 86400 };
 
 export async function POST(req: NextRequest) {
   // Auth: check Authorization: Bearer <key> header

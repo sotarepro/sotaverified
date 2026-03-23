@@ -40,15 +40,6 @@ export async function POST(req: NextRequest) {
 
   const userId = session.user.github_id;
 
-  // Block self-hype: authors cannot hype their own papers
-  const authorCheck = await sql`
-    SELECT 1 FROM paper_authors
-    WHERE paper_id = ${paper_id} AND user_id = ${userId} AND status = 'verified'
-  `;
-  if (authorCheck.length > 0) {
-    return NextResponse.json({ error: "You cannot hype your own paper" }, { status: 403 });
-  }
-
   // Check if already upvoted
   const existing = await sql`
     SELECT 1 FROM upvotes WHERE paper_id = ${paper_id} AND user_id = ${userId}

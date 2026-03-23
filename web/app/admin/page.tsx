@@ -5,6 +5,7 @@ import sql from "@/lib/db";
 import Link from "next/link";
 import AdminActions from "./AdminActions";
 import AdminAuthorActions from "./AdminAuthorActions";
+import { SignupAction, ClearAllSignups } from "./SignupActions";
 import TestTools from "./TestTools";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 
@@ -143,12 +144,57 @@ export default async function AdminPage({
     ORDER BY r.created_at DESC
   `;
 
+  // Pending sign-up requests
+  const pendingSignups = await sql<{
+    id: number;
+    github_id: string;
+    github_username: string;
+    avatar_url: string | null;
+    account_age_days: number;
+    created_at: string;
+  }[]>`
+    SELECT id, github_id, github_username, avatar_url, account_age_days, created_at::text
+    FROM sign_up_requests
+    WHERE status = 'pending'
+    ORDER BY created_at DESC
+    LIMIT 50
+  `;
+
   return (
     <div className="max-w-4xl">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Admin</h1>
 
       {/* Test Tools (dev/staging only) */}
       {isTestToolsEnabled() && <TestTools />}
+
+      {/* Section 0: Pending Sign-ups */}
+      {pendingSignups.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg font-semibold mb-4">
+            Pending Sign-ups{" "}
+            <span className="ml-2 rounded-full bg-amber-100 text-amber-700 text-xs px-2 py-0.5">
+              {pendingSignups.length}
+            </span>
+          </h2>
+          <div className="space-y-2">
+            {pendingSignups.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm">
+                {s.avatar_url && (
+                  <img src={s.avatar_url} alt="" className="w-6 h-6 rounded-full" />
+                )}
+                <span className="font-medium">@{s.github_username}</span>
+                <span className="text-gray-500">account age: {s.account_age_days} days</span>
+                <span className="text-gray-400 text-xs">{timeAgo(s.created_at)}</span>
+                <span className="ml-auto flex gap-2">
+                  <SignupAction id={s.id} action="approve" />
+                  <SignupAction id={s.id} action="reject" />
+                </span>
+              </div>
+            ))}
+            <ClearAllSignups />
+          </div>
+        </section>
+      )}
 
       {/* Section 1: Pending Author Claims */}
       <section className="mb-10">

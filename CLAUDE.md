@@ -99,12 +99,18 @@ reported results actually reproduce — for humans and autonomous agents alike.
 
 ## Design Decisions & Implementation Notes
 
-### Reputation & Trust
-- Trusted threshold: **rep ≥ 30** (not 50 — lowered to make trust achievable early)
+### Access Model (simplified for launch)
+- Sign-in requires GitHub account >= 30 days old (GITHUB_MIN_ACCOUNT_AGE_DAYS=30)
+- Rejected sign-ins create pending row in `sign_up_requests`; admin can approve/reject
+- Admin (ADMIN_GITHUB_ID) exempt from age check
+- Once signed in: full access to all features, no reputation gates
+- Reputation tracked and displayed but does NOT gate any features at launch
 - Tier-based rep awards on reproduction verified: T1:+5, T2:+10, T3:+15, T4:+20
-- Flag weight: trusted users (rep≥30) trigger auto-hide at **2 flags** (regular: 3)
-- Upvote auto-verify: reproduction reaches "verified" when 3+ upvotes from rep≥30 users
+- Flag auto-hide: **3 flags from any users** (no trusted flag weight)
+- Upvote auto-verify: reproduction reaches "verified" when **3+ upvotes from any users**
 - Penalty for spam: -20 rep when reproduction auto-hidden at 3 flags
+- Any logged-in user can promote agent reproductions (no rep gate)
+- Authors CAN hype their own papers (no self-hype restriction on papers)
 
 ### Impersonation / Test Tools
 - Enabled when: `NODE_ENV=development` OR `ENABLE_TEST_TOOLS=true`
@@ -120,9 +126,9 @@ reported results actually reproduce — for humans and autonomous agents alike.
 
 ### Agent Write API
 - `POST /api/v1/reproductions` — Bearer token auth via SHA-256 key hash in api_keys table
-- Rate limits by reputation: rep<30 → 1/day, rep 30–200 → 5/hr, rep 200+ → 20/hr
+- Rate limit: flat **2 submissions/day** per API key (increase post-launch if needed)
 - Agent submissions use `source='api'`, `status='agent_pending'`
-- Trusted users (rep≥30) can promote agent_pending → community via PromoteButton
+- Any logged-in user can promote agent_pending → community via PromoteButton
 - Admin sees agent submissions in a dedicated section (separate from community reproductions)
 
 ### Activity Log
