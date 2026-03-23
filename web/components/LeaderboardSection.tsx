@@ -57,7 +57,7 @@ export default function LeaderboardSection({
             <thead>
               <tr className="bg-white border-b border-gray-100 text-left">
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-8 text-right">#</th>
-                <th className="px-4 py-2.5 font-medium text-gray-600">Paper</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600">Model</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Metric</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 text-right">Claimed</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600 text-right">Verified</th>
@@ -74,7 +74,9 @@ export default function LeaderboardSection({
                         href={`/papers/${row.paper_id}`}
                         className="text-blue-600 hover:underline line-clamp-1"
                       >
-                        {stripLatex(row.paper_title ?? row.paper_id ?? "")}
+                        {row.model_name
+                          ? stripLatex(row.model_name)
+                          : stripLatex(row.paper_title ?? row.paper_id ?? "")}
                       </Link>
                     ) : (
                       <span className="text-gray-500">{row.model_name}</span>
