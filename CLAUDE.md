@@ -166,6 +166,11 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Reproduction tiers: 1 (code runs), 2 (metrics match), 3 (independent) — Tier 4 removed
   (Tier 4 "multi-verified" is paper-level, not individually claimable)
 
+### Code Links Display
+- Paper detail page shows top 10 repos by stars, with "Show all N repos" expand button
+- Repos sorted by: is_official DESC, stars DESC, mentioned_in_paper DESC
+- CodeLinksList client component handles expand/collapse toggle
+
 ### Submit Page Removed
 - `/submit` page, `SubmitPaperForm` component, and `/api/submit-paper` route were removed
 - Paper ingestion is via scripts only (arxiv_backfill.py, arxiv_delta.py)
@@ -189,6 +194,18 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - No hype sort on leaderboard (hype is paper-level, not result-level)
 - Datasets ordered by submission_count DESC within each leaderboard view
 
+### Performance Notes
+- Area-scoped tab queries use EXISTS instead of JOIN+DISTINCT ON (~300ms vs ~600ms)
+- Admin page queries run in parallel via Promise.all
+- Index on activity_log(paper_id) WHERE paper_id IS NOT NULL for Most Active tab
+- Indexes: idx_tasks_area, paper_tasks_pkey (paper_id, task_id), paper_tasks_task_idx,
+  idx_papers_recent_sort, idx_papers_hype_score, idx_papers_verification_score,
+  activity_log_created_at_idx, idx_activity_log_paper_id
+
+### Data Cleanup Scripts
+- `scripts/clean_methods_spam.py` — removes SEO spam from methods table (phone numbers,
+  customer service entries, brand spam). Idempotent, safe to re-run. Run once pre-launch.
+
 ---
 
 ## Database Schema
@@ -199,7 +216,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
     tasks TEXT[], methods TEXT[], verification verification_tier DEFAULT 'unverified',
     hype_score INT DEFAULT 0, verification_score INT DEFAULT 0, is_test BOOLEAN DEFAULT false
 - `tasks` — 4,818 rows (11 research areas, no General ML)
-- `methods` — 8,580 rows
+- `methods` — ~4,500 rows (8,580 original minus 4,073 spam entries cleaned via clean_methods_spam.py)
 - `datasets` — 18,522 rows
 - `leaderboard_results` — 59,758 rows, metrics JSONB
 - `paper_code_links` — 242k rows
@@ -211,9 +228,10 @@ reported results actually reproduce — for humans and autonomous agents alike.
 ### Tables added in launch sprint
 - `users` — github_id TEXT PK, username, email, avatar_url, account_created_at,
   is_flagged_new_account BOOLEAN DEFAULT false, reputation_score INT DEFAULT 0,
-  is_test BOOLEAN DEFAULT false, created_at
+  is_test BOOLEAN DEFAULT false, is_system BOOLEAN DEFAULT false, created_at
+  - `is_system=true` for pwc-import-bot (excluded from leaderboard/profiles)
 - `upvotes` — paper_id, user_id, created_at (UNIQUE paper_id+user_id)
-- `reproductions` — id SERIAL PK, paper_id, user_id, tier_claimed (1-4),
+- `reproductions` — id SERIAL PK, paper_id, user_id, tier_claimed (1-3),
   hardware_spec, run_log_url, notes, upvote_count INT DEFAULT 0,
   flag_count INT DEFAULT 0, status TEXT DEFAULT 'community',
   actual_metric_name TEXT, actual_metric_value FLOAT,
