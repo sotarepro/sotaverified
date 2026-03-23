@@ -1,5 +1,6 @@
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
+import { THRESHOLDS, tierRepGain } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -29,6 +30,7 @@ export async function POST(
   `;
 
   if (existing.length > 0) {
+    // Un-upvote
     await sql`
       DELETE FROM reproduction_upvotes
       WHERE reproduction_id = ${reproId} AND user_id = ${userId}
@@ -41,6 +43,7 @@ export async function POST(
     `;
     return NextResponse.json({ upvoted: false, count: r.upvote_count });
   } else {
+    // Upvote
     await sql`
       INSERT INTO reproduction_upvotes (reproduction_id, user_id)
       VALUES (${reproId}, ${userId})
@@ -49,18 +52,41 @@ export async function POST(
       UPDATE reproductions SET upvote_count = upvote_count + 1 WHERE id = ${reproId}
     `;
 
-    const [r] = await sql<[{ upvote_count: number; status: string; user_id: string; tier_claimed: number }]>`
-      SELECT upvote_count, status, user_id, tier_claimed FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ upvote_count: number; status: string; user_id: string; tier_claimed: number; dataset_id: string | null; actual_metric_value: number | null; paper_id: string }]>`
+      SELECT upvote_count, status, user_id, tier_claimed, dataset_id, actual_metric_value, paper_id
+      FROM reproductions WHERE id = ${reproId}
     `;
 
-    // Auto-verify at 3+ upvotes from any users
-    if (r.upvote_count >= 3 && r.status === "community") {
+    // Award +REP_PER_UPVOTE to submitter for every upvote
+    await sql`
+      UPDATE users SET reputation_score = reputation_score + ${THRESHOLDS.REP_PER_UPVOTE}
+      WHERE github_id = ${r.user_id}
+    `;
+
+    // Auto-verify at UPVOTES_TO_VERIFY threshold
+    if (r.upvote_count >= THRESHOLDS.UPVOTES_TO_VERIFY && r.status === "community") {
       await sql`
         UPDATE reproductions SET status = 'verified' WHERE id = ${reproId}
       `;
       // Award tier-based rep to reproduction author
-      const tier = r.tier_claimed;
-      const repGain = tier === 4 ? 20 : tier === 3 ? 15 : tier === 2 ? 10 : 5;
+      let repGain = tierRepGain(r.tier_claimed);
+
+      // Bonus if metric within 5% of claimed value
+      if (r.actual_metric_value != null && r.dataset_id) {
+        const [claimed] = await sql<[{ best_metric_value: number | null }]>`
+          SELECT best_metric_value FROM leaderboard_results
+          WHERE paper_id = ${r.paper_id} AND dataset_id = ${r.dataset_id}
+            AND best_metric_value IS NOT NULL
+          ORDER BY best_metric_value DESC LIMIT 1
+        `;
+        if (claimed?.best_metric_value != null && claimed.best_metric_value !== 0) {
+          const pct = Math.abs(r.actual_metric_value - claimed.best_metric_value) / Math.abs(claimed.best_metric_value);
+          if (pct <= 0.05) {
+            repGain += THRESHOLDS.REP_METRIC_MATCH_BONUS;
+          }
+        }
+      }
+
       await sql`
         UPDATE users SET reputation_score = reputation_score + ${repGain}
         WHERE github_id = ${r.user_id}

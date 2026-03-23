@@ -4,8 +4,7 @@ import { logEvent } from "@/lib/activity";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
-// Flat rate limit: 2 submissions per day per API key
-const RATE_LIMIT = { count: 2, windowSeconds: 86400 };
+import { THRESHOLDS } from "@/lib/thresholds";
 
 export async function POST(req: NextRequest) {
   // Auth: check Authorization: Bearer <key> header
@@ -26,7 +25,8 @@ export async function POST(req: NextRequest) {
   }
   const userId = keyRows[0].user_id;
 
-  const { count: limitCount, windowSeconds } = RATE_LIMIT;
+  const limitCount = THRESHOLDS.AGENT_SUBMISSIONS_PER_DAY;
+  const windowSeconds = 86400;
 
   // Check rate limit using activity_log
   const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();

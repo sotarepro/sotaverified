@@ -2,6 +2,7 @@ import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { logEvent } from "@/lib/activity";
+import { THRESHOLDS } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -59,16 +60,15 @@ export async function POST(
       metadata: { reproduction_id: reproId, flag_count: r.flag_count },
     });
 
-    // Auto-hide at 3 flags from any users
-    const shouldHide = r.flag_count >= 3;
+    // Auto-hide at FLAGS_TO_HIDE flags
+    const shouldHide = r.flag_count >= THRESHOLDS.FLAGS_TO_HIDE;
 
     if (shouldHide && r.status !== 'hidden') {
       await sql`
         UPDATE reproductions SET status = 'hidden' WHERE id = ${reproId}
       `;
-      // Penalize author: -20 rep
       await sql`
-        UPDATE users SET reputation_score = reputation_score - 20
+        UPDATE users SET reputation_score = reputation_score + ${THRESHOLDS.REP_SPAM_PENALTY}
         WHERE github_id = ${r.user_id}
       `;
       await recomputeVerificationScore(r.paper_id);

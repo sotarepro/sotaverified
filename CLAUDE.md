@@ -99,18 +99,20 @@ reported results actually reproduce — for humans and autonomous agents alike.
 
 ## Design Decisions & Implementation Notes
 
-### Access Model (simplified for launch)
-- Sign-in requires GitHub account >= 30 days old (GITHUB_MIN_ACCOUNT_AGE_DAYS=30)
-- Rejected sign-ins create pending row in `sign_up_requests`; admin can approve/reject
+### Access Model & Thresholds
+- All thresholds in `lib/thresholds.ts` — single source of truth, env-configurable
+- Sign-in: GitHub account >= 30 days (GITHUB_MIN_ACCOUNT_AGE_DAYS=30)
+- Rejected sign-ins create pending row in `sign_up_requests`; admin approve/reject
 - Admin (ADMIN_GITHUB_ID) exempt from age check
 - Once signed in: full access to all features, no reputation gates
-- Reputation tracked and displayed but does NOT gate any features at launch
-- Tier-based rep awards on reproduction verified: T1:+5, T2:+10, T3:+15, T4:+20
-- Flag auto-hide: **3 flags from any users** (no trusted flag weight)
-- Upvote auto-verify: reproduction reaches "verified" when **3+ upvotes from any users**
-- Penalty for spam: -20 rep when reproduction auto-hidden at 3 flags
-- Any logged-in user can promote agent reproductions (no rep gate)
-- Authors CAN hype their own papers (no self-hype restriction on papers)
+- Auto-verify: **1 upvote** (UPVOTES_TO_VERIFY=1) flips reproduction to 'verified'
+- Flag auto-hide: **2 flags** (FLAGS_TO_HIDE=2) from any users
+- Rep on verify: T1:+2, T2:+5, T3:+10, T4:+15 + metric match bonus +5
+- Rep per upvote: +1 to submitter per upvote (uncapped)
+- Rep author claim: +5 (REP_AUTHOR_VERIFIED=5)
+- Spam penalty: -20 (REP_SPAM_PENALTY=-20)
+- Agent rate limit: 2/day (AGENT_SUBMISSIONS_PER_DAY=2)
+- Authors CAN hype their own papers
 
 ### Impersonation / Test Tools
 - Enabled when: `NODE_ENV=development` OR `ENABLE_TEST_TOOLS=true`

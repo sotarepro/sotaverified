@@ -1,6 +1,7 @@
 import type { NextAuthOptions, Profile } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import sql from "./db";
+import { THRESHOLDS } from "./thresholds";
 
 // GitHub's profile object includes created_at which isn't in the base Profile type
 interface GithubProfile extends Profile {
@@ -29,10 +30,7 @@ declare module "next-auth/jwt" {
   }
 }
 
-const MIN_AGE_DAYS = parseInt(
-  process.env.GITHUB_MIN_ACCOUNT_AGE_DAYS ?? "30",
-  10
-);
+const MIN_AGE_DAYS = THRESHOLDS.GITHUB_MIN_ACCOUNT_AGE_DAYS;
 
 export const authOptions: NextAuthOptions = {
   providers: [

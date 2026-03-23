@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { tierRepGain } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
 function isAdmin(githubId: string | undefined): boolean {
@@ -32,7 +33,7 @@ export async function PATCH(
       SELECT user_id, status, tier_claimed, paper_id FROM reproductions WHERE id = ${reproId}
     `;
     if (r) {
-      const repGain = r.tier_claimed === 4 ? 20 : r.tier_claimed === 3 ? 15 : r.tier_claimed === 2 ? 10 : 5;
+      const repGain = tierRepGain(r.tier_claimed);
       await sql`
         UPDATE users SET reputation_score = reputation_score + ${repGain}
         WHERE github_id = ${r.user_id}
