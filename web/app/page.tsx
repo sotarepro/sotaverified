@@ -20,11 +20,9 @@ const AREA_COLORS: Record<string, { bg: string; border: string; badge: string; d
   "Foundations & Efficiency":        { bg: "bg-slate-50",  border: "border-slate-200", badge: "bg-slate-100 text-slate-700", dot: "bg-slate-500"  },
   "Generative Models":               { bg: "bg-pink-50",   border: "border-pink-200",  badge: "bg-pink-100 text-pink-700",  dot: "bg-pink-500"   },
   "Multimodal & Vision-Language":    { bg: "bg-violet-50", border: "border-violet-200",badge: "bg-violet-100 text-violet-700",dot: "bg-violet-500" },
-  "Code & Math":                     { bg: "bg-amber-50",  border: "border-amber-200", badge: "bg-amber-100 text-amber-700", dot: "bg-amber-500"  },
-  "General ML":                      { bg: "bg-gray-50",   border: "border-gray-200",  badge: "bg-gray-100 text-gray-700",  dot: "bg-gray-400"   },
 };
 
-const DEFAULT_COLOR = AREA_COLORS["General ML"];
+const DEFAULT_COLOR = { bg: "bg-gray-50", border: "border-gray-200", badge: "bg-gray-100 text-gray-700", dot: "bg-gray-400" };
 
 function AreaCard({ area }: { area: AreaSummary }) {
   const colors = AREA_COLORS[area.area] ?? DEFAULT_COLOR;

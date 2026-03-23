@@ -30,8 +30,6 @@ const AREA_COLORS: Record<string, string> = {
   "Foundations & Efficiency":         "bg-slate-100 text-slate-700",
   "Generative Models":                "bg-pink-100 text-pink-700",
   "Multimodal & Vision-Language":     "bg-violet-100 text-violet-700",
-  "Code & Math":                      "bg-amber-100 text-amber-700",
-  "General ML":                       "bg-gray-100 text-gray-700",
 };
 
 export default async function TasksPage({

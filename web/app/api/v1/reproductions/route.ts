@@ -65,6 +65,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields: arxiv_id, tier_claimed, hardware_spec, run_log_url" }, { status: 400 });
   }
 
+  // Input validation
+  if (typeof tier_claimed !== "number" || !Number.isInteger(tier_claimed) || tier_claimed < 1 || tier_claimed > 4) {
+    return NextResponse.json({ error: "tier_claimed must be an integer 1-4" }, { status: 400 });
+  }
+  if (typeof hardware_spec !== "string" || hardware_spec.length > 500) {
+    return NextResponse.json({ error: "hardware_spec max 500 characters" }, { status: 400 });
+  }
+  if (notes != null && (typeof notes !== "string" || notes.length > 2000)) {
+    return NextResponse.json({ error: "notes max 2000 characters" }, { status: 400 });
+  }
+  if (actual_metric_name != null && (typeof actual_metric_name !== "string" || actual_metric_name.length > 200)) {
+    return NextResponse.json({ error: "actual_metric_name max 200 characters" }, { status: 400 });
+  }
+
   // Look up paper by arxiv_id
   const paperRows = await sql<{ id: string }[]>`
     SELECT id FROM papers WHERE arxiv_id = ${arxiv_id} LIMIT 1
@@ -76,6 +90,9 @@ export async function POST(req: NextRequest) {
 
   const metricName = actual_metric_name?.trim() || null;
   const metricValue = actual_metric_value != null ? Number(actual_metric_value) : null;
+  if (metricValue !== null && !isFinite(metricValue)) {
+    return NextResponse.json({ error: "actual_metric_value must be a finite number" }, { status: 400 });
+  }
 
   const [row] = await sql<[{ id: number }]>`
     INSERT INTO reproductions

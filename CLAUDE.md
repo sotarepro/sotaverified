@@ -46,7 +46,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Stage 3-verification ✅ DONE — two-dimension verification system: verification_score (int) + BadgeType; recomputeVerificationScore() on all events; /api/v1/sota; 146k papers seeded +5 for official repo
 - Stage 3-social ✅ DONE — activity_log table, logEvent() utility, tier-based reputation (T1:+5/T2:+10/T3:+15/T4:+20), trusted threshold at rep≥30, trusted flags (auto-hide at 2 instead of 3), Agent Write API (POST /api/v1/reproductions), PromoteButton, revamped admin dashboard (3 sections + activity feed)
 - Stage 3-test-tools ✅ DONE — admin test tools (dev/ENABLE_TEST_TOOLS=true only): create test users/papers, impersonate, reset; impersonation banner; is_test column on users+papers
-- Stage 3-taxonomy ✅ DONE — research area taxonomy migrated from 9→12 areas; General ML dissolved (active tasks reassigned); 3 duplicate task merges; 32 MMLU subtasks collapsed to canonical 'mmlu'; AREA_COLORS updated in all frontend files
+- Stage 3-taxonomy ✅ DONE — research area taxonomy: 11 areas (Code & Math folded into Language & Reasoning); General ML fully dissolved (all 1,669 zero-result tasks classified via keyword rules); 3 duplicate task merges; 32 MMLU subtasks collapsed to canonical 'mmlu'; AREA_COLORS updated in all frontend files
 
 ---
 
@@ -55,7 +55,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
 **TODO before deploying:**
 - [ ] Seed 2-3 real reproductions (use your 3090) so flow isn't empty at launch
 - [ ] Run github_enrich.py overnight to get broad star coverage, then re-run hype_seed.py
-  - Currently: 5,583 of 242k code links enriched, 18,320 papers have hype_score > 0 (recency-weighted)
+  - Currently: 5,583 of 242k code links enriched, 22,337 papers have hype_score > 0 (recency-weighted)
   - Command: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py --since 2020-01-01 --limit 250000 --db "dbname=pwc" > /tmp/enrich.log 2>&1 &`
   - After: `python3 scripts/hype_seed.py --db "dbname=pwc"`
 - [ ] Run semantic_scholar_enrich.py once Semantic Scholar API key obtained
@@ -135,9 +135,9 @@ reported results actually reproduce — for humans and autonomous agents alike.
 ### Hype vs Upvotes
 - "Hype" is the user-facing name for upvotes throughout the UI
 - `hype_score` column on papers = seeded from GitHub stars (one-time, pre-launch)
-  - Thresholds: 10–99 stars→1, 100–499→3, 500–1999→5, 2000+→10
+  - Thresholds: 10–49→1, 50–199→2, 200–499→3, 500–999→4, 1k–1.9k→5, 2k–4.9k→7, 5k–9.9k→9, 10k–24.9k→11, 25k–49.9k→13, 50k+→15
   - Recency multipliers: 2024+: 1.0x, 2022-23: 0.5x, pre-2022: 0.25x
-  - Re-seeded with recency weighting: 18,320 papers have hype_score > 0
+  - Re-seeded with recency weighting: 22,337 papers have hype_score > 0
 - Organic upvotes stored in `upvotes` table, counted at query time
 - "Most Hyped" sort = `COUNT(upvotes) + hype_score DESC`
 - After launch: all hype from organic votes only — don't re-run hype_seed.py
@@ -180,7 +180,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
   - id TEXT PK, arxiv_id, title, abstract, published DATE, authors TEXT[],
     tasks TEXT[], methods TEXT[], verification verification_tier DEFAULT 'unverified',
     hype_score INT DEFAULT 0, verification_score INT DEFAULT 0, is_test BOOLEAN DEFAULT false
-- `tasks` — 3,956 rows
+- `tasks` — 4,818 rows (11 research areas, no General ML)
 - `methods` — 8,580 rows
 - `datasets` — 18,522 rows
 - `leaderboard_results` — 59,758 rows, metrics JSONB
@@ -325,11 +325,15 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 - All SQL queries use parameterized queries. Never interpolate user input.
 - User-submitted URLs validated against allowlist before storage:
   github.com, gist.github.com, wandb.ai, colab.research.google.com, huggingface.co
-- Max field lengths enforced server-side: hardware_spec 500 chars, notes 2000 chars
-- Rate limiting on all API endpoints (100/min) and auth endpoints (30/min)
+- Max field lengths enforced server-side: hardware_spec 500, notes 2000, metric_name 200,
+  tier_claimed 1-4 range, metric_value must be finite
+- Rate limiting: Agent Write API rate-limited by reputation tier (1/day, 5/hr, 20/hr).
+  User-facing endpoints (upvotes, repro submit, flags) rely on auth + idempotent toggles;
+  explicit rate limiting to be added post-launch if abuse detected.
 - Production DB credentials use a limited-privilege role, not superuser
 - Local and production NEXTAUTH_SECRET must be different values
-- Security headers configured in next.config.js (CSP, HSTS, X-Frame-Options)
+- Security headers configured in next.config.ts: X-Content-Type-Options, X-Frame-Options,
+  HSTS, Referrer-Policy, Permissions-Policy
 - npm audit clean before every deploy
 - ENABLE_TEST_TOOLS must NEVER be set in production
 

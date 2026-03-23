@@ -4,15 +4,17 @@ import VerificationBadge from "@/components/VerificationBadge";
 import type { VerificationTier } from "@/lib/types";
 
 const AREA_COLORS: Record<string, string> = {
-  "Computer Vision":        "bg-blue-100 text-blue-700",
-  "NLP":                    "bg-green-100 text-green-700",
-  "Reinforcement Learning": "bg-orange-100 text-orange-700",
-  "Audio & Speech":         "bg-purple-100 text-purple-700",
-  "Graphs & Networks":      "bg-indigo-100 text-indigo-700",
-  "Medical":                "bg-rose-100 text-rose-700",
-  "Time Series":            "bg-yellow-100 text-yellow-800",
-  "Recommendation":         "bg-teal-100 text-teal-700",
-  "General ML":             "bg-gray-100 text-gray-700",
+  "Computer Vision":                  "bg-blue-100 text-blue-700",
+  "Language & Reasoning":             "bg-green-100 text-green-700",
+  "Reinforcement Learning & Robotics":"bg-orange-100 text-orange-700",
+  "Audio & Speech":                   "bg-purple-100 text-purple-700",
+  "Graphs & Structured Data":         "bg-indigo-100 text-indigo-700",
+  "Medical & Scientific":             "bg-rose-100 text-rose-700",
+  "Time Series & Forecasting":        "bg-yellow-100 text-yellow-800",
+  "Recommendation & Retrieval":       "bg-teal-100 text-teal-700",
+  "Foundations & Efficiency":         "bg-slate-100 text-slate-700",
+  "Generative Models":                "bg-pink-100 text-pink-700",
+  "Multimodal & Vision-Language":     "bg-violet-100 text-violet-700",
 };
 
 const PAPERS_PER_PAGE = 20;
@@ -47,7 +49,7 @@ export default async function SearchPage({
   const displayedTasks = tasks.slice(0, MAX_TASKS);
 
   function pageHref(p: number) {
-    return `/search?q=${encodeURIComponent(q)}&page=${p}`;
+    return `/search?q=${encodeURIComponent(q!)}&page=${p}`;
   }
 
   return (
