@@ -83,22 +83,13 @@ describe("POST /api/admin/test/users", () => {
     expect(res.status).toBe(403);
   });
 
-  it("creates new_user preset", async () => {
+  it("creates test_user preset", async () => {
     mockGSS.mockResolvedValueOnce(adminSession());
     mockSql.mockResolvedValueOnce([]);
-    const res = await USERS_POST(makeReq("POST", { preset: "new_user" }));
+    const res = await USERS_POST(makeReq("POST", { preset: "test_user" }));
     const json = await res.json();
     expect(res.status).toBe(200);
-    expect(json.github_id).toBe("test_new_user");
-  });
-
-  it("creates trusted_user preset", async () => {
-    mockGSS.mockResolvedValueOnce(adminSession());
-    mockSql.mockResolvedValueOnce([]);
-    const res = await USERS_POST(makeReq("POST", { preset: "trusted_user" }));
-    const json = await res.json();
-    expect(res.status).toBe(200);
-    expect(json.github_id).toBe("test_trusted_user");
+    expect(json.github_id).toBe("test_user");
   });
 
   it("creates author preset", async () => {

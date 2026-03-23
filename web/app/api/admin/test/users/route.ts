@@ -9,18 +9,11 @@ function isAdmin(id: string | undefined) {
 }
 
 const PRESETS = {
-  new_user: {
-    github_id: "test_new_user",
-    username: "test_new_user",
+  test_user: {
+    github_id: "test_user",
+    username: "test_user",
     reputation_score: 0,
-    age_days: 30,
-    is_flagged_new_account: true,
-  },
-  trusted_user: {
-    github_id: "test_trusted_user",
-    username: "test_trusted_user",
-    reputation_score: 30,
-    age_days: 730,
+    age_days: 90,
     is_flagged_new_account: false,
   },
   author: {

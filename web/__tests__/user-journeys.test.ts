@@ -86,8 +86,9 @@ describe("Persona 2: Authenticated user — hype toggle", () => {
     // Hype
     mockSession.mockResolvedValueOnce(userSession());
     mockSql.mockResolvedValueOnce([]);              // no existing upvote
-    mockSql.mockResolvedValueOnce([]);              // INSERT
-    mockSql.mockResolvedValueOnce([{ count: 1 }]); // count
+    mockSql.mockResolvedValueOnce([]);              // INSERT upvote
+    mockSql.mockResolvedValueOnce([]);              // UPDATE papers hype_score + 1
+    mockSql.mockResolvedValueOnce([{ count: 1 }]); // SELECT hype_score
     mockSql.mockResolvedValueOnce([]);              // logEvent
     let res = await POST(makeReq("POST", { paper_id: "p1" }));
     let json = await res.json();
@@ -97,8 +98,9 @@ describe("Persona 2: Authenticated user — hype toggle", () => {
     // Unhype
     mockSession.mockResolvedValueOnce(userSession());
     mockSql.mockResolvedValueOnce([{}]);            // existing upvote found
-    mockSql.mockResolvedValueOnce([]);              // DELETE
-    mockSql.mockResolvedValueOnce([{ count: 0 }]); // count
+    mockSql.mockResolvedValueOnce([]);              // DELETE upvote
+    mockSql.mockResolvedValueOnce([]);              // UPDATE papers hype_score - 1
+    mockSql.mockResolvedValueOnce([{ count: 0 }]); // SELECT hype_score
     mockSql.mockResolvedValueOnce([]);              // logEvent
     res = await POST(makeReq("POST", { paper_id: "p1" }));
     json = await res.json();

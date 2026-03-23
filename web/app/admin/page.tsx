@@ -24,6 +24,7 @@ const EVENT_LABELS: Record<string, { label: string; color: string }> = {
   agent_reproduction_submitted: { label: "Agent Submission", color: "bg-indigo-50 text-indigo-700" },
   agent_reproduction_promoted: { label: "Agent Promoted", color: "bg-green-50 text-green-700" },
   rate_limit_hit: { label: "Rate Limited", color: "bg-red-100 text-red-800" },
+  author_claim_failed: { label: "Author Claim Failed", color: "bg-red-50 text-red-600" },
 };
 
 function timeAgo(dateStr: string): string {

@@ -7,7 +7,6 @@ const TIER_DESCRIPTIONS: Record<number, string> = {
   1: "Code confirmed to run against the linked repository",
   2: "Reported metrics match the paper's claimed numbers",
   3: "Independent reproduction in a fresh environment",
-  4: "Confirmed by multiple independent groups",
 };
 
 const ALLOWED_URL_DOMAINS = [
@@ -156,7 +155,7 @@ export default function ReproductionForm({ paperId, benchmarks = [] }: Props) {
               onChange={(e) => setTierClaimed(Number(e.target.value))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {[1, 2, 3, 4].map((t) => (
+              {[1, 2, 3].map((t) => (
                 <option key={t} value={t}>
                   Tier {t} — {TIER_DESCRIPTIONS[t]}
                 </option>

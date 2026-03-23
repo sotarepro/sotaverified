@@ -125,11 +125,13 @@ describe("POST /api/upvotes", () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("user123"));
     // Call 1: check existing → none found
     mockSql.mockResolvedValueOnce([]);
-    // Call 2: INSERT
+    // Call 2: INSERT upvote
     mockSql.mockResolvedValueOnce([]);
-    // Call 3: count
+    // Call 3: UPDATE papers hype_score + 1
+    mockSql.mockResolvedValueOnce([]);
+    // Call 4: SELECT hype_score as count
     mockSql.mockResolvedValueOnce([{ count: 1 }]);
-    // Call 4: logEvent INSERT (activity_log)
+    // Call 5: logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", { paper_id: "paper-abc" });
@@ -139,18 +141,20 @@ describe("POST /api/upvotes", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     expect(json.count).toBe(1);
-    expect(mockSql).toHaveBeenCalledTimes(4);
+    expect(mockSql).toHaveBeenCalledTimes(5);
   });
 
   it("deletes upvote when prior vote exists → {upvoted: false, count: 0}", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("user123"));
     // Call 1: check existing → found
     mockSql.mockResolvedValueOnce([{}]);
-    // Call 2: DELETE
+    // Call 2: DELETE upvote
     mockSql.mockResolvedValueOnce([]);
-    // Call 3: count
+    // Call 3: UPDATE papers hype_score - 1
+    mockSql.mockResolvedValueOnce([]);
+    // Call 4: SELECT hype_score as count
     mockSql.mockResolvedValueOnce([{ count: 0 }]);
-    // Call 4: logEvent INSERT (activity_log)
+    // Call 5: logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", { paper_id: "paper-abc" });
@@ -160,6 +164,6 @@ describe("POST /api/upvotes", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(false);
     expect(json.count).toBe(0);
-    expect(mockSql).toHaveBeenCalledTimes(4);
+    expect(mockSql).toHaveBeenCalledTimes(5);
   });
 });

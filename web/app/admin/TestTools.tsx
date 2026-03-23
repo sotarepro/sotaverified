@@ -137,10 +137,9 @@ export default async function TestTools() {
         </summary>
         <ol className="mt-2 text-xs text-amber-800 space-y-1 list-decimal list-inside">
           <li>Create Full Test Paper with a repo you contribute to</li>
-          <li>Create all three test users</li>
-          <li>Impersonate New User → hype paper (should work), try submit repro (check age gate)</li>
-          <li>Impersonate Trusted User → submit repro, promote agent repro, flag (2x weight)</li>
-          <li>Impersonate Author → click "I authored this" on Full Test Paper → should auto-verify</li>
+          <li>Create both test users</li>
+          <li>Impersonate Test User → hype paper, submit reproduction, promote agent repro</li>
+          <li>Impersonate Test Author → click &quot;I authored this&quot; on Full Test Paper → should auto-verify, then submit benchmark</li>
           <li>Return to admin → check activity feed, paper detail, leaderboard scores</li>
           <li>Click Reset Test Data to clean up</li>
         </ol>

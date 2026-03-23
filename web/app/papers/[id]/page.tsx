@@ -314,7 +314,9 @@ export default async function PaperPage({
       {/* Reproductions */}
       <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
-        <ReproductionForm paperId={id} benchmarks={benchmarks} />
+        {userClaim?.status !== "verified" && (
+          <ReproductionForm paperId={id} benchmarks={benchmarks} />
+        )}
         <ReproductionList paperId={id} />
       </section>
 

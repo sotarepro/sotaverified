@@ -118,6 +118,11 @@ export async function POST(
     });
   } else {
     // Not a contributor — don't create a pending claim
+    await logEvent("author_claim_failed", {
+      userId,
+      paperId,
+      metadata: { username, repo: `${owner}/${repo}` },
+    });
     return NextResponse.json({
       status: "not_contributor",
       message: `We verify authorship by checking if your GitHub account (@${username}) is a contributor to the linked repository (${owner}/${repo}). Your account was not found in the contributor list. If you believe this is an error, contact support@sotaverified.org`,

@@ -64,7 +64,7 @@ function AreaCard({ area }: { area: AreaSummary }) {
   );
 }
 
-type Tab = "recent" | "hyped" | "unverified" | "verified";
+import type { TabType } from "@/lib/queries";
 
 export default async function HomePage({
   searchParams,
@@ -72,8 +72,8 @@ export default async function HomePage({
   searchParams: Promise<{ tab?: string; page?: string; pageSize?: string }>;
 }) {
   const { tab: tabParam, page: pageStr, pageSize: pageSizeStr } = await searchParams;
-  const tab: Tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? ""))
-    ? (tabParam as Tab)
+  const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? ""))
+    ? (tabParam as TabType)
     : "recent";
   const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
   const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);

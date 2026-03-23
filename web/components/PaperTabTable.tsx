@@ -1,12 +1,12 @@
 import Link from "next/link";
-import type { TabPaperRow } from "@/lib/queries";
+import type { TabPaperRow, TabType } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
 import InlineHypeButton from "@/components/InlineHypeButton";
 import { stripLatex } from "@/lib/strip-latex";
 import type { VerificationTier } from "@/lib/types";
 
 type Props = {
-  tab: "recent" | "hyped" | "unverified" | "verified";
+  tab: TabType;
   papers: TabPaperRow[];
   baseHref: string;
   title?: string;
@@ -19,6 +19,7 @@ type Props = {
 const TAB_LABELS: Record<string, string> = {
   recent: "Recently Added",
   hyped: "Most Hyped",
+  active: "Most Active",
   unverified: "Needs Verification",
   verified: "Most Verified",
 };
@@ -45,7 +46,7 @@ function formatDate(published: string | null): string {
 }
 
 export default function PaperTabTable({ tab, papers, baseHref, title, page, pageSize, total }: Props) {
-  const tabs: Array<"recent" | "hyped" | "unverified" | "verified"> = ["recent", "hyped", "unverified", "verified"];
+  const tabs: TabType[] = ["recent", "hyped", "active", "unverified", "verified"];
 
   const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, total);

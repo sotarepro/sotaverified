@@ -4,11 +4,10 @@ import { useState } from "react";
 
 // ── Create User ───────────────────────────────────────────────────────────────
 
-type Preset = "new_user" | "trusted_user" | "author";
+type Preset = "test_user" | "author";
 const PRESETS: { value: Preset; label: string; desc: string }[] = [
-  { value: "new_user", label: "New User", desc: "rep 0, age 30 days, age-gated" },
-  { value: "trusted_user", label: "Trusted User", desc: "rep 50, age 2 years, trusted" },
-  { value: "author", label: "Author", desc: "rep 10, age 3 years" },
+  { value: "test_user", label: "Test User", desc: "rep 0, age 90 days" },
+  { value: "author", label: "Test Author", desc: "rep 10, age 3 years" },
 ];
 
 export function CreateUserButtons() {

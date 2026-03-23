@@ -28,7 +28,7 @@ function isLowerBetterMetric(metricName: string | null): boolean {
   );
 }
 
-type Tab = "recent" | "hyped" | "unverified" | "verified";
+import type { TabType } from "@/lib/queries";
 
 export default async function TaskPage({
   params,
@@ -47,8 +47,8 @@ export default async function TaskPage({
   } = await searchParams;
 
   const sort = sortParam === "verification" ? "verification" : sortParam === "date" ? "date" : "metric";
-  const tab: Tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? ""))
-    ? (tabParam as Tab)
+  const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? ""))
+    ? (tabParam as TabType)
     : "recent";
   const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
   const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);

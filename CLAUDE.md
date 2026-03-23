@@ -122,8 +122,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
   substitutes impersonated user when cookie is present
 - All user-facing action routes use `getEffectiveSession` (not `getServerSession`) so
   impersonated actions are properly attributed in the activity log
-- Test user presets: `test_new_user` (rep 0, age-gated), `test_trusted_user` (rep 50),
-  `test_author` (rep 10, age 3yr)
+- Test user presets: `test_user` (rep 0, age 90d), `test_author` (rep 10, age 3yr)
 - Reset deletes activity_log entries first (FK is SET NULL, not CASCADE), then users/papers
 
 ### Agent Write API
@@ -137,17 +136,20 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Append-only `activity_log` table — never update or delete rows
 - `logEvent()` in `lib/activity.ts` swallows all errors (logging never breaks main flow)
 - Events: user_signin, paper_hyped, paper_unhyped, reproduction_submitted,
-  author_claimed, reproduction_flagged, reproduction_unflagged,
-  agent_reproduction_submitted, agent_reproduction_promoted, rate_limit_hit
+  author_claimed, author_claim_failed, reproduction_flagged, reproduction_unflagged,
+  agent_reproduction_submitted, agent_reproduction_promoted, rate_limit_hit,
+  author_benchmark_submitted
 
 ### Hype vs Upvotes
 - "Hype" is the user-facing name for upvotes throughout the UI
-- `hype_score` column on papers = seeded from GitHub stars (one-time, pre-launch)
+- `hype_score` column on papers = **single source of truth** for hype count (seeded + organic)
+  - Seeded from GitHub stars (one-time, pre-launch) via hype_seed.py
   - Thresholds: 10–49→1, 50–199→2, 200–499→3, 500–999→4, 1k–1.9k→5, 2k–4.9k→7, 5k–9.9k→9, 10k–24.9k→11, 25k–49.9k→13, 50k+→15
   - Recency multipliers: 2024+: 1.0x, 2022-23: 0.5x, pre-2022: 0.25x
-  - Re-seeded with recency weighting: 22,337 papers have hype_score > 0
-- Organic upvotes stored in `upvotes` table, counted at query time
-- "Most Hyped" sort = `COUNT(upvotes) + hype_score DESC`
+- `upvotes` table used only for toggle tracking (which user hyped which paper)
+- When user hypes: INSERT upvotes row + UPDATE papers SET hype_score = hype_score + 1
+- When user unhypes: DELETE upvotes row + UPDATE papers SET hype_score = hype_score - 1
+- All display reads from `papers.hype_score` directly (no LATERAL count query needed)
 - After launch: all hype from organic votes only — don't re-run hype_seed.py
 - hype_seed.py has --reset flag to zero all scores before re-seeding
 
@@ -157,13 +159,21 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - `GITHUB_TOKEN` must be set as shell env var (not .env.local — Python doesn't read it)
 - Pattern: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py ...`
 
+### Paper Detail — Author vs Reproducer
+- Verified authors see "Submit benchmark results" but NOT "I reproduced this"
+- Non-authors see "I reproduced this" but NOT "Submit benchmark results"
+- Nobody sees both on the same paper
+- Reproduction tiers: 1 (code runs), 2 (metrics match), 3 (independent) — Tier 4 removed
+  (Tier 4 "multi-verified" is paper-level, not individually claimable)
+
 ### Submit Page Removed
 - `/submit` page, `SubmitPaperForm` component, and `/api/submit-paper` route were removed
 - Paper ingestion is via scripts only (arxiv_backfill.py, arxiv_delta.py)
 - "Submit" link removed from nav
 
-### Tab Tables (4 tabs everywhere)
-- Tabs: Recent | Most Hyped | Needs Verification | Most Verified
+### Tab Tables (5 tabs everywhere)
+- Tabs: Recently Added | Most Hyped | Most Active | Needs Verification | Most Verified
+- "Most Active" = papers with recent activity_log entries (7-day window), sorted by last activity
 - All scoped versions (homepage, category, task page) use same PaperTabTable component
 - Pagination: 10/25/50 per page, URL-based; links include `#paper-table` hash so browser
   scrolls to table position after navigation (section has scroll-mt-16)
@@ -311,7 +321,7 @@ SEMANTIC_SCHOLAR_KEY=  ← for semantic_scholar_enrich.py (optional)
 
 ## Pre-Launch QA — Test Suite Status
 All tests run with `npm test` (no external deps — all DB/auth/API mocked).
-**141 tests, 13 suites, all passing.**
+**172 tests, 14 suites, all passing.**
 
 - `__tests__/auth.test.ts` — sign-in callback, age gate, allowlist bypass, JWT/session (8 tests)
 - `__tests__/upvotes.test.ts` — hype toggle, auth guard (7 tests)
@@ -346,14 +356,14 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 
 ### Persona 2: Authenticated User
 - [x] Sign-in: GitHub OAuth → user upsert → session
-- [x] Sign-in rejected: account < 30 days → /auth/too-new + pending signup request
+- [x] Sign-in rejected: account_score < score_threshold → /auth/too-new + pending signup request
 - [x] Approved accounts bypass age check on retry
 - [x] Hype toggle: heart red/grey, count increment/decrement
 - [x] Authors CAN hype their own papers (no self-hype restriction)
-- [x] Submit reproduction: tier 1-4, hardware required, optional dataset+metric+runlog+notes
+- [x] Submit reproduction: tier 1-3, hardware required, optional dataset+metric+runlog+notes
 - [x] Input validation: tier range, field lengths, metric finiteness, URL domain allowlist
 - [x] Auto-verify at 1 upvote (UPVOTES_TO_VERIFY=1)
-- [x] Tier-based rep: T1:+2, T2:+5, T3:+10, T4:+15 on verify
+- [x] Tier-based rep: T1:+2, T2:+5, T3:+10 on verify
 - [x] Metric match bonus: +5 if within 5% of claimed
 - [x] Per-upvote rep: +1 per upvote to submitter
 - [x] Self-upvote blocked on reproductions (button hidden + API 403)

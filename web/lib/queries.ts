@@ -25,10 +25,11 @@ export async function getUserHypedSet(userId: string, paperIds: string[]): Promi
 
 // Shared LATERAL snippet: count organic upvotes for a paper already in scope.
 // Used in all getTabPapers queries after the CTE selects the page of results.
-// This avoids GROUP BY over all papers — we only count upvotes for the N rows
-// that survived the sort+limit in the CTE (N = page size, typically 10–50).
+// hype_score is the single source of truth for hype count (seeded + organic).
+export type TabType = "recent" | "hyped" | "active" | "unverified" | "verified";
+
 export async function getTabPapers(
-  tab: "recent" | "hyped" | "unverified" | "verified",
+  tab: TabType,
   limit = 10,
   scope?: { taskId?: string; area?: string },
   offset = 0
@@ -50,9 +51,8 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY published DESC NULLS LAST, created_at DESC LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
       `;
     } else if (tab === "hyped") {
       return sql<TabPaperRow[]>`
@@ -66,10 +66,28 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY (COALESCE(u.cnt, 0) + b.hype_score) DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+      `;
+    } else if (tab === "active") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM (
+          SELECT DISTINCT al.paper_id, MAX(al.created_at) AS last_activity
+          FROM activity_log al
+          JOIN paper_tasks pt ON pt.paper_id = al.paper_id
+          WHERE al.paper_id IS NOT NULL
+            AND al.created_at > NOW() - INTERVAL '7 days'
+            AND pt.task_id = ${scope.taskId}
+          GROUP BY al.paper_id
+          ORDER BY last_activity DESC
+          LIMIT ${limit} OFFSET ${offset}
+        ) a
+        JOIN papers p ON p.id = a.paper_id
+        ORDER BY a.last_activity DESC
       `;
     } else if (tab === "unverified") {
       return sql<TabPaperRow[]>`
@@ -84,10 +102,9 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY (COALESCE(u.cnt, 0) + b.hype_score) DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
       `;
     } else {
       return sql<TabPaperRow[]>`
@@ -101,10 +118,9 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY verification_score DESC, hype_score DESC LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY b.verification_score DESC, (COALESCE(u.cnt, 0) + b.hype_score) DESC
+        ORDER BY b.verification_score DESC, b.hype_score DESC
       `;
     }
   } else if (scope?.area) {
@@ -122,9 +138,8 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY published DESC NULLS LAST, created_at DESC LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
       `;
     } else if (tab === "hyped") {
       return sql<TabPaperRow[]>`
@@ -139,10 +154,29 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY (COALESCE(u.cnt, 0) + b.hype_score) DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+      `;
+    } else if (tab === "active") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM (
+          SELECT DISTINCT al.paper_id, MAX(al.created_at) AS last_activity
+          FROM activity_log al
+          JOIN paper_tasks pt ON pt.paper_id = al.paper_id
+          JOIN tasks t ON t.id = pt.task_id
+          WHERE al.paper_id IS NOT NULL
+            AND al.created_at > NOW() - INTERVAL '7 days'
+            AND t.area = ${scope.area}
+          GROUP BY al.paper_id
+          ORDER BY last_activity DESC
+          LIMIT ${limit} OFFSET ${offset}
+        ) a
+        JOIN papers p ON p.id = a.paper_id
+        ORDER BY a.last_activity DESC
       `;
     } else if (tab === "unverified") {
       return sql<TabPaperRow[]>`
@@ -158,10 +192,9 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY (COALESCE(u.cnt, 0) + b.hype_score) DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
       `;
     } else {
       return sql<TabPaperRow[]>`
@@ -176,10 +209,9 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY verification_score DESC, hype_score DESC LIMIT ${limit} OFFSET ${offset}) b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY b.verification_score DESC, (COALESCE(u.cnt, 0) + b.hype_score) DESC
+        ORDER BY b.verification_score DESC, b.hype_score DESC
       `;
     }
   } else {
@@ -195,9 +227,8 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM base b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
       `;
     } else if (tab === "hyped") {
       return sql<TabPaperRow[]>`
@@ -210,10 +241,26 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM base b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY (COALESCE(u.cnt, 0) + b.hype_score) DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+      `;
+    } else if (tab === "active") {
+      return sql<TabPaperRow[]>`
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM (
+          SELECT paper_id, MAX(created_at) AS last_activity
+          FROM activity_log
+          WHERE paper_id IS NOT NULL
+            AND created_at > NOW() - INTERVAL '7 days'
+          GROUP BY paper_id
+          ORDER BY last_activity DESC
+          LIMIT ${limit} OFFSET ${offset}
+        ) a
+        JOIN papers p ON p.id = a.paper_id
+        ORDER BY a.last_activity DESC
       `;
     } else if (tab === "unverified") {
       return sql<TabPaperRow[]>`
@@ -227,10 +274,9 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM base b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY (COALESCE(u.cnt, 0) + b.hype_score) DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
       `;
     } else {
       return sql<TabPaperRow[]>`
@@ -244,19 +290,50 @@ export async function getTabPapers(
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
-               (COALESCE(u.cnt, 0) + b.hype_score) AS upvote_count
+               b.hype_score AS upvote_count
         FROM base b
-        LEFT JOIN LATERAL (SELECT COUNT(*)::int AS cnt FROM upvotes WHERE paper_id = b.id) u ON true
-        ORDER BY b.verification_score DESC, (COALESCE(u.cnt, 0) + b.hype_score) DESC
+        ORDER BY b.verification_score DESC, b.hype_score DESC
       `;
     }
   }
 }
 
 export async function getTabPapersCount(
-  tab: "recent" | "hyped" | "unverified" | "verified",
+  tab: TabType,
   scope?: { taskId?: string; area?: string }
 ): Promise<number> {
+  if (tab === "active") {
+    if (scope?.taskId) {
+      const rows = await sql<{ n: number }[]>`
+        SELECT COUNT(DISTINCT al.paper_id)::int AS n
+        FROM activity_log al
+        JOIN paper_tasks pt ON pt.paper_id = al.paper_id
+        WHERE al.paper_id IS NOT NULL
+          AND al.created_at > NOW() - INTERVAL '7 days'
+          AND pt.task_id = ${scope.taskId}
+      `;
+      return rows[0]?.n ?? 0;
+    } else if (scope?.area) {
+      const rows = await sql<{ n: number }[]>`
+        SELECT COUNT(DISTINCT al.paper_id)::int AS n
+        FROM activity_log al
+        JOIN paper_tasks pt ON pt.paper_id = al.paper_id
+        JOIN tasks t ON t.id = pt.task_id
+        WHERE al.paper_id IS NOT NULL
+          AND al.created_at > NOW() - INTERVAL '7 days'
+          AND t.area = ${scope.area}
+      `;
+      return rows[0]?.n ?? 0;
+    } else {
+      const rows = await sql<{ n: number }[]>`
+        SELECT COUNT(DISTINCT paper_id)::int AS n
+        FROM activity_log
+        WHERE paper_id IS NOT NULL
+          AND created_at > NOW() - INTERVAL '7 days'
+      `;
+      return rows[0]?.n ?? 0;
+    }
+  }
   if (scope?.taskId) {
     if (tab === "unverified") {
       const rows = await sql<{ n: number }[]>`
@@ -323,7 +400,7 @@ export async function searchPapers(q: string, limit = 20, offset = 0): Promise<T
   return sql<TabPaperRow[]>`
     SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
            p.verification_score,
-           (COALESCE((SELECT COUNT(*)::int FROM upvotes WHERE paper_id = p.id), 0) + p.hype_score) AS upvote_count
+           p.hype_score AS upvote_count
     FROM papers p
     WHERE p.title ILIKE ${"%" + q + "%"}
     ORDER BY upvote_count DESC, p.published DESC NULLS LAST
@@ -559,7 +636,7 @@ export async function getPaperUpvoteInfo(
 ): Promise<{ count: number; upvoted: boolean }> {
   const [row] = await sql<[{ count: number; upvoted: boolean }]>`
     SELECT
-      (SELECT COUNT(*)::int FROM upvotes WHERE paper_id = ${paperId}) AS count,
+      COALESCE((SELECT hype_score FROM papers WHERE id = ${paperId}), 0)::int AS count,
       ${userId ? sql`EXISTS(SELECT 1 FROM upvotes WHERE paper_id = ${paperId} AND user_id = ${userId})` : sql`false`} AS upvoted
   `;
   return { count: row.count, upvoted: row.upvoted };

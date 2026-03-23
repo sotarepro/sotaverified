@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getTaskList, getTaskCount, getTabPapers, getUserHypedSet } from "@/lib/queries";
+import { getTaskList, getTaskCount, getTabPapers, getUserHypedSet, type TabType } from "@/lib/queries";
 import Pagination from "@/components/Pagination";
 import PaperTabTable from "@/components/PaperTabTable";
 
@@ -39,7 +39,7 @@ export default async function TasksPage({
 }) {
   const { page: pageStr, area, tab: tabParam } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
-  const tab = (["recent", "hyped", "unverified", "verified"].includes(tabParam ?? "")) ? tabParam as "recent" | "hyped" | "unverified" | "verified" : "recent" as const;
+  const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? "")) ? (tabParam as TabType) : "recent";
 
   const baseHref = area ? `/tasks?area=${encodeURIComponent(area)}` : "/tasks";
 

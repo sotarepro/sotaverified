@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const userId = session?.user?.github_id ?? null;
 
   const [{ count }] = await sql<[{ count: number }]>`
-    SELECT COUNT(*)::int AS count FROM upvotes WHERE paper_id = ${paperId}
+    SELECT COALESCE(hype_score, 0)::int AS count FROM papers WHERE id = ${paperId}
   `;
 
   let upvoted = false;
@@ -48,13 +48,15 @@ export async function POST(req: NextRequest) {
   if (existing.length > 0) {
     // Remove upvote
     await sql`DELETE FROM upvotes WHERE paper_id = ${paper_id} AND user_id = ${userId}`;
+    await sql`UPDATE papers SET hype_score = GREATEST(hype_score - 1, 0) WHERE id = ${paper_id}`;
   } else {
     // Add upvote
     await sql`INSERT INTO upvotes (paper_id, user_id) VALUES (${paper_id}, ${userId})`;
+    await sql`UPDATE papers SET hype_score = hype_score + 1 WHERE id = ${paper_id}`;
   }
 
   const [{ count }] = await sql<[{ count: number }]>`
-    SELECT COUNT(*)::int AS count FROM upvotes WHERE paper_id = ${paper_id}
+    SELECT COALESCE(hype_score, 0)::int AS count FROM papers WHERE id = ${paper_id}
   `;
 
   await logEvent(existing.length > 0 ? "paper_unhyped" : "paper_hyped", {
