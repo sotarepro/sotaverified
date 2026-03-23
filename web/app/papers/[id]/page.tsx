@@ -17,6 +17,7 @@ import VerificationBadge from "@/components/VerificationBadge";
 import UpvoteButton from "@/components/UpvoteButton";
 import CopyJsonButton from "@/components/CopyJsonButton";
 import ReproductionForm from "@/components/ReproductionForm";
+import PaperBenchmarks from "@/components/PaperBenchmarks";
 import AuthorBenchmarkForm from "@/components/AuthorBenchmarkForm";
 import ReproductionList from "@/components/ReproductionList";
 import AuthorClaimButton from "@/components/AuthorClaimButton";
@@ -103,7 +104,7 @@ export default async function PaperPage({
           <span className="text-sm text-gray-500">{paper.published.slice(0, 10)}</span>
         )}
         {paper.proceeding && (
-          <span className="text-sm font-medium text-gray-700">{paper.proceeding}</span>
+          <span className="text-sm font-medium text-gray-700">{paper.proceeding.replace(/\s+\d+$/, "")}</span>
         )}
         <VerificationBadge badge={badgeData.badge} count={badgeData.reproduction_count} score={badgeData.verification_score} />
         <UpvoteButton
@@ -296,53 +297,11 @@ export default async function PaperPage({
         <CopyJsonButton arxivId={paper.arxiv_id} />
       )}
 
-      {/* Leaderboard appearances */}
+      {/* Leaderboard appearances — grouped by task */}
       {lbEntries.length > 0 && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">Benchmark Results</h2>
-          <div className="rounded-xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-600">Task</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Dataset</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Model</th>
-                  <th className="px-4 py-3 font-medium text-gray-600 text-right">
-                    Value
-                  </th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {lbEntries.map((e: PaperLbEntry, i: number) => (
-                  <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-4 py-2.5">
-                      <Link
-                        href={`/tasks/${e.task_id}`}
-                        className="text-blue-600 hover:underline"
-                      >
-                        {e.task_name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-gray-600">
-                      {e.dataset_name}
-                    </td>
-                    <td className="px-4 py-2.5 font-medium">{e.model_name}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums font-mono">
-                      {e.best_metric_value != null
-                        ? `${Number(e.best_metric_value).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${e.best_metric_name ?? ""}`
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <VerificationBadge
-                        tier={e.verification as VerificationTier}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <PaperBenchmarks entries={lbEntries} />
         </section>
       )}
       {/* Author benchmark submission — only for verified authors */}

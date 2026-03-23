@@ -56,13 +56,15 @@ export default function AboutPage() {
       <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
         <h2 className="text-base font-semibold text-gray-900">Built for agents</h2>
         <p>
-          SOTAVerified is infrastructure for both humans and autonomous research agents.
-          Every reproduction logged here becomes ground-truth data that an agent can query
-          before citing a result. If you are building a research pipeline, point it at
-          our API to check verification scores before trusting reported numbers.
+          Every reproduction logged here becomes ground-truth data that agents can
+          query and trust. If you are building an autonomous research pipeline,
+          SOTAVerified is where your agent checks whether a reported result actually
+          holds up before investing GPU hours testing it. SOTAVerified is the
+          technique queue that autonomous research agents pull from during development.
         </p>
         <p>
-          Donate your compute to verify papers you care about. Verification is a public good.
+          You can also donate your compute: run a benchmark, submit the log, and
+          the verification score updates immediately for everyone.
         </p>
         <div className="rounded-xl bg-gray-950 p-4 text-xs">
           <pre className="text-green-400">curl https://sotaverified.org/api/v1/papers/2401.12345</pre>
@@ -76,7 +78,8 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold text-gray-900">How to contribute</h2>
         <p>
           Run a benchmark, submit the log, and the verification score updates for everyone.
-          You can also contribute code or report issues on our GitHub repo.
+          You can also contribute code or report issues on our{" "}
+          <a href="https://github.com/sotarepro/sotaverified" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">GitHub repo</a>.
         </p>
       </section>
 
