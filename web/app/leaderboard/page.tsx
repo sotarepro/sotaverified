@@ -26,7 +26,7 @@ export default async function LeaderboardPage() {
       u.avatar_url,
       u.reputation_score,
       (SELECT COUNT(*)::int FROM reproductions r
-       WHERE r.user_id = u.github_id AND r.status = 'verified') AS repro_count,
+       WHERE r.user_id = u.github_id AND r.status NOT IN ('hidden', 'removed')) AS repro_count,
       (SELECT COUNT(*)::int FROM paper_authors pa
        WHERE pa.user_id = u.github_id AND pa.status = 'verified') AS authored_count
     FROM users u

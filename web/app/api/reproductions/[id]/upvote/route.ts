@@ -1,6 +1,6 @@
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
-import { THRESHOLDS, tierRepGain } from "@/lib/thresholds";
+import { THRESHOLDS } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(
@@ -52,46 +52,15 @@ export async function POST(
       UPDATE reproductions SET upvote_count = upvote_count + 1 WHERE id = ${reproId}
     `;
 
-    const [r] = await sql<[{ upvote_count: number; status: string; user_id: string; tier_claimed: number; dataset_id: string | null; actual_metric_value: number | null; paper_id: string }]>`
-      SELECT upvote_count, status, user_id, tier_claimed, dataset_id, actual_metric_value, paper_id
-      FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ upvote_count: number; user_id: string }]>`
+      SELECT upvote_count, user_id FROM reproductions WHERE id = ${reproId}
     `;
 
-    // Award +REP_PER_UPVOTE to submitter for every upvote
+    // Award +REP_PER_UPVOTE to submitter for every upvote (no status change)
     await sql`
       UPDATE users SET reputation_score = reputation_score + ${THRESHOLDS.REP_PER_UPVOTE}
       WHERE github_id = ${r.user_id}
     `;
-
-    // Auto-verify at UPVOTES_TO_VERIFY threshold
-    if (r.upvote_count >= THRESHOLDS.UPVOTES_TO_VERIFY && r.status === "community") {
-      await sql`
-        UPDATE reproductions SET status = 'verified' WHERE id = ${reproId}
-      `;
-      // Award tier-based rep to reproduction author
-      let repGain = tierRepGain(r.tier_claimed);
-
-      // Bonus if metric within 5% of claimed value
-      if (r.actual_metric_value != null && r.dataset_id) {
-        const [claimed] = await sql<[{ best_metric_value: number | null }]>`
-          SELECT best_metric_value FROM leaderboard_results
-          WHERE paper_id = ${r.paper_id} AND dataset_id = ${r.dataset_id}
-            AND best_metric_value IS NOT NULL
-          ORDER BY best_metric_value DESC LIMIT 1
-        `;
-        if (claimed?.best_metric_value != null && claimed.best_metric_value !== 0) {
-          const pct = Math.abs(r.actual_metric_value - claimed.best_metric_value) / Math.abs(claimed.best_metric_value);
-          if (pct <= 0.05) {
-            repGain += THRESHOLDS.REP_METRIC_MATCH_BONUS;
-          }
-        }
-      }
-
-      await sql`
-        UPDATE users SET reputation_score = reputation_score + ${repGain}
-        WHERE github_id = ${r.user_id}
-      `;
-    }
 
     return NextResponse.json({ upvoted: true, count: r.upvote_count });
   }

@@ -108,11 +108,6 @@ export default async function ProfilePage({
                     <span className="text-xs text-gray-500">
                       Tier {r.tier_claimed} — {TIER_LABELS[r.tier_claimed]}
                     </span>
-                    {r.status === "verified" && (
-                      <span className="text-xs rounded-full bg-green-100 text-green-700 px-2 py-0.5">
-                        Verified
-                      </span>
-                    )}
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">

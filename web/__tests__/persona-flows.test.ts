@@ -182,17 +182,14 @@ describe("Reproduction upvote auto-verification", () => {
     mockSession.mockReset();
   });
 
-  it("auto-verifies at 1 upvote (UPVOTES_TO_VERIFY=1)", async () => {
+  it("upvote awards per-upvote rep without status change", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
     mockSql.mockResolvedValueOnce([]);                                     // owner check
     mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
     mockSql.mockResolvedValueOnce([]);                                     // INSERT upvote
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE count +1
-    // Fetch repro: 1 upvote, community status, tier 2, no dataset
-    mockSql.mockResolvedValueOnce([{ upvote_count: 1, status: "community", user_id: "repro-author", tier_claimed: 2, dataset_id: null, actual_metric_value: null, paper_id: "p1" }]);
+    mockSql.mockResolvedValueOnce([{ upvote_count: 1, user_id: "repro-author" }]); // fetch repro
     mockSql.mockResolvedValueOnce([]);                                     // +1 per-upvote rep
-    mockSql.mockResolvedValueOnce([]);                                     // UPDATE status='verified'
-    mockSql.mockResolvedValueOnce([]);                                     // UPDATE tier rep
 
     const params = { params: Promise.resolve({ id: "42" }) };
     const res = await UPVOTE_POST(makeReq("POST"), params);
@@ -201,8 +198,8 @@ describe("Reproduction upvote auto-verification", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     expect(json.count).toBe(1);
-    // 8 calls: owner_check + check + insert + update_count + fetch + per_upvote_rep + update_status + tier_rep
-    expect(mockSql).toHaveBeenCalledTimes(8);
+    // 6 calls: owner_check + check + insert + update_count + fetch + per_upvote_rep
+    expect(mockSql).toHaveBeenCalledTimes(6);
   });
 
   it("toggles upvote off (removes existing upvote)", async () => {

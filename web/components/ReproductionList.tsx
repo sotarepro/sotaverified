@@ -112,11 +112,6 @@ export default function ReproductionList({ paperId }: Props) {
               >
                 Tier {r.tier_claimed} — {TIER_LABELS[r.tier_claimed]}
               </span>
-              {r.status === "verified" && (
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-                  Verified
-                </span>
-              )}
               <span className="text-xs text-gray-400">
                 by{" "}
                 <a
