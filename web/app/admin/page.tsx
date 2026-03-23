@@ -5,7 +5,7 @@ import sql from "@/lib/db";
 import Link from "next/link";
 import AdminActions from "./AdminActions";
 import AdminAuthorActions from "./AdminAuthorActions";
-import { SignupAction, ClearAllSignups } from "./SignupActions";
+import { SignupAction, ClearAllSignups, ClearAllAuthorClaims } from "./SignupActions";
 import TestTools from "./TestTools";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 
@@ -246,6 +246,7 @@ export default async function AdminPage({
                 <AdminAuthorActions paperId={a.paper_id} userId={a.user_id} />
               </div>
             ))}
+            <ClearAllAuthorClaims />
           </div>
         )}
       </section>

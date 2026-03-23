@@ -117,15 +117,22 @@ export async function POST(
       message: "Verified as GitHub contributor",
     });
   } else {
-    // Not a contributor — don't create a pending claim
+    // Not a contributor — create pending claim for admin review
+    await sql`
+      INSERT INTO paper_authors (paper_id, user_id, verified, verification_method, status)
+      VALUES (${paperId}, ${userId}, false, 'github_contributor_failed', 'pending_admin')
+      ON CONFLICT (paper_id, user_id) DO UPDATE SET
+        status = 'pending_admin',
+        verification_method = 'github_contributor_failed'
+    `;
     await logEvent("author_claim_failed", {
       userId,
       paperId,
       metadata: { username, repo: `${owner}/${repo}` },
     });
     return NextResponse.json({
-      status: "not_contributor",
-      message: `We verify authorship by checking if your GitHub account (@${username}) is a contributor to the linked repository (${owner}/${repo}). Your account was not found in the contributor list. If you believe this is an error, contact support@sotaverified.org`,
+      status: "pending",
+      message: `Your GitHub account (@${username}) was not found in the contributor list for ${owner}/${repo}. Your claim has been submitted for admin review.`,
     });
   }
 }

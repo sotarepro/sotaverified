@@ -28,6 +28,30 @@ export function SignupAction({ id, action }: { id: number; action: "approve" | "
   );
 }
 
+export function ClearAllAuthorClaims() {
+  const router = useRouter();
+
+  async function handle() {
+    if (!confirm("Reject all pending author claims?")) return;
+    // Use any existing pending claim's paperId/userId as the route params — action=clear_all ignores them
+    await fetch("/api/admin/paper-authors/_/_", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "clear_all" }),
+    });
+    router.refresh();
+  }
+
+  return (
+    <button
+      onClick={handle}
+      className="text-xs text-gray-500 hover:text-gray-700 underline mt-2"
+    >
+      Clear all pending
+    </button>
+  );
+}
+
 export function ClearAllSignups() {
   const router = useRouter();
 

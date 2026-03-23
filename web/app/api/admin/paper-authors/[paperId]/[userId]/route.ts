@@ -35,6 +35,12 @@ export async function PATCH(
           verified = false
       WHERE paper_id = ${paperId} AND user_id = ${userId}
     `;
+  } else if (action === "clear_all") {
+    await sql`
+      UPDATE paper_authors
+      SET status = 'rejected', verified = false
+      WHERE status = 'pending_admin'
+    `;
   } else {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }

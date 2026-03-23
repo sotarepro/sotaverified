@@ -4,7 +4,7 @@
  *
  * Behavior (updated Stage 3-author spec):
  * - no_repo: returns {status:"no_repo"} with explanation, no DB write
- * - not_contributor: returns {status:"not_contributor"} with explanation, no DB write
+ * - not_contributor: creates pending_admin row, returns {status:"pending"} for admin review
  * - check_failed: returns {status:"check_failed"} with explanation, no DB write
  * - verified: DB insert + rep +10, returns {status:"verified"}
  */
@@ -125,7 +125,7 @@ describe("POST /api/papers/[id]/claim-author", () => {
     );
   });
 
-  it("returns not_contributor when user is NOT in contributors — no DB write", async () => {
+  it("creates pending_admin claim when user is NOT in contributors", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("12345", "testuser"));
     mockSql.mockResolvedValueOnce([fakePaperRow]);        // paper found
     mockSql.mockResolvedValueOnce([fakeOfficialRepoRow]); // official repo found
@@ -133,6 +133,8 @@ describe("POST /api/papers/[id]/claim-author", () => {
       ok: true,
       json: async () => [{ login: "otheruser" }, { login: "anotherdev" }],
     } as Response);
+    mockSql.mockResolvedValueOnce([]);                    // INSERT paper_authors pending_admin
+    mockSql.mockResolvedValueOnce([]);                    // logEvent
 
     const req = makeReq();
     const params = { params: Promise.resolve({ id: "paper123" }) };
@@ -140,10 +142,10 @@ describe("POST /api/papers/[id]/claim-author", () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(json.status).toBe("not_contributor");
-    expect(json.message).toMatch(/@testuser/);
-    // Only 2 SQL calls (paper + repo), no INSERT
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    expect(json.status).toBe("pending");
+    expect(json.message).toMatch(/admin review/);
+    // 3+ SQL calls: paper + repo + INSERT pending (+ logEvent swallows errors)
+    expect(mockSql).toHaveBeenCalledTimes(3);
   });
 
   it("returns check_failed gracefully when GitHub API fetch throws — no DB write", async () => {

@@ -32,6 +32,10 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
       if (data.status === "verified") {
         setClaim({ status: "verified" });
         router.refresh();
+      } else if (data.status === "pending") {
+        setClaim({ status: "pending_admin" });
+        setMessage(data.message);
+        setMessageType("info");
       } else if (data.status === "not_contributor" || data.status === "no_repo" || data.status === "check_failed") {
         setMessage(data.message);
         setMessageType("error");
@@ -52,6 +56,17 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 14l-4.121-4.121a1 1 0 011.414-1.414L8.414 11.172l7.879-7.879a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
         Verified Author via GitHub
+      </span>
+    );
+  }
+
+  if (claim?.status === "pending_admin") {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 font-medium">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Author claim pending review
       </span>
     );
   }
