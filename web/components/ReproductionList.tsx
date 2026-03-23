@@ -134,16 +134,28 @@ export default function ReproductionList({ paperId }: Props) {
             </div>
 
             <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => handleUpvote(r.id)}
-                className={`text-xs rounded px-2 py-0.5 border transition-colors ${
-                  userVotes[r.id]
-                    ? "border-blue-400 bg-blue-50 text-blue-700"
-                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                ▲ {r.upvote_count}
-              </button>
+              {session?.user?.github_id !== r.user_id ? (
+                <button
+                  onClick={() => handleUpvote(r.id)}
+                  className={`inline-flex items-center gap-1 text-xs rounded px-2 py-0.5 border transition-colors ${
+                    userVotes[r.id]
+                      ? "border-pink-300 bg-pink-50 text-pink-600"
+                      : "border-gray-200 text-gray-400 hover:bg-gray-50 hover:text-pink-500"
+                  }`}
+                >
+                  <svg className="w-3 h-3" fill={userVotes[r.id] ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  {r.upvote_count}
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-300 px-2 py-0.5" title="You can't hype your own reproduction">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                  {r.upvote_count}
+                </span>
+              )}
               {session && (
                 <button
                   onClick={() => handleFlag(r.id)}

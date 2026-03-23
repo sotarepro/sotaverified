@@ -31,8 +31,11 @@ export default async function PaperPage({
   const session = await getServerSession(authOptions);
   const userId = session?.user?.github_id ?? null;
 
-  const [paper, codeLinks, lbEntries, upvoteInfo, badgeData] = await Promise.all([
-    getPaper(id),
+  // Check paper exists first to avoid crashes on invalid IDs like /papers/admin
+  const paper = await getPaper(id);
+  if (!paper) notFound();
+
+  const [codeLinks, lbEntries, upvoteInfo, badgeData] = await Promise.all([
     getPaperCodeLinks(id),
     getPaperLeaderboardEntries(id),
     getPaperUpvoteInfo(id, userId),

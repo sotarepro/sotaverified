@@ -15,6 +15,14 @@ export async function POST(
   const reproId = parseInt(id, 10);
   const userId = session.user.github_id;
 
+  // Block self-hype
+  const ownerCheck = await sql`
+    SELECT 1 FROM reproductions WHERE id = ${reproId} AND user_id = ${userId}
+  `;
+  if (ownerCheck.length > 0) {
+    return NextResponse.json({ error: "You cannot hype your own reproduction" }, { status: 403 });
+  }
+
   const existing = await sql`
     SELECT 1 FROM reproduction_upvotes
     WHERE reproduction_id = ${reproId} AND user_id = ${userId}

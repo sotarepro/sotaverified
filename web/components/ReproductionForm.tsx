@@ -20,14 +20,16 @@ const ALLOWED_URL_DOMAINS = [
 
 function validateRunLog(value: string): string | null {
   if (!value.trim()) return null; // optional
-  if (value.startsWith("http://") || value.startsWith("https://")) {
+  const looksLikeUrl = value.startsWith("http://") || value.startsWith("https://") || value.startsWith("www.");
+  if (looksLikeUrl) {
+    const url = value.startsWith("www.") ? `https://${value}` : value;
     try {
-      const { hostname } = new URL(value);
+      const { hostname } = new URL(url);
       const ok = ALLOWED_URL_DOMAINS.some(
         (d) => hostname === d || hostname.endsWith("." + d)
       );
       if (!ok) {
-        return `URL must be from: ${ALLOWED_URL_DOMAINS.join(", ")}`;
+        return "Run logs must be hosted on GitHub, Gist, Weights & Biases, Google Colab, or Hugging Face. Alternatively, paste your terminal output directly as text.";
       }
     } catch {
       return "Invalid URL";

@@ -193,6 +193,7 @@ describe("Reproduction upvote auto-verification", () => {
 
   it("auto-verifies at 3+ upvotes from trusted users (rep >= 30)", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
+    mockSql.mockResolvedValueOnce([]);                                     // owner check (not owner)
     mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
     mockSql.mockResolvedValueOnce([]);                                     // INSERT upvote
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE count +1
@@ -210,12 +211,13 @@ describe("Reproduction upvote auto-verification", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     expect(json.count).toBe(3);
-    // 7 calls: check + insert + update_count + fetch + qualified_count + update_status + update_rep
-    expect(mockSql).toHaveBeenCalledTimes(7);
+    // 8 calls: owner_check + check + insert + update_count + fetch + qualified_count + update_status + update_rep
+    expect(mockSql).toHaveBeenCalledTimes(8);
   });
 
   it("does not auto-verify when only 2 trusted upvotes", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
+    mockSql.mockResolvedValueOnce([]);                                     // owner check
     mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
     mockSql.mockResolvedValueOnce([]);                                     // INSERT upvote
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE count +1
@@ -230,11 +232,12 @@ describe("Reproduction upvote auto-verification", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     // No update_status or update_rep calls
-    expect(mockSql).toHaveBeenCalledTimes(5);
+    expect(mockSql).toHaveBeenCalledTimes(6);
   });
 
   it("does not auto-verify when upvote_count < 3 even from trusted user", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
+    mockSql.mockResolvedValueOnce([]);                                     // owner check
     mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
     mockSql.mockResolvedValueOnce([]);                                     // INSERT upvote
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE count +1
@@ -246,11 +249,12 @@ describe("Reproduction upvote auto-verification", () => {
 
     expect(res.status).toBe(200);
     // Should NOT check qualified_count since upvote_count < 3
-    expect(mockSql).toHaveBeenCalledTimes(4);
+    expect(mockSql).toHaveBeenCalledTimes(5);
   });
 
   it("toggles upvote off (removes existing upvote)", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
+    mockSql.mockResolvedValueOnce([]);                                     // owner check
     mockSql.mockResolvedValueOnce([{}]);                                   // existing upvote found
     mockSql.mockResolvedValueOnce([]);                                     // DELETE upvote
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE count -1

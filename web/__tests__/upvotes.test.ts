@@ -123,13 +123,15 @@ describe("POST /api/upvotes", () => {
 
   it("inserts upvote when no prior vote exists → {upvoted: true, count: 1}", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("user123"));
-    // Call 1: check existing → none found
+    // Call 1: author check → not author
     mockSql.mockResolvedValueOnce([]);
-    // Call 2: INSERT
+    // Call 2: check existing → none found
     mockSql.mockResolvedValueOnce([]);
-    // Call 3: count
+    // Call 3: INSERT
+    mockSql.mockResolvedValueOnce([]);
+    // Call 4: count
     mockSql.mockResolvedValueOnce([{ count: 1 }]);
-    // Call 4: logEvent INSERT (activity_log)
+    // Call 5: logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", { paper_id: "paper-abc" });
@@ -139,18 +141,31 @@ describe("POST /api/upvotes", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     expect(json.count).toBe(1);
-    expect(mockSql).toHaveBeenCalledTimes(4);
+    expect(mockSql).toHaveBeenCalledTimes(5);
+  });
+
+  it("blocks self-hype when user is verified author", async () => {
+    mockGetServerSession.mockResolvedValueOnce(makeSession("user123"));
+    // Call 1: author check → IS author
+    mockSql.mockResolvedValueOnce([{ paper_id: "paper-abc" }]);
+
+    const req = makeReq("POST", { paper_id: "paper-abc" });
+    const res = await POST(req);
+    expect(res.status).toBe(403);
+    expect(mockSql).toHaveBeenCalledTimes(1);
   });
 
   it("deletes upvote when prior vote exists → {upvoted: false, count: 0}", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("user123"));
-    // Call 1: check existing → found
-    mockSql.mockResolvedValueOnce([{}]);
-    // Call 2: DELETE
+    // Call 1: author check → not author
     mockSql.mockResolvedValueOnce([]);
-    // Call 3: count
+    // Call 2: check existing → found
+    mockSql.mockResolvedValueOnce([{}]);
+    // Call 3: DELETE
+    mockSql.mockResolvedValueOnce([]);
+    // Call 4: count
     mockSql.mockResolvedValueOnce([{ count: 0 }]);
-    // Call 4: logEvent INSERT (activity_log)
+    // Call 5: logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
 
     const req = makeReq("POST", { paper_id: "paper-abc" });
@@ -160,6 +175,6 @@ describe("POST /api/upvotes", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(false);
     expect(json.count).toBe(0);
-    expect(mockSql).toHaveBeenCalledTimes(4);
+    expect(mockSql).toHaveBeenCalledTimes(5);
   });
 });

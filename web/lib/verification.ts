@@ -95,6 +95,10 @@ export async function getBadgeData(paperId: string): Promise<{
     FROM papers WHERE id = ${paperId}
   `;
 
+  if (!row) {
+    return { badge: "unverified" as BadgeType, reproduction_count: 0, verification_score: 0 };
+  }
+
   let badge: BadgeType = "unverified";
   if (row.repro_count > 0) badge = "community_verified";
   else if (row.has_author) badge = "author_verified";
