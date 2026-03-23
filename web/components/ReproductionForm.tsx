@@ -48,13 +48,15 @@ export interface BenchmarkOption {
 interface Props {
   paperId: string;
   benchmarks?: BenchmarkOption[];
+  hasCodeRepo?: boolean;
 }
 
-export default function ReproductionForm({ paperId, benchmarks = [] }: Props) {
+export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo = false }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [tierClaimed, setTierClaimed] = useState(2);
+  const availableTiers = hasCodeRepo ? [1, 2, 3] : [3];
+  const [tierClaimed, setTierClaimed] = useState(hasCodeRepo ? 2 : 3);
   const [hardwareSpec, setHardwareSpec] = useState("");
   const [runLog, setRunLog] = useState("");
   const [notes, setNotes] = useState("");
@@ -158,7 +160,7 @@ export default function ReproductionForm({ paperId, benchmarks = [] }: Props) {
               onChange={(e) => setTierClaimed(Number(e.target.value))}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {[1, 2, 3].map((t) => (
+              {availableTiers.map((t) => (
                 <option key={t} value={t}>
                   Tier {t} — {TIER_DESCRIPTIONS[t]}
                 </option>
