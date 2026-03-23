@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { paper_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value } = body;
+  const { paper_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value, dataset_id } = body;
 
   if (!paper_id || !tier_claimed || !hardware_spec) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -117,8 +117,8 @@ export async function POST(req: NextRequest) {
   }
 
   const [row] = await sql<[{ id: number }]>`
-    INSERT INTO reproductions (paper_id, user_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value)
-    VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url}, ${notes ?? null}, ${metricName}, ${metricValue})
+    INSERT INTO reproductions (paper_id, user_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value, dataset_id)
+    VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url}, ${notes ?? null}, ${metricName}, ${metricValue}, ${dataset_id ?? null})
     RETURNING id
   `;
 

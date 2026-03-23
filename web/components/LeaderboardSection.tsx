@@ -58,7 +58,8 @@ export default function LeaderboardSection({
                 <th className="px-4 py-2.5 font-medium text-gray-600 w-8 text-right">#</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Paper</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Metric</th>
-                <th className="px-4 py-2.5 font-medium text-gray-600 text-right">Value</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 text-right">Claimed</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 text-right">Verified</th>
                 <th className="px-4 py-2.5 font-medium text-gray-600">Status</th>
               </tr>
             </thead>
@@ -87,6 +88,25 @@ export default function LeaderboardSection({
                           maximumFractionDigits: 2,
                         })
                       : "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-mono">
+                    {row.verified_count && row.verified_count > 0 && row.verified_median != null ? (
+                      <span
+                        className={
+                          row.best_metric_value != null && row.best_metric_value !== 0
+                            ? Math.abs(row.verified_median - row.best_metric_value) / Math.abs(row.best_metric_value) <= 0.05
+                              ? "text-green-600"
+                              : "text-amber-600"
+                            : "text-gray-700"
+                        }
+                        title={`Median of ${row.verified_count} reproduction${row.verified_count > 1 ? "s" : ""}`}
+                      >
+                        {Number(row.verified_median).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        <span className="text-gray-400 text-xs ml-1">({row.verified_count})</span>
+                      </span>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-2.5">
                     <VerificationBadge tier={row.verification as VerificationTier} />

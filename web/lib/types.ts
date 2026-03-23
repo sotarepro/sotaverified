@@ -26,6 +26,7 @@ export interface LeaderboardRow {
   id: number;
   model_name: string;
   dataset_name: string;
+  dataset_id: string;
   best_metric_name: string | null;
   best_metric_value: number | null;
   paper_id: string | null;
@@ -34,7 +35,10 @@ export interface LeaderboardRow {
   evaluated_on: string | null;
   uses_extra_data: boolean;
   verification: VerificationTier;
+  submission_count?: number;
   paper_upvotes?: number;
+  verified_median?: number | null;
+  verified_count?: number;
 }
 
 export interface PaperDetail {

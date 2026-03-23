@@ -8,6 +8,7 @@ import {
   getPaperCodeLinks,
   getPaperLeaderboardEntries,
   getPaperUpvoteInfo,
+  getPaperBenchmarks,
   type PaperLbEntry,
 } from "@/lib/queries";
 import { getBadgeData } from "@/lib/verification";
@@ -35,11 +36,12 @@ export default async function PaperPage({
   const paper = await getPaper(id);
   if (!paper) notFound();
 
-  const [codeLinks, lbEntries, upvoteInfo, badgeData] = await Promise.all([
+  const [codeLinks, lbEntries, upvoteInfo, badgeData, benchmarks] = await Promise.all([
     getPaperCodeLinks(id),
     getPaperLeaderboardEntries(id),
     getPaperUpvoteInfo(id, userId),
     getBadgeData(id),
+    getPaperBenchmarks(id),
   ]);
 
   // Fetch user's existing author claim + age-gate status
@@ -336,7 +338,7 @@ export default async function PaperPage({
       {/* Reproductions */}
       <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
-        <ReproductionForm paperId={id} isAgeGated={isAgeGated} />
+        <ReproductionForm paperId={id} isAgeGated={isAgeGated} benchmarks={benchmarks} />
         <ReproductionList paperId={id} />
       </section>
 

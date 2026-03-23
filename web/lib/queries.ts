@@ -464,6 +464,7 @@ export async function getLeaderboard(
       lr.id,
       lr.model_name,
       d.name                  AS dataset_name,
+      lr.dataset_id,
       lr.best_metric_name,
       lr.best_metric_value,
       lr.paper_id,
@@ -472,10 +473,22 @@ export async function getLeaderboard(
       lr.evaluated_on::text,
       lr.uses_extra_data,
       lr.verification,
-      ds_counts.submission_count
+      ds_counts.submission_count,
+      vm.median_value         AS verified_median,
+      COALESCE(vm.repro_count, 0)::int AS verified_count
     FROM leaderboard_results lr
     JOIN datasets d ON d.id = lr.dataset_id
     LEFT JOIN papers p ON p.id = lr.paper_id
+    LEFT JOIN LATERAL (
+      SELECT
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.actual_metric_value)::float AS median_value,
+        COUNT(*)::int AS repro_count
+      FROM reproductions r
+      WHERE r.paper_id = lr.paper_id
+        AND r.dataset_id = lr.dataset_id
+        AND r.actual_metric_value IS NOT NULL
+        AND r.status NOT IN ('hidden', 'removed')
+    ) vm ON true
     JOIN (
       SELECT dataset_id, COUNT(*)::int AS submission_count
       FROM leaderboard_results
@@ -585,5 +598,50 @@ export async function getPaperLeaderboardEntries(
       AND lr.best_metric_value IS NOT NULL
     ORDER BY t.name, d.name
     LIMIT 50
+  `;
+}
+
+/** Benchmark options for a paper's reproduction form (dataset + metric name). */
+export async function getPaperBenchmarks(paperId: string): Promise<{
+  dataset_id: string;
+  dataset_name: string;
+  metric_name: string | null;
+}[]> {
+  return sql<{ dataset_id: string; dataset_name: string; metric_name: string | null }[]>`
+    SELECT DISTINCT ON (lr.dataset_id)
+      lr.dataset_id,
+      d.name AS dataset_name,
+      lr.best_metric_name AS metric_name
+    FROM leaderboard_results lr
+    JOIN datasets d ON d.id = lr.dataset_id
+    WHERE lr.paper_id = ${paperId}
+      AND lr.best_metric_value IS NOT NULL
+    ORDER BY lr.dataset_id, lr.best_metric_value DESC
+  `;
+}
+
+/** Verified metrics from reproductions, grouped by paper+dataset. */
+export async function getVerifiedMetrics(
+  paperIds: string[],
+  datasetIds: string[]
+): Promise<{
+  paper_id: string;
+  dataset_id: string;
+  median_value: number;
+  repro_count: number;
+}[]> {
+  if (paperIds.length === 0 || datasetIds.length === 0) return [];
+  return sql<{ paper_id: string; dataset_id: string; median_value: number; repro_count: number }[]>`
+    SELECT
+      paper_id,
+      dataset_id,
+      PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY actual_metric_value)::float AS median_value,
+      COUNT(*)::int AS repro_count
+    FROM reproductions
+    WHERE paper_id = ANY(${paperIds})
+      AND dataset_id = ANY(${datasetIds})
+      AND actual_metric_value IS NOT NULL
+      AND status NOT IN ('hidden', 'removed')
+    GROUP BY paper_id, dataset_id
   `;
 }

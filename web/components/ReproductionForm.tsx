@@ -39,12 +39,19 @@ function validateRunLog(value: string): string | null {
   return null;
 }
 
+export interface BenchmarkOption {
+  dataset_id: string;
+  dataset_name: string;
+  metric_name: string | null;
+}
+
 interface Props {
   paperId: string;
   isAgeGated?: boolean;
+  benchmarks?: BenchmarkOption[];
 }
 
-export default function ReproductionForm({ paperId, isAgeGated = false }: Props) {
+export default function ReproductionForm({ paperId, isAgeGated = false, benchmarks = [] }: Props) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [showAgeGate, setShowAgeGate] = useState(false);
@@ -52,8 +59,11 @@ export default function ReproductionForm({ paperId, isAgeGated = false }: Props)
   const [hardwareSpec, setHardwareSpec] = useState("");
   const [runLog, setRunLog] = useState("");
   const [notes, setNotes] = useState("");
+  const [selectedDatasetId, setSelectedDatasetId] = useState("");
   const [actualMetricName, setActualMetricName] = useState("");
   const [actualMetricValue, setActualMetricValue] = useState("");
+
+  const selectedBenchmark = benchmarks.find((b) => b.dataset_id === selectedDatasetId);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -97,7 +107,8 @@ export default function ReproductionForm({ paperId, isAgeGated = false }: Props)
           hardware_spec: hardwareSpec,
           run_log_url: runLog,
           notes,
-          actual_metric_name: actualMetricName || undefined,
+          dataset_id: selectedDatasetId || undefined,
+          actual_metric_name: selectedBenchmark?.metric_name || actualMetricName || undefined,
           actual_metric_value: actualMetricValue !== "" ? Number(actualMetricValue) : undefined,
         }),
       });
@@ -207,30 +218,70 @@ export default function ReproductionForm({ paperId, isAgeGated = false }: Props)
             </p>
           </div>
 
-          {/* Optional metric */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Reproduced metric{" "}
-              <span className="text-gray-400 font-normal">(optional — enables automated score calculation)</span>
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={actualMetricName}
-                onChange={(e) => setActualMetricName(e.target.value)}
-                placeholder="e.g. Top-1 Accuracy"
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+          {/* Optional benchmark + metric */}
+          {benchmarks.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Which benchmark did you evaluate on?{" "}
+                <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <select
+                value={selectedDatasetId}
+                onChange={(e) => {
+                  setSelectedDatasetId(e.target.value);
+                  setActualMetricValue("");
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">— None —</option>
+                {benchmarks.map((b) => (
+                  <option key={b.dataset_id} value={b.dataset_id}>
+                    {b.dataset_name}{b.metric_name ? ` (${b.metric_name})` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {selectedBenchmark ? (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Your result — {selectedBenchmark.metric_name ?? "metric"} on {selectedBenchmark.dataset_name}
+              </label>
               <input
                 type="number"
                 step="any"
                 value={actualMetricValue}
                 onChange={(e) => setActualMetricValue(e.target.value)}
                 placeholder="e.g. 76.3"
-                className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Reproduced metric{" "}
+                <span className="text-gray-400 font-normal">(optional — enables automated score calculation)</span>
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={actualMetricName}
+                  onChange={(e) => setActualMetricName(e.target.value)}
+                  placeholder="e.g. Top-1 Accuracy"
+                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <input
+                  type="number"
+                  step="any"
+                  value={actualMetricValue}
+                  onChange={(e) => setActualMetricValue(e.target.value)}
+                  placeholder="e.g. 76.3"
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Notes */}
           <div>
