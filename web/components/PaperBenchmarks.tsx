@@ -10,10 +10,13 @@ interface BenchmarkEntry {
   task_name: string;
   task_id: string;
   dataset_name: string;
+  dataset_id: string;
   model_name: string;
   best_metric_name: string | null;
   best_metric_value: number | null;
   verification: string;
+  verified_median: number | null;
+  repro_count: number;
 }
 
 interface Props {
@@ -100,26 +103,46 @@ export default function PaperBenchmarks({ entries }: Props) {
                       <th className="px-4 py-2 font-medium text-gray-600">Dataset</th>
                       <th className="px-4 py-2 font-medium text-gray-600">Model</th>
                       <th className="px-4 py-2 font-medium text-gray-600">Metric</th>
-                      <th className="px-4 py-2 font-medium text-gray-600 text-right">Value</th>
+                      <th className="px-4 py-2 font-medium text-gray-600 text-right">Claimed</th>
+                      <th className="px-4 py-2 font-medium text-gray-600 text-right">Verified</th>
                       <th className="px-4 py-2 font-medium text-gray-600">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {rows.map((e, i) => (
-                      <tr key={i} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-gray-600 text-xs">{e.dataset_name}</td>
-                        <td className="px-4 py-2 font-medium text-xs">{stripLatex(e.model_name)}</td>
-                        <td className="px-4 py-2 text-gray-500 text-xs">{e.best_metric_name ?? "—"}</td>
-                        <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
-                          {e.best_metric_value != null
-                            ? Number(e.best_metric_value).toLocaleString(undefined, { maximumFractionDigits: 2 })
-                            : "—"}
-                        </td>
-                        <td className="px-4 py-2">
-                          <VerificationBadge tier={e.verification as VerificationTier} />
-                        </td>
-                      </tr>
-                    ))}
+                    {rows.map((e, i) => {
+                      const hasRepro = e.repro_count > 0;
+                      return (
+                        <tr key={i} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 text-gray-600 text-xs">{e.dataset_name}</td>
+                          <td className="px-4 py-2 font-medium text-xs">{stripLatex(e.model_name)}</td>
+                          <td className="px-4 py-2 text-gray-500 text-xs">{e.best_metric_name ?? "—"}</td>
+                          <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
+                            {e.best_metric_value != null
+                              ? Number(e.best_metric_value).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                              : "—"}
+                          </td>
+                          <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
+                            {hasRepro && e.verified_median != null ? (
+                              <span className="text-green-700">
+                                {Number(e.verified_median).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                <span className="text-gray-400 font-sans ml-1">({e.repro_count})</span>
+                              </span>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2">
+                            {hasRepro ? (
+                              <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                                Verified
+                              </span>
+                            ) : (
+                              <VerificationBadge tier={e.verification as VerificationTier} />
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

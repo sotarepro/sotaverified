@@ -607,10 +607,13 @@ export interface PaperLbEntry {
   task_name: string;
   task_id: string;
   dataset_name: string;
+  dataset_id: string;
   model_name: string;
   best_metric_name: string | null;
   best_metric_value: number | null;
   verification: string;
+  verified_median: number | null;
+  repro_count: number;
 }
 
 export async function getPaperUpvoteInfo(
@@ -649,13 +652,26 @@ export async function getPaperLeaderboardEntries(
       t.name  AS task_name,
       t.id    AS task_id,
       d.name  AS dataset_name,
+      lr.dataset_id,
       lr.model_name,
       lr.best_metric_name,
       lr.best_metric_value,
-      lr.verification
+      lr.verification,
+      vm.median_value AS verified_median,
+      COALESCE(vm.repro_count, 0)::int AS repro_count
     FROM leaderboard_results lr
     JOIN tasks t ON t.id = lr.task_id
     JOIN datasets d ON d.id = lr.dataset_id
+    LEFT JOIN LATERAL (
+      SELECT
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY r.actual_metric_value)::float AS median_value,
+        COUNT(*)::int AS repro_count
+      FROM reproductions r
+      WHERE r.paper_id = lr.paper_id
+        AND r.dataset_id = lr.dataset_id
+        AND r.actual_metric_value IS NOT NULL
+        AND r.status NOT IN ('hidden', 'removed')
+    ) vm ON true
     WHERE lr.paper_id = ${paperId}
       AND lr.best_metric_value IS NOT NULL
     ORDER BY t.name, d.name

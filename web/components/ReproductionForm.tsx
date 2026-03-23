@@ -206,7 +206,7 @@ export default function ReproductionForm({ paperId, benchmarks = [] }: Props) {
           {benchmarks.length > 0 && (
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Which benchmark did you evaluate on?{" "}
+                Which dataset did you evaluate on?{" "}
                 <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <select

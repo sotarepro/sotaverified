@@ -42,10 +42,13 @@ const fakeLbEntries = [
     task_name: "Machine Translation",
     task_id: "task-1",
     dataset_name: "WMT 2014 English-German",
+    dataset_id: "wmt-2014-en-de",
     model_name: "Transformer (big)",
     best_metric_name: "BLEU score",
     best_metric_value: 28.4,
     verification: "unverified",
+    verified_median: null,
+    repro_count: 0,
   },
 ];
 
