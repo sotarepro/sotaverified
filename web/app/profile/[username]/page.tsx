@@ -20,7 +20,7 @@ export default async function ProfilePage({
     created_at: string;
   }[]>`
     SELECT github_id, username, avatar_url, reputation_score, created_at::text
-    FROM users WHERE username = ${username} AND is_test = false
+    FROM users WHERE username = ${username} AND is_test = false AND COALESCE(is_system, false) = false
   `;
 
   if (!user) notFound();

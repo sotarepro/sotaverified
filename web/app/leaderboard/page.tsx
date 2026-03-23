@@ -31,7 +31,7 @@ export default async function LeaderboardPage() {
       (SELECT COUNT(*)::int FROM paper_authors pa
        WHERE pa.user_id = u.github_id AND pa.status = 'verified') AS authored_count
     FROM users u
-    WHERE u.is_test = false AND u.reputation_score > 0
+    WHERE u.is_test = false AND COALESCE(u.is_system, false) = false AND u.reputation_score > 0
     ORDER BY u.reputation_score DESC
     LIMIT 50
   `;
@@ -44,7 +44,7 @@ export default async function LeaderboardPage() {
     published: string | null;
   }[]>`
     SELECT p.id, p.title,
-      (COALESCE((SELECT COUNT(*)::int FROM upvotes WHERE paper_id = p.id), 0) + p.hype_score) AS hype_score,
+      p.hype_score,
       p.published::text
     FROM papers p
     WHERE p.verification_score = 0 AND p.hype_score > 0
