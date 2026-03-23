@@ -282,21 +282,79 @@ SEMANTIC_SCHOLAR_KEY=  ← for semantic_scholar_enrich.py (optional)
 
 ## Pre-Launch QA — Test Suite Status
 All tests run with `npm test` (no external deps — all DB/auth/API mocked).
-**59 tests, all passing.**
+**141 tests, 13 suites, all passing.**
 
-- `__tests__/auth.test.ts` — session, age gate, user upsert (8 tests)
-- `__tests__/upvotes.test.ts` — toggle upvote, auth guard (8 tests)
+- `__tests__/auth.test.ts` — sign-in callback, age gate, allowlist bypass, JWT/session (8 tests)
+- `__tests__/upvotes.test.ts` — hype toggle, auth guard (7 tests)
 - `__tests__/api-v1.test.ts` — GET /api/v1/papers/{id} shape + 404 (6 tests)
 - `__tests__/data-layer.test.ts` — query shapes, empty states (9 tests)
-- `__tests__/reproductions.test.ts` — submit, flag, admin approve/remove (12 tests)
-- `__tests__/author-verification.test.ts` — contributor check, fallback (6 tests)
+- `__tests__/reproductions.test.ts` — submit, flag auto-hide, admin approve/remove (12 tests)
+- `__tests__/author-verification.test.ts` — contributor check, no-repo, fallback (6 tests)
 - `__tests__/routing.test.ts` — paper links resolve to /papers/[id] (6 tests)
+- `__tests__/agent-api.test.ts` — agent write API: auth, rate limit, validation, paper lookup (12 tests)
+- `__tests__/sota-api.test.ts` — SOTA API: badge computation, sort, filter, empty state (11 tests)
+- `__tests__/persona-flows.test.ts` — persona flows: new user age gate, promote, flag, auto-verify (13 tests)
+- `__tests__/verification.test.ts` — recomputeVerificationScore + getBadgeData (12 tests)
+- `__tests__/admin.test.ts` — admin author claims, reproduction approve/remove/restore (12 tests)
+- `__tests__/user-journeys.test.ts` — comprehensive journey: unauth 401s, hype toggle, repro validation,
+  self-upvote block, promote, author benchmarks, admin restore, thresholds, search entities (24 tests)
 
-**Remaining uncovered (low priority pre-launch):**
-- Ingestion scripts (arxiv_delta, semantic_scholar_enrich, github_enrich)
-- Unique DB constraints (would need real DB)
-- arXiv link only appears on paper detail page
-- InlineHypeButton (client component, no jsdom in test env)
+---
+
+## User Journey Verification Checklist
+
+### Persona 1: Unauthenticated Visitor (read-only)
+- [x] Homepage loads with hero, stats, paper table (4 tabs)
+- [x] Tab switching (recent/hyped/unverified/verified)
+- [x] Pagination (10/25/50, URL-based with scroll anchor)
+- [x] Browse research area cards → category pages
+- [x] Task pages with scoped paper table + dataset leaderboards
+- [x] Paper detail: title, authors, badge, CTA, code, benchmarks, reproductions
+- [x] Search: papers + tasks results
+- [x] Invalid routes (/papers/admin, nonexistent IDs) → 404
+- [x] All interactive endpoints return 401 (unit tested)
+- [x] About, Agents, Leaderboard pages render
+
+### Persona 2: Authenticated User
+- [x] Sign-in: GitHub OAuth → user upsert → session
+- [x] Sign-in rejected: account < 30 days → /auth/too-new + pending signup request
+- [x] Approved accounts bypass age check on retry
+- [x] Hype toggle: heart red/grey, count increment/decrement
+- [x] Authors CAN hype their own papers (no self-hype restriction)
+- [x] Submit reproduction: tier 1-4, hardware required, optional dataset+metric+runlog+notes
+- [x] Input validation: tier range, field lengths, metric finiteness, URL domain allowlist
+- [x] Auto-verify at 1 upvote (UPVOTES_TO_VERIFY=1)
+- [x] Tier-based rep: T1:+2, T2:+5, T3:+10, T4:+15 on verify
+- [x] Metric match bonus: +5 if within 5% of claimed
+- [x] Per-upvote rep: +1 per upvote to submitter
+- [x] Self-upvote blocked on reproductions (button hidden + API 403)
+- [x] Flag: increments count, auto-hide at 2 flags (FLAGS_TO_HIDE=2)
+- [x] Promote agent reproductions: any logged-in user, no rep gate
+- [x] Profile page: /profile/[username] with rep, rank, repros, authored papers
+- [x] Leaderboard: /leaderboard with top 50 + "help verify" CTA
+
+### Persona 3: Author
+- [x] Claim authorship: GitHub contributor check → auto-verify + badge + rep
+- [x] Claim rejected: not in contributors → descriptive message, no pending claim
+- [x] No official repo: descriptive message
+- [x] Submit benchmark results: task + dataset + metric (author-only form)
+- [x] Benchmark creates leaderboard_results row with source='author'
+- [x] Author can also submit reproductions on own papers
+
+### Persona 4: Admin
+- [x] /admin: activity feed, author claims, agent pending, signup queue
+- [x] Non-admin → 404
+- [x] Approve/reject author claims
+- [x] Approve/remove/restore reproductions (restore is new)
+- [x] Sign-up rejection queue: approve/reject/clear-all
+- [x] Test tools: create users, create papers, impersonate, reset
+- [x] Impersonation: banner, attributed actions, exit restores admin
+
+### Cross-cutting
+- [x] All thresholds from lib/thresholds.ts (env-configurable, unit tested)
+- [x] Verification score: +5 repo, +10 author, +10 per repro, +5 metric match, +3 hardware
+- [x] Paper titles link to /papers/[id] (never direct to arXiv)
+- [x] Activity logging on all user actions
 
 ---
 

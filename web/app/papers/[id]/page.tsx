@@ -86,14 +86,7 @@ export default async function PaperPage({
     ORDER BY r.created_at DESC
   `;
 
-  // Check if current user is trusted (rep >= 30)
-  let isTrustedUser = false;
-  if (userId) {
-    const [uRow] = await sql<[{ reputation_score: number }]>`
-      SELECT reputation_score FROM users WHERE github_id = ${userId}
-    `;
-    isTrustedUser = (uRow?.reputation_score ?? 0) >= 30;
-  }
+  const isLoggedIn = !!userId;
 
   if (!paper) notFound();
 
@@ -401,7 +394,7 @@ export default async function PaperPage({
                         {new Date(r.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    {isTrustedUser && (
+                    {isLoggedIn && (
                       <PromoteButton reproductionId={r.id} />
                     )}
                   </div>

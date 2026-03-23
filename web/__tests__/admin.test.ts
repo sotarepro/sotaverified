@@ -137,9 +137,9 @@ describe("PATCH /api/admin/reproductions/[id]", () => {
     expect(mockRecompute).toHaveBeenCalledWith("p1");
   });
 
-  it("awards correct rep per tier: T1=+5, T2=+10, T3=+15, T4=+20", async () => {
-    // Test each tier
-    for (const [tier, expectedRep] of [[1, 5], [2, 10], [3, 15], [4, 20]]) {
+  it("awards correct rep per tier: T1=+2, T2=+5, T3=+10, T4=+15", async () => {
+    // Test each tier (values from THRESHOLDS)
+    for (const [tier, expectedRep] of [[1, 2], [2, 5], [3, 10], [4, 15]]) {
       mockSql.mockReset();
       mockSession.mockReset();
       mockRecompute.mockClear();

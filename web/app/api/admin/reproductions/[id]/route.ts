@@ -52,6 +52,18 @@ export async function PATCH(
     if (r) {
       await recomputeVerificationScore(r.paper_id);
     }
+  } else if (action === "restore") {
+    await sql`
+      UPDATE reproductions
+      SET status = 'community', reviewed_at = NOW()
+      WHERE id = ${reproId}
+    `;
+    const [r] = await sql<[{ paper_id: string }]>`
+      SELECT paper_id FROM reproductions WHERE id = ${reproId}
+    `;
+    if (r) {
+      await recomputeVerificationScore(r.paper_id);
+    }
   } else {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }

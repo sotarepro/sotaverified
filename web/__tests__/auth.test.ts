@@ -191,15 +191,15 @@ describe("session callback", () => {
 // ── account age gate logic ────────────────────────────────────────────────────
 
 describe("account age gate", () => {
-  it("correctly identifies accounts older than 180 days as not new", () => {
-    const MIN_AGE_DAYS = 180;
+  it("correctly identifies accounts older than threshold as not new", () => {
+    const MIN_AGE_DAYS = 180; // using 180 for math test; actual default is 30
     const createdAt = new Date(Date.now() - MIN_AGE_DAYS * 2 * 24 * 60 * 60 * 1000);
     const ageInDays = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
     expect(ageInDays < MIN_AGE_DAYS).toBe(false);
   });
 
-  it("correctly identifies accounts younger than 180 days as new", () => {
-    const MIN_AGE_DAYS = 180;
+  it("correctly identifies accounts younger than threshold as new", () => {
+    const MIN_AGE_DAYS = 180; // using 180 for math test; actual default is 30
     const createdAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
     const ageInDays = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
     expect(ageInDays < MIN_AGE_DAYS).toBe(true);
