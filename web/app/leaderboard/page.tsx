@@ -46,8 +46,7 @@ export default async function LeaderboardPage() {
       p.hype_score,
       p.published::text
     FROM papers p
-    WHERE p.verification_score = 0 AND p.hype_score > 0
-    ORDER BY p.hype_score DESC
+    ORDER BY p.hype_score DESC, p.verification_score ASC
     LIMIT 10
   `;
 

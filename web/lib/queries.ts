@@ -97,14 +97,13 @@ export async function getTabPapers(
           FROM papers p
           JOIN paper_tasks pt ON pt.paper_id = p.id
           WHERE pt.task_id = ${scope.taskId}
-            AND p.verification_score = 0 AND p.hype_score > 0
           ORDER BY p.id
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
                b.hype_score AS upvote_count
-        FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+        FROM (SELECT * FROM base ORDER BY hype_score DESC, verification_score ASC LIMIT ${limit} OFFSET ${offset}) b
+        ORDER BY b.hype_score DESC, b.verification_score ASC
       `;
     } else {
       return sql<TabPaperRow[]>`
@@ -177,8 +176,7 @@ export async function getTabPapers(
                p.hype_score AS upvote_count
         FROM papers p
         WHERE ${inArea}
-          AND p.verification_score = 0 AND p.hype_score > 0
-        ORDER BY p.hype_score DESC, p.published DESC NULLS LAST
+        ORDER BY p.hype_score DESC, p.verification_score ASC
         LIMIT ${limit} OFFSET ${offset}
       `;
     } else {
@@ -247,15 +245,14 @@ export async function getTabPapers(
           SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
                  p.tasks, p.verification, p.verification_score, p.hype_score
           FROM papers p
-          WHERE p.verification_score = 0 AND p.hype_score > 0
-          ORDER BY p.hype_score DESC, p.published DESC NULLS LAST
+          ORDER BY p.hype_score DESC, p.verification_score ASC
           LIMIT ${limit} OFFSET ${offset}
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
                b.verification_score,
                b.hype_score AS upvote_count
         FROM base b
-        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+        ORDER BY b.hype_score DESC, b.verification_score ASC
       `;
     } else {
       return sql<TabPaperRow[]>`
@@ -314,37 +311,19 @@ export async function getTabPapersCount(
     }
   }
   if (scope?.taskId) {
-    if (tab === "unverified") {
-      const rows = await sql<{ n: number }[]>`
-        SELECT COUNT(DISTINCT p.id)::int AS n
-        FROM papers p
-        JOIN paper_tasks pt ON pt.paper_id = p.id
-        WHERE pt.task_id = ${scope.taskId}
-          AND p.verification_score = 0 AND p.hype_score > 0
-      `;
-      return rows[0]?.n ?? 0;
-    } else {
-      const rows = await sql<{ n: number }[]>`
-        SELECT COUNT(DISTINCT p.id)::int AS n
-        FROM papers p
-        JOIN paper_tasks pt ON pt.paper_id = p.id
-        WHERE pt.task_id = ${scope.taskId}
-      `;
-      return rows[0]?.n ?? 0;
-    }
+    const rows = await sql<{ n: number }[]>`
+      SELECT COUNT(DISTINCT p.id)::int AS n
+      FROM papers p
+      JOIN paper_tasks pt ON pt.paper_id = p.id
+      WHERE pt.task_id = ${scope.taskId}
+    `;
+    return rows[0]?.n ?? 0;
   } else if (scope?.area) {
     const inArea = sql`EXISTS (
       SELECT 1 FROM paper_tasks pt JOIN tasks t ON t.id = pt.task_id
       WHERE pt.paper_id = p.id AND t.area = ${scope.area}
     )`;
-    if (tab === "unverified") {
-      const rows = await sql<{ n: number }[]>`
-        SELECT COUNT(*)::int AS n FROM papers p
-        WHERE ${inArea}
-          AND p.verification_score = 0 AND p.hype_score > 0
-      `;
-      return rows[0]?.n ?? 0;
-    } else if (tab === "verified") {
+    if (tab === "verified") {
       const rows = await sql<{ n: number }[]>`
         SELECT COUNT(*)::int AS n FROM papers p
         WHERE ${inArea} AND p.verification_score > 0
@@ -358,13 +337,7 @@ export async function getTabPapersCount(
       return rows[0]?.n ?? 0;
     }
   } else {
-    if (tab === "unverified") {
-      const rows = await sql<{ n: number }[]>`
-        SELECT COUNT(*)::int AS n FROM papers
-        WHERE verification_score = 0 AND hype_score > 0
-      `;
-      return rows[0]?.n ?? 0;
-    } else if (tab === "verified") {
+    if (tab === "verified") {
       const rows = await sql<{ n: number }[]>`
         SELECT COUNT(*)::int AS n FROM papers
         WHERE verification_score > 0
