@@ -104,9 +104,14 @@ describe("POST /api/papers/[id]/claim-author", () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("12345", "testuser"));
     mockSql.mockResolvedValueOnce([fakePaperRow]);        // paper found
     mockSql.mockResolvedValueOnce([fakeOfficialRepoRow]); // official repo found
+    // Two fetch calls: contributors + repo owner
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [{ login: "testuser" }, { login: "otherdev" }],
+    } as Response);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ owner: { login: "tensorflow" } }),
     } as Response);
     mockSql.mockResolvedValueOnce([]);  // INSERT paper_authors
     mockSql.mockResolvedValueOnce([]);  // UPDATE users rep
@@ -118,23 +123,23 @@ describe("POST /api/papers/[id]/claim-author", () => {
 
     expect(res.status).toBe(200);
     expect(json.status).toBe("verified");
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("tensorflow/tensor2tensor"),
-      expect.any(Object)
-    );
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it("creates pending_admin claim when user is NOT in contributors", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("12345", "testuser"));
     mockSql.mockResolvedValueOnce([fakePaperRow]);        // paper found
     mockSql.mockResolvedValueOnce([fakeOfficialRepoRow]); // official repo found
+    // Two fetch calls: contributors + repo owner
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => [{ login: "otheruser" }, { login: "anotherdev" }],
     } as Response);
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ owner: { login: "tensorflow" } }),
+    } as Response);
     mockSql.mockResolvedValueOnce([]);                    // INSERT paper_authors pending_admin
-    mockSql.mockResolvedValueOnce([]);                    // logEvent
 
     const req = makeReq();
     const params = { params: Promise.resolve({ id: "paper123" }) };

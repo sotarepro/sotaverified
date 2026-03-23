@@ -10,7 +10,7 @@ function extractOwnerRepo(url: string): [string, string] | null {
   return [match[1], match[2]];
 }
 
-async function getGitHubContributors(
+async function getGitHubContributorsAndOwner(
   owner: string,
   repo: string
 ): Promise<string[]> {
@@ -20,11 +20,29 @@ async function getGitHubContributors(
   };
   if (token) headers["Authorization"] = `token ${token}`;
 
-  const url = `https://api.github.com/repos/${owner}/${repo}/contributors?per_page=100`;
-  const resp = await fetch(url, { headers });
-  if (!resp.ok) return [];
-  const data = (await resp.json()) as Array<{ login: string }>;
-  return data.map((c) => c.login.toLowerCase());
+  const logins = new Set<string>();
+
+  // Fetch contributors
+  const contribResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contributors?per_page=100`,
+    { headers }
+  );
+  if (contribResp.ok) {
+    const data = (await contribResp.json()) as Array<{ login: string }>;
+    for (const c of data) logins.add(c.login.toLowerCase());
+  }
+
+  // Also fetch repo to get owner (org owners/personal accounts aren't always in contributors)
+  const repoResp = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}`,
+    { headers }
+  );
+  if (repoResp.ok) {
+    const data = (await repoResp.json()) as { owner?: { login: string } };
+    if (data.owner?.login) logins.add(data.owner.login.toLowerCase());
+  }
+
+  return [...logins];
 }
 
 export async function POST(
@@ -75,7 +93,7 @@ export async function POST(
   let contributors: string[] = [];
   let checkFailed = false;
   try {
-    contributors = await getGitHubContributors(owner, repo);
+    contributors = await getGitHubContributorsAndOwner(owner, repo);
   } catch {
     checkFailed = true;
   }
