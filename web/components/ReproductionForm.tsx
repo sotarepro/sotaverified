@@ -39,11 +39,13 @@ function validateRunLog(value: string): string | null {
 
 interface Props {
   paperId: string;
+  isAgeGated?: boolean;
 }
 
-export default function ReproductionForm({ paperId }: Props) {
+export default function ReproductionForm({ paperId, isAgeGated = false }: Props) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
   const [tierClaimed, setTierClaimed] = useState(2);
   const [hardwareSpec, setHardwareSpec] = useState("");
   const [runLog, setRunLog] = useState("");
@@ -115,9 +117,25 @@ export default function ReproductionForm({ paperId }: Props) {
 
   return (
     <div className="mb-4">
-      {!open ? (
+      {showAgeGate ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-medium mb-1">Account too new to submit reproductions</p>
+          <p className="text-amber-700 text-xs">
+            To prevent spam, new GitHub accounts must be at least{" "}
+            {process.env.NEXT_PUBLIC_MIN_ACCOUNT_AGE_DAYS ?? "60"} days old before submitting
+            reproductions. You can still browse papers, hype results, and explore leaderboards
+            while your account matures.
+          </p>
+        </div>
+      ) : !open ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            if (isAgeGated) {
+              setShowAgeGate(true);
+            } else {
+              setOpen(true);
+            }
+          }}
           className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
         >
           I reproduced this

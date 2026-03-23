@@ -51,9 +51,8 @@ export default async function TaskPage({
     ? (tabParam as Tab)
     : "recent";
   const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
-  const pageSize = [10, 25, 50].includes(parseInt(pageSizeStr ?? "10", 10))
-    ? parseInt(pageSizeStr!, 10)
-    : 10;
+  const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);
+  const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
   const offset = (page - 1) * pageSize;
 
   const session = await getServerSession(authOptions);

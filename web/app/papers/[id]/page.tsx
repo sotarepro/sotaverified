@@ -39,14 +39,21 @@ export default async function PaperPage({
     getBadgeData(id),
   ]);
 
-  // Fetch user's existing author claim for initial state
+  // Fetch user's existing author claim + age-gate status
   let userClaim: { status: string } | null = null;
+  let isAgeGated = false;
   if (userId) {
-    const rows = await sql<[{ status: string }]>`
-      SELECT status FROM paper_authors
-      WHERE paper_id = ${id} AND user_id = ${userId}
-    `;
-    userClaim = rows[0] ?? null;
+    const [claimRows, userRows] = await Promise.all([
+      sql<{ status: string }[]>`
+        SELECT status FROM paper_authors
+        WHERE paper_id = ${id} AND user_id = ${userId}
+      `,
+      sql<{ is_flagged_new_account: boolean }[]>`
+        SELECT is_flagged_new_account FROM users WHERE github_id = ${userId}
+      `,
+    ]);
+    userClaim = claimRows[0] ?? null;
+    isAgeGated = userRows[0]?.is_flagged_new_account ?? false;
   }
 
   // Fetch agent reproductions (pending review)
@@ -114,7 +121,7 @@ export default async function PaperPage({
       </div>
 
       {/* Authors */}
-      {paper.authors.length > 0 && (
+      {paper.authors && paper.authors.length > 0 && (
         <p className="text-sm text-gray-600 mb-3">
           {paper.authors.join(", ")}
         </p>
@@ -235,7 +242,7 @@ export default async function PaperPage({
       )}
 
       {/* Tasks */}
-      {paper.tasks.length > 0 && (
+      {paper.tasks && paper.tasks.length > 0 && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">Tasks</h2>
           <div className="flex flex-wrap gap-2">
@@ -253,7 +260,7 @@ export default async function PaperPage({
       )}
 
       {/* Methods */}
-      {paper.methods.length > 0 && (
+      {paper.methods && paper.methods.length > 0 && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">Methods</h2>
           <div className="flex flex-wrap gap-2">
@@ -326,7 +333,7 @@ export default async function PaperPage({
       {/* Reproductions */}
       <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
-        <ReproductionForm paperId={id} />
+        <ReproductionForm paperId={id} isAgeGated={isAgeGated} />
         <ReproductionList paperId={id} />
       </section>
 

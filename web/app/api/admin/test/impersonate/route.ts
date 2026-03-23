@@ -52,7 +52,12 @@ export async function DELETE() {
   }
 
   const cookieStore = await cookies();
-  cookieStore.delete("sv_impersonate");
+  cookieStore.set("sv_impersonate", "", {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 
   return NextResponse.json({ ok: true });
 }

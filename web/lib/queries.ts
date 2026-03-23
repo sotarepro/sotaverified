@@ -33,6 +33,9 @@ export async function getTabPapers(
   scope?: { taskId?: string; area?: string },
   offset = 0
 ): Promise<TabPaperRow[]> {
+  // Guard: never pass NaN to Postgres (causes bigint parse error)
+  if (!Number.isFinite(limit)) limit = 10;
+  if (!Number.isFinite(offset)) offset = 0;
   if (scope?.taskId) {
     // Scoped by task — paper_tasks_task_idx limits the scan to papers for this task
     if (tab === "recent") {

@@ -101,7 +101,7 @@ export default function AboutPage() {
             X / @sotarepro
           </a>
           <a
-            href="https://reddit.com/user/sotarepro"
+            href="https://www.reddit.com/user/Life-Temperature4068"
             target="_blank"
             rel="noopener noreferrer"
             className="text-blue-600 hover:underline"
