@@ -156,7 +156,7 @@ def main():
                dataset_id, actual_metric_name, actual_metric_value,
                notes, status, source, created_at)
             VALUES
-              (%s, 'system', 2, 'Unknown (PWC import)', %s,
+              (%s, 'system', 3, 'Unknown (PWC import)', %s,
                %s, %s, %s,
                %s, 'community', 'pwc_import', COALESCE(%s, NOW()))
         """, (
