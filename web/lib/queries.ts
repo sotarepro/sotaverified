@@ -124,39 +124,30 @@ export async function getTabPapers(
       `;
     }
   } else if (scope?.area) {
-    // Scoped by area — idx_tasks_area + paper_tasks_task_idx limit the scan
+    // Scoped by area — use EXISTS to avoid expensive DISTINCT ON over large join
+    const inArea = sql`EXISTS (
+      SELECT 1 FROM paper_tasks pt JOIN tasks t ON t.id = pt.task_id
+      WHERE pt.paper_id = p.id AND t.area = ${scope.area}
+    )`;
     if (tab === "recent") {
       return sql<TabPaperRow[]>`
-        WITH base AS (
-          SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score, p.created_at
-          FROM papers p
-          JOIN paper_tasks pt ON pt.paper_id = p.id
-          JOIN tasks t ON t.id = pt.task_id
-          WHERE t.area = ${scope.area}
-          ORDER BY p.id
-        )
-        SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
-               b.hype_score AS upvote_count
-        FROM (SELECT * FROM base ORDER BY published DESC NULLS LAST, created_at DESC LIMIT ${limit} OFFSET ${offset}) b
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM papers p
+        WHERE ${inArea}
+        ORDER BY p.published DESC NULLS LAST, p.created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
       `;
     } else if (tab === "hyped") {
       return sql<TabPaperRow[]>`
-        WITH base AS (
-          SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
-          FROM papers p
-          JOIN paper_tasks pt ON pt.paper_id = p.id
-          JOIN tasks t ON t.id = pt.task_id
-          WHERE t.area = ${scope.area}
-          ORDER BY p.id
-        )
-        SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
-               b.hype_score AS upvote_count
-        FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM papers p
+        WHERE ${inArea}
+        ORDER BY p.hype_score DESC, p.published DESC NULLS LAST
+        LIMIT ${limit} OFFSET ${offset}
       `;
     } else if (tab === "active") {
       return sql<TabPaperRow[]>`
@@ -164,13 +155,14 @@ export async function getTabPapers(
                p.tasks, p.verification, p.verification_score,
                p.hype_score AS upvote_count
         FROM (
-          SELECT DISTINCT al.paper_id, MAX(al.created_at) AS last_activity
+          SELECT al.paper_id, MAX(al.created_at) AS last_activity
           FROM activity_log al
-          JOIN paper_tasks pt ON pt.paper_id = al.paper_id
-          JOIN tasks t ON t.id = pt.task_id
           WHERE al.paper_id IS NOT NULL
             AND al.created_at > NOW() - INTERVAL '7 days'
-            AND t.area = ${scope.area}
+            AND EXISTS (
+              SELECT 1 FROM paper_tasks pt JOIN tasks t ON t.id = pt.task_id
+              WHERE pt.paper_id = al.paper_id AND t.area = ${scope.area}
+            )
           GROUP BY al.paper_id
           ORDER BY last_activity DESC
           LIMIT ${limit} OFFSET ${offset}
@@ -180,38 +172,25 @@ export async function getTabPapers(
       `;
     } else if (tab === "unverified") {
       return sql<TabPaperRow[]>`
-        WITH base AS (
-          SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
-          FROM papers p
-          JOIN paper_tasks pt ON pt.paper_id = p.id
-          JOIN tasks t ON t.id = pt.task_id
-          WHERE t.area = ${scope.area}
-            AND p.verification_score = 0 AND p.hype_score > 0
-          ORDER BY p.id
-        )
-        SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
-               b.hype_score AS upvote_count
-        FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
-        ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM papers p
+        WHERE ${inArea}
+          AND p.verification_score = 0 AND p.hype_score > 0
+        ORDER BY p.hype_score DESC, p.published DESC NULLS LAST
+        LIMIT ${limit} OFFSET ${offset}
       `;
     } else {
       return sql<TabPaperRow[]>`
-        WITH base AS (
-          SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
-          FROM papers p
-          JOIN paper_tasks pt ON pt.paper_id = p.id
-          JOIN tasks t ON t.id = pt.task_id
-          WHERE t.area = ${scope.area}
-          ORDER BY p.id
-        )
-        SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
-               b.hype_score AS upvote_count
-        FROM (SELECT * FROM base ORDER BY verification_score DESC, hype_score DESC LIMIT ${limit} OFFSET ${offset}) b
-        ORDER BY b.verification_score DESC, b.hype_score DESC
+        SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
+               p.tasks, p.verification, p.verification_score,
+               p.hype_score AS upvote_count
+        FROM papers p
+        WHERE ${inArea}
+          AND p.verification_score > 0
+        ORDER BY p.verification_score DESC, p.hype_score DESC
+        LIMIT ${limit} OFFSET ${offset}
       `;
     }
   } else {
@@ -354,23 +333,27 @@ export async function getTabPapersCount(
       return rows[0]?.n ?? 0;
     }
   } else if (scope?.area) {
+    const inArea = sql`EXISTS (
+      SELECT 1 FROM paper_tasks pt JOIN tasks t ON t.id = pt.task_id
+      WHERE pt.paper_id = p.id AND t.area = ${scope.area}
+    )`;
     if (tab === "unverified") {
       const rows = await sql<{ n: number }[]>`
-        SELECT COUNT(DISTINCT p.id)::int AS n
-        FROM papers p
-        JOIN paper_tasks pt ON pt.paper_id = p.id
-        JOIN tasks t ON t.id = pt.task_id
-        WHERE t.area = ${scope.area}
+        SELECT COUNT(*)::int AS n FROM papers p
+        WHERE ${inArea}
           AND p.verification_score = 0 AND p.hype_score > 0
+      `;
+      return rows[0]?.n ?? 0;
+    } else if (tab === "verified") {
+      const rows = await sql<{ n: number }[]>`
+        SELECT COUNT(*)::int AS n FROM papers p
+        WHERE ${inArea} AND p.verification_score > 0
       `;
       return rows[0]?.n ?? 0;
     } else {
       const rows = await sql<{ n: number }[]>`
-        SELECT COUNT(DISTINCT p.id)::int AS n
-        FROM papers p
-        JOIN paper_tasks pt ON pt.paper_id = p.id
-        JOIN tasks t ON t.id = pt.task_id
-        WHERE t.area = ${scope.area}
+        SELECT COUNT(*)::int AS n FROM papers p
+        WHERE ${inArea}
       `;
       return rows[0]?.n ?? 0;
     }

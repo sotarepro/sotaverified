@@ -55,113 +55,108 @@ export default async function AdminPage({
   const page = Math.max(1, parseInt(sp.page ?? "1", 10));
   const offset = (page - 1) * PAGE_SIZE;
 
-  // Activity feed
-  const activityFeed = await sql<{
-    id: string;
-    event_type: string;
-    user_id: string | null;
-    paper_id: string | null;
-    metadata: Record<string, unknown> | null;
-    created_at: string;
-    username: string | null;
-    avatar_url: string | null;
-    paper_title: string | null;
-    is_test_user: boolean;
-  }[]>`
-    SELECT
-      al.id::text,
-      al.event_type,
-      al.user_id,
-      al.paper_id,
-      al.metadata,
-      al.created_at::text,
-      u.username,
-      u.avatar_url,
-      p.title AS paper_title,
-      COALESCE(u.is_test, false) AS is_test_user
-    FROM activity_log al
-    LEFT JOIN users u ON u.github_id = al.user_id
-    LEFT JOIN papers p ON p.id = al.paper_id
-    ORDER BY al.created_at DESC
-    LIMIT ${PAGE_SIZE} OFFSET ${offset}
-  `;
-
-  const [{ total }] = await sql<[{ total: number }]>`
-    SELECT COUNT(*)::int AS total FROM activity_log
-  `;
+  // Run all admin queries in parallel
+  const [activityFeed, [{ total }], pendingAuthors, agentPending, pendingSignups] = await Promise.all([
+    sql<{
+      id: string;
+      event_type: string;
+      user_id: string | null;
+      paper_id: string | null;
+      metadata: Record<string, unknown> | null;
+      created_at: string;
+      username: string | null;
+      avatar_url: string | null;
+      paper_title: string | null;
+      is_test_user: boolean;
+    }[]>`
+      SELECT
+        al.id::text,
+        al.event_type,
+        al.user_id,
+        al.paper_id,
+        al.metadata,
+        al.created_at::text,
+        u.username,
+        u.avatar_url,
+        p.title AS paper_title,
+        COALESCE(u.is_test, false) AS is_test_user
+      FROM activity_log al
+      LEFT JOIN users u ON u.github_id = al.user_id
+      LEFT JOIN papers p ON p.id = al.paper_id
+      ORDER BY al.created_at DESC
+      LIMIT ${PAGE_SIZE} OFFSET ${offset}
+    `,
+    sql<[{ total: number }]>`
+      SELECT COUNT(*)::int AS total FROM activity_log
+    `,
+    sql<{
+      paper_id: string;
+      paper_title: string | null;
+      user_id: string;
+      username: string | null;
+      avatar_url: string | null;
+      created_at: string;
+    }[]>`
+      SELECT
+        pa.paper_id,
+        p.title AS paper_title,
+        pa.user_id,
+        u.username,
+        u.avatar_url,
+        pa.created_at::text
+      FROM paper_authors pa
+      LEFT JOIN papers p ON p.id = pa.paper_id
+      LEFT JOIN users u ON u.github_id = pa.user_id
+      WHERE pa.status = 'pending_admin'
+      ORDER BY pa.created_at ASC
+    `,
+    sql<{
+      id: number;
+      paper_id: string;
+      paper_title: string | null;
+      user_id: string;
+      username: string | null;
+      tier_claimed: number;
+      hardware_spec: string;
+      run_log_url: string;
+      notes: string | null;
+      created_at: string;
+    }[]>`
+      SELECT
+        r.id,
+        r.paper_id,
+        p.title AS paper_title,
+        r.user_id,
+        u.username,
+        r.tier_claimed,
+        r.hardware_spec,
+        r.run_log_url,
+        r.notes,
+        r.created_at::text
+      FROM reproductions r
+      LEFT JOIN papers p ON p.id = r.paper_id
+      LEFT JOIN users u ON u.github_id = r.user_id
+      WHERE r.source = 'api' AND r.status = 'agent_pending'
+      ORDER BY r.created_at DESC
+    `,
+    sql<{
+      id: number;
+      github_id: string;
+      github_username: string;
+      avatar_url: string | null;
+      legitimacy_score: number | null;
+      score_breakdown: Record<string, unknown> | null;
+      created_at: string;
+    }[]>`
+      SELECT id, github_id, github_username, avatar_url,
+             legitimacy_score, score_breakdown, created_at::text
+      FROM sign_up_requests
+      WHERE status = 'pending'
+      ORDER BY created_at DESC
+      LIMIT 50
+    `,
+  ]);
   const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  // Pending author claims
-  const pendingAuthors = await sql<{
-    paper_id: string;
-    paper_title: string | null;
-    user_id: string;
-    username: string | null;
-    avatar_url: string | null;
-    created_at: string;
-  }[]>`
-    SELECT
-      pa.paper_id,
-      p.title AS paper_title,
-      pa.user_id,
-      u.username,
-      u.avatar_url,
-      pa.created_at::text
-    FROM paper_authors pa
-    LEFT JOIN papers p ON p.id = pa.paper_id
-    LEFT JOIN users u ON u.github_id = pa.user_id
-    WHERE pa.status = 'pending_admin'
-    ORDER BY pa.created_at ASC
-  `;
-
-  // Agent submissions pending review
-  const agentPending = await sql<{
-    id: number;
-    paper_id: string;
-    paper_title: string | null;
-    user_id: string;
-    username: string | null;
-    tier_claimed: number;
-    hardware_spec: string;
-    run_log_url: string;
-    notes: string | null;
-    created_at: string;
-  }[]>`
-    SELECT
-      r.id,
-      r.paper_id,
-      p.title AS paper_title,
-      r.user_id,
-      u.username,
-      r.tier_claimed,
-      r.hardware_spec,
-      r.run_log_url,
-      r.notes,
-      r.created_at::text
-    FROM reproductions r
-    LEFT JOIN papers p ON p.id = r.paper_id
-    LEFT JOIN users u ON u.github_id = r.user_id
-    WHERE r.source = 'api' AND r.status = 'agent_pending'
-    ORDER BY r.created_at DESC
-  `;
-
-  // Pending sign-up requests
-  const pendingSignups = await sql<{
-    id: number;
-    github_id: string;
-    github_username: string;
-    avatar_url: string | null;
-    legitimacy_score: number | null;
-    score_breakdown: Record<string, unknown> | null;
-    created_at: string;
-  }[]>`
-    SELECT id, github_id, github_username, avatar_url,
-           legitimacy_score, score_breakdown, created_at::text
-    FROM sign_up_requests
-    WHERE status = 'pending'
-    ORDER BY created_at DESC
-    LIMIT 50
-  `;
 
   return (
     <div className="max-w-4xl">
