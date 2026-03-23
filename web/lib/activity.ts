@@ -10,7 +10,8 @@ export type EventType =
   | "reproduction_unflagged"
   | "agent_reproduction_submitted"
   | "agent_reproduction_promoted"
-  | "rate_limit_hit";
+  | "rate_limit_hit"
+  | "author_benchmark_submitted";
 
 export async function logEvent(
   eventType: EventType,

@@ -16,6 +16,7 @@ import VerificationBadge from "@/components/VerificationBadge";
 import UpvoteButton from "@/components/UpvoteButton";
 import CopyJsonButton from "@/components/CopyJsonButton";
 import ReproductionForm from "@/components/ReproductionForm";
+import AuthorBenchmarkForm from "@/components/AuthorBenchmarkForm";
 import ReproductionList from "@/components/ReproductionList";
 import AuthorClaimButton from "@/components/AuthorClaimButton";
 import VerifiedAuthors from "@/components/VerifiedAuthors";
@@ -335,6 +336,13 @@ export default async function PaperPage({
           </div>
         </section>
       )}
+      {/* Author benchmark submission — only for verified authors */}
+      {userClaim?.status === "verified" && (
+        <section className="mb-8">
+          <AuthorBenchmarkForm paperId={id} paperTasks={paper.tasks ?? []} />
+        </section>
+      )}
+
       {/* Reproductions */}
       <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
