@@ -146,7 +146,7 @@ export default function AgentsPage() {
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-mono">tier_claimed</td>
-                <td className="px-4 py-2.5">1 (code runs) — 4 (multi-group confirmed)</td>
+                <td className="px-4 py-2.5">1 (code runs) — 3 (independent reproduction)</td>
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-mono">hardware_spec</td>
