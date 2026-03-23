@@ -23,7 +23,6 @@ const fakePaperDetail = {
   authors: ["Ashish Vaswani", "Noam Shazeer"],
   proceeding: null,
   tasks: ["Machine Translation"],
-  methods: ["Multi-Head Attention"],
   verification: "unverified",
 };
 

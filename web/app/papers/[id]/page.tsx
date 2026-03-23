@@ -238,23 +238,6 @@ export default async function PaperPage({
         </section>
       )}
 
-      {/* Methods */}
-      {paper.methods && paper.methods.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-base font-semibold mb-3">Methods</h2>
-          <div className="flex flex-wrap gap-2">
-            {paper.methods.map((m) => (
-              <span
-                key={m}
-                className="rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs text-gray-600"
-              >
-                {m}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* API / Agent section */}
       {paper.arxiv_id && (
         <CopyJsonButton arxivId={paper.arxiv_id} />

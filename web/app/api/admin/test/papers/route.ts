@@ -23,11 +23,11 @@ export async function POST(req: NextRequest) {
   if (preset === "basic") {
     await sql`
       INSERT INTO papers
-        (id, arxiv_id, title, abstract, tasks, methods, is_test)
+        (id, arxiv_id, title, abstract, tasks, is_test)
       VALUES
         ('test_basic', 'test_basic_001', '[TEST] Basic Test Paper',
          'A test paper with no code link or leaderboard results.',
-         ARRAY[]::text[], ARRAY[]::text[], true)
+         ARRAY[]::text[], true)
       ON CONFLICT (id) DO UPDATE SET
         title   = EXCLUDED.title,
         is_test = true
@@ -40,11 +40,11 @@ export async function POST(req: NextRequest) {
 
     await sql`
       INSERT INTO papers
-        (id, arxiv_id, title, abstract, tasks, methods, is_test)
+        (id, arxiv_id, title, abstract, tasks, is_test)
       VALUES
         ('test_full', 'test_full_001', '[TEST] Full Test Paper',
          'A test paper with an official code link for author verification testing.',
-         ARRAY[]::text[], ARRAY[]::text[], true)
+         ARRAY[]::text[], true)
       ON CONFLICT (id) DO UPDATE SET
         title   = EXCLUDED.title,
         is_test = true

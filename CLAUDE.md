@@ -171,6 +171,12 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Repos sorted by: is_official DESC, stars DESC, mentioned_in_paper DESC
 - CodeLinksList client component handles expand/collapse toggle
 
+### Methods Hidden from UI
+- Methods section removed from paper detail page
+- `methods` field removed from getPaper query and PaperDetail type
+- methods/paper_methods tables retained in DB for future technique registry
+- See Parking Lot → "Methods as Technique Registry" for long-term vision
+
 ### Submit Page Removed
 - `/submit` page, `SubmitPaperForm` component, and `/api/submit-paper` route were removed
 - Paper ingestion is via scripts only (arxiv_backfill.py, arxiv_delta.py)
@@ -465,6 +471,30 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 ## Parking Lot
 
 **High impact — build when there's traction:**
+- Methods as Technique Registry (future, high impact for agents)
+  The methods/paper_methods tables contain noisy PWC tag data (hidden from UI since
+  launch). The long-term vision is to rebuild methods as a structured technique
+  registry for autoML and autonomous research agents.
+  Future architecture:
+  - Each method is a technique entry: name, description, category
+    (optimizer, architecture, regularization, data augmentation, etc.)
+  - Methods linked to benchmark results with measured impact:
+    "Adding cosine annealing improved Top-1 accuracy by 2.1% on ImageNet for ResNet-50"
+  - Community can submit new techniques with evidence
+  - Authors can tag which techniques their paper introduces vs uses
+  - Techniques have their own verification scores based on how many
+    papers/reproductions confirm the improvement
+  - API endpoint: GET /api/v1/techniques?category=optimizer&task=image-classification&min_impact=1.0
+    Returns ranked techniques with verified impact metrics
+  - MCP tool: query_techniques(category, task, min_verified_impact)
+    → ranked techniques an autonomous researcher should try next
+  This is the "technique queue" for Karpathy-style autoresearch:
+  an agent queries SOTAVerified for verified techniques, applies them to its current
+  architecture, measures impact, and submits results back. The methods table becomes
+  the backlog that autonomous research agents pull from during development.
+  Requires: data curation pass on existing methods, structured method-to-result linking
+  schema, technique impact measurement, community submission flow. Not MVP — build when
+  agent API usage demonstrates demand for technique-level queries.
 - Community paper→task tagging
   Problem: arxiv-ingested papers have no task assignments, so they never
   appear in area browsing or leaderboards. ~50-80k backfilled papers are task-less stubs.

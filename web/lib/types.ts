@@ -52,7 +52,6 @@ export interface PaperDetail {
   authors: string[];
   proceeding: string | null;
   tasks: string[];
-  methods: string[];
   verification: VerificationTier;
 }
 

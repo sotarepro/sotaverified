@@ -586,7 +586,7 @@ export async function getPaper(id: string): Promise<PaperDetail | null> {
       id, arxiv_id, title, abstract,
       url_abs, url_pdf,
       published::text,
-      authors, proceeding, tasks, methods,
+      authors, proceeding, tasks,
       verification
     FROM papers
     WHERE id = ${id}
