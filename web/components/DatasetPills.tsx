@@ -28,6 +28,7 @@ export default function DatasetPills({ taskId, datasets, activeDatasetId }: Prop
     <div className="flex flex-wrap gap-2 mb-6">
       <Link
         href={`/tasks/${taskId}`}
+        scroll={false}
         className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
           !activeDatasetId
             ? "bg-blue-600 text-white border-blue-600"
@@ -41,6 +42,7 @@ export default function DatasetPills({ taskId, datasets, activeDatasetId }: Prop
         <Link
           key={d.id}
           href={`/tasks/${taskId}?dataset=${d.id}`}
+          scroll={false}
           className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
             activeDatasetId === d.id
               ? "bg-blue-600 text-white border-blue-600"

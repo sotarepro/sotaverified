@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
+import { stripLatex } from "@/lib/strip-latex";
 import {
   getPaper,
   getPaperCodeLinks,
@@ -98,11 +99,11 @@ export default async function PaperPage({
           Tasks
         </Link>
         <span className="mx-2">›</span>
-        <span className="text-gray-700 line-clamp-1">{paper.title}</span>
+        <span className="text-gray-700 line-clamp-1">{stripLatex(paper.title)}</span>
       </nav>
 
       {/* Title + meta row */}
-      <h1 className="text-2xl font-bold tracking-tight mb-3">{paper.title}</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-3">{stripLatex(paper.title)}</h1>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mb-4">
         {paper.published && (
@@ -258,7 +259,7 @@ export default async function PaperPage({
       {paper.abstract && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-2">Abstract</h2>
-          <p className="text-gray-700 leading-relaxed text-sm">{paper.abstract}</p>
+          <p className="text-gray-700 leading-relaxed text-sm">{stripLatex(paper.abstract)}</p>
         </section>
       )}
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { searchPapers, searchPapersCount, searchTasks } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
+import { stripLatex } from "@/lib/strip-latex";
 import type { VerificationTier } from "@/lib/types";
 
 const AREA_COLORS: Record<string, string> = {
@@ -140,7 +141,7 @@ export default async function SearchPage({
                         href={`/papers/${p.id}`}
                         className="font-medium text-blue-600 hover:text-blue-800 hover:underline line-clamp-2"
                       >
-                        {p.title}
+                        {stripLatex(p.title)}
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">

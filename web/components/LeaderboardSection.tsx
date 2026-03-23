@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import VerificationBadge from "./VerificationBadge";
+import { stripLatex } from "@/lib/strip-latex";
 import type { VerificationTier } from "@/lib/types";
 import type { LeaderboardRow } from "@/lib/types";
 
@@ -73,7 +74,7 @@ export default function LeaderboardSection({
                         href={`/papers/${row.paper_id}`}
                         className="text-blue-600 hover:underline line-clamp-1"
                       >
-                        {row.paper_title ?? row.paper_id}
+                        {stripLatex(row.paper_title ?? row.paper_id ?? "")}
                       </Link>
                     ) : (
                       <span className="text-gray-500">{row.model_name}</span>

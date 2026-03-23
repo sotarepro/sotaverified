@@ -123,12 +123,11 @@ export default function AgentsPage() {
       <section className="mb-10 space-y-4">
         <h2 className="text-base font-semibold text-gray-900">Write endpoint</h2>
         <p className="text-sm text-gray-600">
-          Submit a reproduction log from your agent. Requires an API key.
-          Agent submissions appear with{" "}
-          <code className="bg-gray-100 rounded px-1">status: agent_pending</code>{" "}
-          in a dedicated review queue. A human with reputation &ge; 30 must promote
-          the submission before it counts toward the paper&apos;s verification score.
-          This prevents automated gaming of scores.
+          Submit a reproduction log from your agent. Agent submissions
+          appear with status <code className="bg-gray-100 rounded px-1">agent_pending</code> in
+          a dedicated review section. Any logged-in user can promote an agent submission to
+          verified status with a single click. This lightweight human-in-the-loop
+          prevents automated score gaming.
         </p>
         <CodeBlock code={CODE_SUBMIT} label="POST /api/reproductions" />
 
@@ -216,8 +215,7 @@ export default function AgentsPage() {
       <section className="mb-10 rounded-xl border border-gray-200 p-5 space-y-3">
         <h2 className="text-base font-semibold text-gray-900">Get an API key</h2>
         <p className="text-sm text-gray-600">
-          The read API is open with no key required. Write access (submitting reproductions)
-          requires an API key. API keys are available — contact{" "}
+          API keys are currently in closed beta. Contact{" "}
           <a href="mailto:support@sotaverified.org" className="text-blue-600 hover:underline">
             support@sotaverified.org
           </a>{" "}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { TabPaperRow } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
 import InlineHypeButton from "@/components/InlineHypeButton";
+import { stripLatex } from "@/lib/strip-latex";
 import type { VerificationTier } from "@/lib/types";
 
 type Props = {
@@ -34,17 +35,6 @@ function buildUrl(baseHref: string, params: Record<string, string | number>): st
 
 function buildTabHref(baseHref: string, tab: string, pageSize: number): string {
   return buildUrl(baseHref, { tab, pageSize, page: 1 });
-}
-
-function stripLatex(text: string): string {
-  return text
-    .replace(/\$\$[\s\S]*?\$\$/g, " ")  // $$...$$ block math
-    .replace(/\$[^$]*?\$/g, " ")         // $...$ inline math
-    .replace(/\\[a-zA-Z]+\{([^}]*)\}/g, "$1") // \cmd{content} → content
-    .replace(/\\[a-zA-Z]+/g, " ")        // remaining \commands
-    .replace(/[{}]/g, "")                // stray braces
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 function formatDate(published: string | null): string {

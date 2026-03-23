@@ -11,7 +11,7 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold text-gray-900">What is SOTAVerified?</h2>
         <p>
           SOTAVerified is open infrastructure for tracking and verifying machine learning
-          research results. We index papers from arXiv weekly, maintain benchmark leaderboards
+          research results. We index papers from arXiv, maintain benchmark leaderboards
           across thousands of ML tasks, and let the community log reproductions so reported
           results can be independently confirmed.
         </p>
@@ -76,8 +76,7 @@ export default function AboutPage() {
         <h2 className="text-base font-semibold text-gray-900">How to contribute</h2>
         <p>
           Run a benchmark, submit the log, and the verification score updates for everyone.
-          You can also contribute code, report issues, or add papers via the community
-          submission form.
+          You can also contribute code or report issues on our GitHub repo.
         </p>
       </section>
 
