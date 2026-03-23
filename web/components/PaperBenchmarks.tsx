@@ -15,6 +15,7 @@ interface BenchmarkEntry {
   best_metric_name: string | null;
   best_metric_value: number | null;
   verification: string;
+  source: string | null;
   verified_median: number | null;
   repro_count: number;
 }
@@ -135,6 +136,10 @@ export default function PaperBenchmarks({ entries }: Props) {
                             {hasRepro ? (
                               <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                                 Verified
+                              </span>
+                            ) : e.source === "author" ? (
+                              <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                Author Reported
                               </span>
                             ) : (
                               <VerificationBadge tier={e.verification as VerificationTier} />

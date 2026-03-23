@@ -612,6 +612,7 @@ export interface PaperLbEntry {
   best_metric_name: string | null;
   best_metric_value: number | null;
   verification: string;
+  source: string | null;
   verified_median: number | null;
   repro_count: number;
 }
@@ -657,6 +658,7 @@ export async function getPaperLeaderboardEntries(
       lr.best_metric_name,
       lr.best_metric_value,
       lr.verification,
+      lr.source,
       vm.median_value AS verified_median,
       COALESCE(vm.repro_count, 0)::int AS repro_count
     FROM leaderboard_results lr
