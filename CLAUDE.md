@@ -519,6 +519,13 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 - Embeddings-based paper similarity / recommendation
 
 **Medium — strong differentiators:**
+- Multi-implementation verification from existing data: attempted and rolled back.
+  The leaderboard_results table has no FK to paper_code_links, making it impossible
+  to trace which repo produced which result. All leaderboard entries are model variants
+  from the same study, not cross-repo reproductions. Future approach: if we add a
+  code_link_id column to leaderboard_results and populate it during ingestion, cross-repo
+  verification becomes possible. For now, all verification comes from user and agent
+  submissions only.
 - Hardware-normalized leaderboards (accuracy/VRAM, accuracy/FLOPs) — nobody has built this
 - Compare two methods head to head across benchmarks
 - Email digest — weekly newly replicated papers in your areas
