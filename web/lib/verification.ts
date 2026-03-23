@@ -5,11 +5,11 @@ import sql from "./db";
 // - reproduction created/hidden/removed/verified
 // - author claim verified
 export async function recomputeVerificationScore(paperId: string): Promise<number> {
-  // +5 if official repo exists
+  // +5 if any code repo exists (official or community)
   const [repoRow] = await sql<[{ has_repo: boolean }]>`
     SELECT EXISTS(
       SELECT 1 FROM paper_code_links
-      WHERE paper_id = ${paperId} AND is_official = true
+      WHERE paper_id = ${paperId}
     ) AS has_repo
   `;
   const repoScore = repoRow.has_repo ? 5 : 0;
@@ -94,7 +94,7 @@ export async function getBadgeData(paperId: string): Promise<{
     ]
   >`
     SELECT
-      EXISTS(SELECT 1 FROM paper_code_links WHERE paper_id = ${paperId} AND is_official = true) AS has_repo,
+      EXISTS(SELECT 1 FROM paper_code_links WHERE paper_id = ${paperId}) AS has_repo,
       EXISTS(SELECT 1 FROM paper_authors WHERE paper_id = ${paperId} AND status = 'verified') AS has_author,
       (SELECT COUNT(*)::int FROM reproductions WHERE paper_id = ${paperId} AND status NOT IN ('hidden','removed')) AS repro_count,
       verification_score
