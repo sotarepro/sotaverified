@@ -616,7 +616,7 @@ export async function getPaperCodeLinks(paperId: string): Promise<CodeLink[]> {
     SELECT repo_url, framework, is_official, mentioned_in_paper, stars, forks
     FROM paper_code_links
     WHERE paper_id = ${paperId}
-    ORDER BY is_official DESC, mentioned_in_paper DESC
+    ORDER BY is_official DESC, stars DESC NULLS LAST, mentioned_in_paper DESC
   `;
 }
 

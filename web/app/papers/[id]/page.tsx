@@ -23,6 +23,7 @@ import ReproductionList from "@/components/ReproductionList";
 import AuthorClaimButton from "@/components/AuthorClaimButton";
 import VerifiedAuthors from "@/components/VerifiedAuthors";
 import PromoteButton from "@/components/PromoteButton";
+import CodeLinksList from "@/components/CodeLinksList";
 import type { VerificationTier } from "@/lib/types";
 
 export default async function PaperPage({
@@ -207,45 +208,7 @@ export default async function PaperPage({
       {codeLinks.length > 0 && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">Code</h2>
-          <ul className="space-y-2">
-            {codeLinks.map((cl) => (
-              <li
-                key={cl.repo_url}
-                className="flex items-center gap-3 text-sm"
-              >
-                <a
-                  href={cl.repo_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline font-mono truncate max-w-sm"
-                >
-                  {cl.repo_url.replace(/^https?:\/\/(www\.)?/, "")}
-                </a>
-                <div className="flex gap-1 shrink-0">
-                  {cl.is_official && (
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200">
-                      Official
-                    </span>
-                  )}
-                  {cl.mentioned_in_paper && (
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-gray-50 text-gray-600 border border-gray-200">
-                      In paper
-                    </span>
-                  )}
-                  {cl.framework && (
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-purple-50 text-purple-700 border border-purple-200">
-                      {cl.framework}
-                    </span>
-                  )}
-                  {cl.stars != null && (
-                    <span className="rounded px-1.5 py-0.5 text-xs bg-gray-50 text-gray-500 border border-gray-200">
-                      ★ {cl.stars.toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+          <CodeLinksList links={codeLinks} />
         </section>
       )}
 
