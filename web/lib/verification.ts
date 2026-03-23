@@ -62,8 +62,14 @@ export async function recomputeVerificationScore(paperId: string): Promise<numbe
 
   const total = repoScore + authorScore + reproBase + bonusScore + hardwareScore;
 
+  // Compute badge tier for the papers.verification column (used in search/tables)
+  let badge: BadgeType = "unverified";
+  if (reproCount > 0) badge = "community_verified";
+  else if (authorRow.has_author) badge = "author_verified";
+  else if (repoRow.has_repo) badge = "code_available";
+
   await sql`
-    UPDATE papers SET verification_score = ${total} WHERE id = ${paperId}
+    UPDATE papers SET verification_score = ${total}, verification = ${badge} WHERE id = ${paperId}
   `;
 
   return total;

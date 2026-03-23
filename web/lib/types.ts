@@ -1,5 +1,9 @@
 export type VerificationTier =
   | "unverified"
+  | "code_available"
+  | "author_verified"
+  | "community_verified"
+  // Legacy PWC values (still in some rows)
   | "auto_verified"
   | "community"
   | "official";

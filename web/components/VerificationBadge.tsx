@@ -17,8 +17,13 @@ function isNewProps(props: Props): props is NewProps {
   return "badge" in props;
 }
 
-function tierToBadge(tier: VerificationTier): BadgeType {
+function tierToBadge(tier: string): BadgeType {
   switch (tier) {
+    // New badge values (stored by recomputeVerificationScore)
+    case "code_available": return "code_available";
+    case "author_verified": return "author_verified";
+    case "community_verified": return "community_verified";
+    // Legacy PWC enum values
     case "auto_verified": return "code_available";
     case "community": return "community_verified";
     case "official": return "author_verified";
