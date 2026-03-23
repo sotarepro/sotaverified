@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import {
   getTask,
   getLeaderboard,
@@ -55,7 +54,7 @@ export default async function TaskPage({
   const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
   const offset = (page - 1) * pageSize;
 
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
   const [task, datasets, rows, tabPapers, tabTotal] = await Promise.all([

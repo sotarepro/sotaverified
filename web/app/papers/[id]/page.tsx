@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { stripLatex } from "@/lib/strip-latex";
 import {
@@ -33,7 +32,7 @@ export default async function PaperPage({
 }) {
   const { id } = await params;
 
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
   // Check paper exists first to avoid crashes on invalid IDs like /papers/admin

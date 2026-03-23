@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount, getUserHypedSet } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +79,7 @@ export default async function HomePage({
   const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
   const offset = (page - 1) * pageSize;
 
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
   const [areas, stats, tabPapers, tabTotal] = await Promise.all([
@@ -92,8 +91,6 @@ export default async function HomePage({
 
   const hypedSet = await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id));
   const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
-
-  const totalTasks = areas.reduce((s, a) => s + a.task_count, 0);
 
   return (
     <div>
@@ -118,7 +115,7 @@ export default async function HomePage({
             code links
           </span>
           <span>
-            <span className="font-semibold text-gray-800">{totalTasks.toLocaleString()}</span>{" "}
+            <span className="font-semibold text-gray-800">{stats.task_count.toLocaleString()}</span>{" "}
             tasks
           </span>
         </div>

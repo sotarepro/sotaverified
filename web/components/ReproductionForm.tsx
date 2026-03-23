@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 const TIER_DESCRIPTIONS: Record<number, string> = {
   1: "Code confirmed to run against the linked repository",
@@ -51,6 +52,7 @@ interface Props {
 
 export default function ReproductionForm({ paperId, benchmarks = [] }: Props) {
   const { data: session } = useSession();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [tierClaimed, setTierClaimed] = useState(2);
   const [hardwareSpec, setHardwareSpec] = useState("");
@@ -118,6 +120,7 @@ export default function ReproductionForm({ paperId, benchmarks = [] }: Props) {
 
       setSubmitted(true);
       setOpen(false);
+      router.refresh();
     } catch {
       setError("Network error, please try again.");
     } finally {

@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import { getTaskList, getTaskCount, getTabPapers, getUserHypedSet, type TabType } from "@/lib/queries";
 import Pagination from "@/components/Pagination";
 import PaperTabTable from "@/components/PaperTabTable";
@@ -43,7 +42,7 @@ export default async function TasksPage({
 
   const baseHref = area ? `/tasks?area=${encodeURIComponent(area)}` : "/tasks";
 
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
   const [tasks, total, tabPapers] = await Promise.all([

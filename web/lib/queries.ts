@@ -628,15 +628,17 @@ export async function getPaperUpvoteInfo(
 export async function getSiteStats(): Promise<{
   paper_count: number;
   code_links_count: number;
+  task_count: number;
 }> {
-  const [{ paper_count, code_links_count }] = await sql<
-    [{ paper_count: number; code_links_count: number }]
+  const [row] = await sql<
+    [{ paper_count: number; code_links_count: number; task_count: number }]
   >`
     SELECT
       (SELECT COUNT(*)::int FROM papers) AS paper_count,
-      (SELECT COUNT(*)::int FROM paper_code_links) AS code_links_count
+      (SELECT COUNT(*)::int FROM paper_code_links) AS code_links_count,
+      (SELECT COUNT(*)::int FROM tasks WHERE parent_id IS NULL) AS task_count
   `;
-  return { paper_count, code_links_count };
+  return row;
 }
 
 export async function getPaperLeaderboardEntries(

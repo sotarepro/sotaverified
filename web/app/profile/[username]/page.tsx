@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 
 export default async function ProfilePage({
@@ -10,7 +9,7 @@ export default async function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
 
   const [user] = await sql<{
     github_id: string;

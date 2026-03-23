@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { THRESHOLDS } from "@/lib/thresholds";
 
@@ -9,7 +8,7 @@ export const metadata = { title: "Leaderboard — SOTAVerified" };
 export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getEffectiveSession();
   const currentUserId = session?.user?.github_id ?? null;
 
   // Top 50 users by reputation
