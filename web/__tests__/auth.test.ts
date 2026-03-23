@@ -1,30 +1,33 @@
 /**
- * Unit tests for Stage 3a auth callbacks.
- * All DB and GitHub provider calls are mocked — no real credentials needed.
+ * Unit tests for auth callbacks.
+ * All DB and GitHub API calls are mocked.
  */
 
-// Mock the postgres db module before importing auth
 const mockSql = jest.fn().mockResolvedValue([]);
 jest.mock("@/lib/db", () => {
-  // postgres tagged-template returns a promise; mimic that
   const sql = (..._args: unknown[]) => mockSql();
   return { __esModule: true, default: sql };
 });
 
-// Must import after mocks are set up
+// Mock the GitHub events fetch
+jest.mock("@/lib/account-check", () => {
+  const actual = jest.requireActual("@/lib/account-check");
+  return {
+    ...actual,
+    fetchRecentEventCount: jest.fn().mockResolvedValue(0),
+  };
+});
+
 import { authOptions } from "@/lib/auth";
+import { fetchRecentEventCount } from "@/lib/account-check";
 import type { Account } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 
+const mockFetchEvents = fetchRecentEventCount as jest.MockedFunction<typeof fetchRecentEventCount>;
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function makeGithubProfile(overrides: Partial<{
-  id: number;
-  login: string;
-  email: string;
-  avatar_url: string;
-  created_at: string;
-}> = {}) {
+function makeGithubProfile(overrides: Record<string, unknown> = {}) {
   const yearsAgo = new Date();
   yearsAgo.setFullYear(yearsAgo.getFullYear() - 3);
 
@@ -34,6 +37,14 @@ function makeGithubProfile(overrides: Partial<{
     email: "test@example.com",
     avatar_url: "https://avatars.githubusercontent.com/u/12345",
     created_at: yearsAgo.toISOString(),
+    // Fields used by legitimacy scoring
+    public_repos: 10,
+    public_gists: 2,
+    followers: 5,
+    following: 10,
+    bio: "ML researcher",
+    blog: "https://example.com",
+    twitter_username: "testuser",
     ...overrides,
   };
 }
@@ -55,71 +66,108 @@ describe("signIn callback", () => {
   beforeEach(() => {
     mockSql.mockClear();
     mockSql.mockResolvedValue([]);
+    mockFetchEvents.mockClear();
+    mockFetchEvents.mockResolvedValue(5); // default: some recent activity
   });
 
-  it("upserts user on first GitHub login", async () => {
-    const profile = makeGithubProfile();
+  it("allows returning user (exists in DB) without legitimacy check", async () => {
+    // First call: user exists check → found
+    mockSql.mockResolvedValueOnce([{ github_id: "12345" }]);
+    // Second call: upsert user
+    mockSql.mockResolvedValueOnce([]);
+    // Third call: activity_log
+    mockSql.mockResolvedValueOnce([]);
+
     const result = await signIn({
       user: { id: "12345" },
       account: makeAccount(),
-      profile,
+      profile: makeGithubProfile(),
       credentials: undefined,
     });
 
     expect(result).toBe(true);
-    // 2 calls: upsert + activity_log insert
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // fetchRecentEventCount should NOT be called for returning users
+    expect(mockFetchEvents).not.toHaveBeenCalled();
   });
 
-  it("returns true even for non-github providers without calling DB", async () => {
+  it("allows new user with high legitimacy score", async () => {
+    // User doesn't exist
+    mockSql.mockResolvedValueOnce([]);
+    // Allowlist check → not found
+    mockSql.mockResolvedValueOnce([]);
+    // Upsert user
+    mockSql.mockResolvedValueOnce([]);
+    // Activity log
+    mockSql.mockResolvedValueOnce([]);
+
+    mockFetchEvents.mockResolvedValueOnce(15); // 15 events → 30 pts alone
+
+    const result = await signIn({
+      user: { id: "12345" },
+      account: makeAccount(),
+      profile: makeGithubProfile(), // 10 repos + 5 followers + bio + blog + twitter + events = well above 25
+      credentials: undefined,
+    });
+
+    expect(result).toBe(true);
+  });
+
+  it("blocks new user with zero-signal profile", async () => {
+    // User doesn't exist
+    mockSql.mockResolvedValueOnce([]);
+    // Allowlist → not found
+    mockSql.mockResolvedValueOnce([]);
+    // INSERT sign_up_request
+    mockSql.mockResolvedValueOnce([]);
+
+    mockFetchEvents.mockResolvedValueOnce(0);
+
+    const result = await signIn({
+      user: { id: "12345" },
+      account: makeAccount(),
+      profile: makeGithubProfile({
+        public_repos: 0, public_gists: 0, followers: 0, following: 0,
+        bio: null, blog: null, twitter_username: null,
+      }),
+      credentials: undefined,
+    });
+
+    expect(result).toBe("/auth/too-new");
+  });
+
+  it("allows approved user through even with low score", async () => {
+    // User doesn't exist
+    mockSql.mockResolvedValueOnce([]);
+    // Allowlist → found (approved)
+    mockSql.mockResolvedValueOnce([{ id: 1 }]);
+    // Upsert
+    mockSql.mockResolvedValueOnce([]);
+    // Activity log
+    mockSql.mockResolvedValueOnce([]);
+
+    const result = await signIn({
+      user: { id: "12345" },
+      account: makeAccount(),
+      profile: makeGithubProfile({
+        public_repos: 0, followers: 0, bio: null, blog: null, twitter_username: null,
+      }),
+      credentials: undefined,
+    });
+
+    expect(result).toBe(true);
+    // Events fetch NOT called because allowlist short-circuited
+    expect(mockFetchEvents).not.toHaveBeenCalled();
+  });
+
+  it("returns true for non-github providers without calling DB", async () => {
     const result = await signIn({
       user: { id: "42" },
       account: { provider: "email", type: "email", providerAccountId: "42" },
       profile: undefined,
       credentials: undefined,
     });
-
     expect(result).toBe(true);
     expect(mockSql).not.toHaveBeenCalled();
-  });
-
-  it("allows approved users through even if account is young", async () => {
-    const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
-    const profile = makeGithubProfile({ created_at: yesterday.toISOString() });
-
-    // allowlist check → found (approved)
-    mockSql.mockResolvedValueOnce([{ id: 1 }]);
-    // upsert user
-    mockSql.mockResolvedValueOnce([]);
-    // activity_log
-    mockSql.mockResolvedValueOnce([]);
-
-    const result = await signIn({
-      user: { id: "12345" },
-      account: makeAccount(),
-      profile,
-      credentials: undefined,
-    });
-
-    expect(result).toBe(true);
-  });
-
-  it("hard-rejects new accounts and creates sign-up request", async () => {
-    const yesterday = new Date(Date.now() - 1000 * 60 * 60 * 24);
-    const profile = makeGithubProfile({ created_at: yesterday.toISOString() });
-    // allowlist check → empty (not approved)
-    mockSql.mockResolvedValueOnce([]);
-    // INSERT sign_up_requests
-    mockSql.mockResolvedValueOnce([]);
-
-    const result = await signIn({
-      user: { id: "12345" },
-      account: makeAccount(),
-      profile,
-      credentials: undefined,
-    });
-
-    expect(result).toBe("/auth/too-new");
   });
 });
 
@@ -144,10 +192,9 @@ describe("jwt callback", () => {
     expect(token.username).toBe("testuser");
   });
 
-  it("preserves existing token fields on subsequent requests (no account)", async () => {
-    const existingToken: JWT = { github_id: "12345", username: "testuser", sub: "12345" };
+  it("preserves existing token fields on subsequent requests", async () => {
     const token = await jwt({
-      token: existingToken,
+      token: { github_id: "12345", username: "testuser" } as JWT,
       account: null,
       profile: undefined,
       user: { id: "12345" },
@@ -161,26 +208,20 @@ describe("jwt callback", () => {
   });
 });
 
-// ── session callback ──────────────────────────────────────────────────────────
+// ── session callback ─────────────────────────────────────────────────────────
 
 describe("session callback", () => {
   const session = authOptions.callbacks!.session!;
 
   it("exposes github_id and username from token to session", async () => {
-    const token: JWT = {
-      github_id: "12345",
-      username: "testuser",
-      sub: "12345",
-    };
     const result = await session({
       session: {
-        user: { name: "Test User", email: "t@example.com", image: null },
+        user: { name: "Test", email: "test@test.com" },
         expires: "2099-01-01",
       },
-      token,
-      user: { id: "12345", name: "Test User", email: "t@example.com" },
+      token: { github_id: "12345", username: "testuser" } as JWT,
+      trigger: "update",
       newSession: undefined,
-      trigger: "getSession",
     });
 
     expect(result.user.github_id).toBe("12345");
@@ -188,20 +229,49 @@ describe("session callback", () => {
   });
 });
 
-// ── account age gate logic ────────────────────────────────────────────────────
+// ── computeLegitimacyScore ───────────────────────────────────────────────────
 
-describe("account age gate", () => {
-  it("correctly identifies accounts older than threshold as not new", () => {
-    const MIN_AGE_DAYS = 180; // using 180 for math test; actual default is 30
-    const createdAt = new Date(Date.now() - MIN_AGE_DAYS * 2 * 24 * 60 * 60 * 1000);
-    const ageInDays = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    expect(ageInDays < MIN_AGE_DAYS).toBe(false);
+describe("computeLegitimacyScore", () => {
+  it("scores zero for empty profile", async () => {
+    const { computeLegitimacyScore } = await import("@/lib/account-check");
+    const result = computeLegitimacyScore({
+      publicRepos: 0, publicGists: 0, followers: 0, following: 0,
+      hasBio: false, hasAvatar: false, hasBlog: false, hasTwitter: false,
+      recentEvents: 0,
+    });
+    expect(result.total).toBe(0);
   });
 
-  it("correctly identifies accounts younger than threshold as new", () => {
-    const MIN_AGE_DAYS = 180; // using 180 for math test; actual default is 30
-    const createdAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000); // 10 days ago
-    const ageInDays = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-    expect(ageInDays < MIN_AGE_DAYS).toBe(true);
+  it("caps repos at 25 points", async () => {
+    const { computeLegitimacyScore } = await import("@/lib/account-check");
+    const result = computeLegitimacyScore({
+      publicRepos: 100, publicGists: 0, followers: 0, following: 0,
+      hasBio: false, hasAvatar: false, hasBlog: false, hasTwitter: false,
+      recentEvents: 0,
+    });
+    expect(result.repos.points).toBe(25);
+    expect(result.total).toBe(25);
+  });
+
+  it("scores profile completeness correctly", async () => {
+    const { computeLegitimacyScore } = await import("@/lib/account-check");
+    const result = computeLegitimacyScore({
+      publicRepos: 0, publicGists: 0, followers: 0, following: 0,
+      hasBio: true, hasAvatar: true, hasBlog: true, hasTwitter: true,
+      recentEvents: 0,
+    });
+    expect(result.profile.points).toBe(15); // 5 + 3 + 4 + 3
+    expect(result.total).toBe(15);
+  });
+
+  it("computes full score for active developer", async () => {
+    const { computeLegitimacyScore } = await import("@/lib/account-check");
+    const result = computeLegitimacyScore({
+      publicRepos: 10, publicGists: 3, followers: 5, following: 20,
+      hasBio: true, hasAvatar: true, hasBlog: true, hasTwitter: true,
+      recentEvents: 20,
+    });
+    // repos=10, gists=3, followers=15, profile=15, events=30 → 73
+    expect(result.total).toBe(73);
   });
 });

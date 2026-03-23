@@ -77,23 +77,8 @@ describe("POST /api/reproductions", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 403 when account is flagged as new", async () => {
+  it("returns 201 with {id} for valid submission", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession());
-    // User lookup → flagged new account
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: true }]);
-
-    const req = makeReq("POST", validReproBody);
-    const res = await POST(req);
-
-    expect(res.status).toBe(403);
-    const json = await res.json();
-    expect(json.error).toMatch(/new/i);
-  });
-
-  it("returns 201 with {id} when passing age gate", async () => {
-    mockGetServerSession.mockResolvedValueOnce(makeSession());
-    // User lookup → not a new account
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]);
     // INSERT → returns id
     mockSql.mockResolvedValueOnce([{ id: 42 }]);
 
@@ -107,7 +92,6 @@ describe("POST /api/reproductions", () => {
 
   it("calls sql INSERT when submission is valid", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession());
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]);
     mockSql.mockResolvedValueOnce([{ id: 99 }]);
     // logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
@@ -115,8 +99,8 @@ describe("POST /api/reproductions", () => {
     const req = makeReq("POST", validReproBody);
     await POST(req);
 
-    // Called 3 times: user lookup + INSERT + logEvent
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    // Called 2 times: INSERT + logEvent (no age gate check)
+    expect(mockSql).toHaveBeenCalledTimes(2);
   });
 });
 

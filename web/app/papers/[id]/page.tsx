@@ -46,21 +46,14 @@ export default async function PaperPage({
     getPaperBenchmarks(id),
   ]);
 
-  // Fetch user's existing author claim + age-gate status
+  // Fetch user's existing author claim
   let userClaim: { status: string } | null = null;
-  let isAgeGated = false;
   if (userId) {
-    const [claimRows, userRows] = await Promise.all([
-      sql<{ status: string }[]>`
-        SELECT status FROM paper_authors
-        WHERE paper_id = ${id} AND user_id = ${userId}
-      `,
-      sql<{ is_flagged_new_account: boolean }[]>`
-        SELECT is_flagged_new_account FROM users WHERE github_id = ${userId}
-      `,
-    ]);
+    const claimRows = await sql<{ status: string }[]>`
+      SELECT status FROM paper_authors
+      WHERE paper_id = ${id} AND user_id = ${userId}
+    `;
     userClaim = claimRows[0] ?? null;
-    isAgeGated = userRows[0]?.is_flagged_new_account ?? false;
   }
 
   // Fetch agent reproductions (pending review)
@@ -362,7 +355,7 @@ export default async function PaperPage({
       {/* Reproductions */}
       <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
-        <ReproductionForm paperId={id} isAgeGated={isAgeGated} benchmarks={benchmarks} />
+        <ReproductionForm paperId={id} benchmarks={benchmarks} />
         <ReproductionList paperId={id} />
       </section>
 

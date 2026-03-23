@@ -1,14 +1,14 @@
 export default function TooNewPage() {
   return (
     <main className="max-w-lg mx-auto px-4 py-24 text-center">
-      <h1 className="text-2xl font-bold mb-4">Account Too New</h1>
+      <h1 className="text-2xl font-bold mb-4">Verification Required</h1>
       <p className="text-gray-600 mb-4">
-        To prevent spam, GitHub accounts must be at least 30 days old to join
-        SOTAVerified.
+        Your GitHub account didn&apos;t meet our automated verification criteria.
+        This is an anti-spam measure — most real developers pass automatically.
       </p>
       <p className="text-gray-600 mb-6">
-        Your sign-up request has been submitted for admin review. If you believe
-        this is an error, contact{" "}
+        You&apos;ve been added to our review queue and an admin will review your
+        request. If you believe this is an error, contact{" "}
         <a
           href="mailto:support@sotaverified.org"
           className="text-blue-600 hover:underline"

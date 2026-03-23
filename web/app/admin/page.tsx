@@ -150,10 +150,12 @@ export default async function AdminPage({
     github_id: string;
     github_username: string;
     avatar_url: string | null;
-    account_age_days: number;
+    legitimacy_score: number | null;
+    score_breakdown: Record<string, unknown> | null;
     created_at: string;
   }[]>`
-    SELECT id, github_id, github_username, avatar_url, account_age_days, created_at::text
+    SELECT id, github_id, github_username, avatar_url,
+           legitimacy_score, score_breakdown, created_at::text
     FROM sign_up_requests
     WHERE status = 'pending'
     ORDER BY created_at DESC
@@ -177,20 +179,40 @@ export default async function AdminPage({
             </span>
           </h2>
           <div className="space-y-2">
-            {pendingSignups.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm">
-                {s.avatar_url && (
-                  <img src={s.avatar_url} alt="" className="w-6 h-6 rounded-full" />
-                )}
-                <span className="font-medium">@{s.github_username}</span>
-                <span className="text-gray-500">account age: {s.account_age_days} days</span>
-                <span className="text-gray-400 text-xs">{timeAgo(s.created_at)}</span>
-                <span className="ml-auto flex gap-2">
-                  <SignupAction id={s.id} action="approve" />
-                  <SignupAction id={s.id} action="reject" />
-                </span>
-              </div>
-            ))}
+            {pendingSignups.map((s) => {
+              const bd = s.score_breakdown as Record<string, { value?: number; points?: number }> | null;
+              return (
+                <div key={s.id} className="rounded-lg border border-gray-200 p-3 text-sm">
+                  <div className="flex items-center gap-3">
+                    {s.avatar_url && (
+                      <img src={s.avatar_url} alt="" className="w-6 h-6 rounded-full" />
+                    )}
+                    <span className="font-medium">@{s.github_username}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                      (s.legitimacy_score ?? 0) < 10 ? "bg-red-100 text-red-700" :
+                      (s.legitimacy_score ?? 0) < 25 ? "bg-amber-100 text-amber-700" :
+                      "bg-green-100 text-green-700"
+                    }`}>
+                      Score: {s.legitimacy_score ?? "?"}
+                    </span>
+                    <span className="text-gray-400 text-xs">{timeAgo(s.created_at)}</span>
+                    <span className="ml-auto flex gap-2">
+                      <SignupAction id={s.id} action="approve" />
+                      <SignupAction id={s.id} action="reject" />
+                    </span>
+                  </div>
+                  {bd && (
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-500">
+                      <span>repos: {bd.repos?.value ?? 0} → {bd.repos?.points ?? 0}pts</span>
+                      <span>followers: {bd.followers?.value ?? 0} → {bd.followers?.points ?? 0}pts</span>
+                      <span>events: {bd.recentEvents?.value ?? 0} → {bd.recentEvents?.points ?? 0}pts</span>
+                      <span>profile: {bd.profile?.points ?? 0}pts</span>
+                      <span>gists: {bd.gists?.value ?? 0} → {bd.gists?.points ?? 0}pts</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <ClearAllSignups />
           </div>
         </section>

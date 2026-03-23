@@ -3,8 +3,8 @@
  * Override via environment variables without code changes.
  */
 export const THRESHOLDS = {
-  // Auth
-  GITHUB_MIN_ACCOUNT_AGE_DAYS: Number(process.env.GITHUB_MIN_ACCOUNT_AGE_DAYS ?? 30),
+  // Auth — multi-signal legitimacy check
+  LEGITIMACY_SCORE_THRESHOLD: Number(process.env.LEGITIMACY_SCORE_THRESHOLD ?? 25),
 
   // Reproduction verification
   UPVOTES_TO_VERIFY: Number(process.env.UPVOTES_TO_VERIFY ?? 1),

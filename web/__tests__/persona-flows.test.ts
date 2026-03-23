@@ -70,21 +70,19 @@ const validReproBody = {
 
 // ── New User Persona ─────────────────────────────────────────────────────────
 
-describe("New User persona (rep=0, age-gated)", () => {
+describe("New User persona (legitimacy-checked, rep=0)", () => {
   beforeEach(() => {
     mockSql.mockReset();
     mockSession.mockReset();
   });
 
-  it("cannot submit reproductions (age gate blocks)", async () => {
+  it("can submit reproductions (legitimacy check at sign-in, not per-action)", async () => {
     mockSession.mockResolvedValueOnce(newUserSession());
-    // User lookup → flagged as new
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: true }]);
+    mockSql.mockResolvedValueOnce([{ id: 42 }]);  // INSERT
+    mockSql.mockResolvedValueOnce([]);              // logEvent
 
     const res = await REPRO_POST(makeReq("POST", validReproBody));
-    expect(res.status).toBe(403);
-    const json = await res.json();
-    expect(json.error).toMatch(/new/i);
+    expect(res.status).toBe(201);
   });
 
   it("can promote agent reproductions (no rep gate at launch)", async () => {
@@ -107,11 +105,10 @@ describe("Trusted User persona (rep=30+)", () => {
     mockSession.mockReset();
   });
 
-  it("can submit reproductions (passes age gate)", async () => {
+  it("can submit reproductions", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]);  // age gate
-    mockSql.mockResolvedValueOnce([{ id: 42 }]);                         // INSERT
-    mockSql.mockResolvedValueOnce([]);                                    // logEvent
+    mockSql.mockResolvedValueOnce([{ id: 42 }]);   // INSERT
+    mockSql.mockResolvedValueOnce([]);               // logEvent
 
     const res = await REPRO_POST(makeReq("POST", validReproBody));
     expect(res.status).toBe(201);
@@ -242,9 +239,8 @@ describe("Author persona (rep=10, 3yr account)", () => {
     mockSession.mockReset();
   });
 
-  it("can submit reproductions (passes age gate)", async () => {
+  it("can submit reproductions", async () => {
     mockSession.mockResolvedValueOnce(authorSession());
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]);
     mockSql.mockResolvedValueOnce([{ id: 42 }]);
     mockSql.mockResolvedValueOnce([]);
 

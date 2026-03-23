@@ -98,17 +98,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Check account age gate for reproductions
-  const [user] = await sql<[{ is_flagged_new_account: boolean }]>`
-    SELECT is_flagged_new_account FROM users WHERE github_id = ${session.user.github_id}
-  `;
-
-  if (user?.is_flagged_new_account) {
-    return NextResponse.json(
-      { error: "Account too new to submit reproductions" },
-      { status: 403 }
-    );
-  }
+  // Users who pass sign-in legitimacy check have full access — no secondary gate
 
   const metricName = actual_metric_name?.trim() || null;
   const metricValue = actual_metric_value != null ? Number(actual_metric_value) : null;

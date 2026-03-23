@@ -141,7 +141,6 @@ describe("Persona 2: Reproduction submission validation", () => {
   it("accepts valid minimal reproduction", async () => {
     mockSession.mockResolvedValueOnce(userSession());
     const { POST } = await import("@/app/api/reproductions/route");
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]); // age gate
     mockSql.mockResolvedValueOnce([{ id: 1 }]);                         // INSERT
     mockSql.mockResolvedValueOnce([]);                                   // logEvent
     const res = await POST(makeReq("POST", {
@@ -153,7 +152,6 @@ describe("Persona 2: Reproduction submission validation", () => {
   it("accepts reproduction with dataset_id and metric", async () => {
     mockSession.mockResolvedValueOnce(userSession());
     const { POST } = await import("@/app/api/reproductions/route");
-    mockSql.mockResolvedValueOnce([{ is_flagged_new_account: false }]);
     mockSql.mockResolvedValueOnce([{ id: 2 }]);
     mockSql.mockResolvedValueOnce([]);
     const res = await POST(makeReq("POST", {
@@ -286,7 +284,7 @@ describe("Persona 4: Admin reproduction management", () => {
 describe("Cross-cutting: thresholds.ts exports", () => {
   it("exports all expected threshold values", async () => {
     const { THRESHOLDS, tierRepGain } = await import("@/lib/thresholds");
-    expect(THRESHOLDS.GITHUB_MIN_ACCOUNT_AGE_DAYS).toBe(30);
+    expect(THRESHOLDS.LEGITIMACY_SCORE_THRESHOLD).toBe(25);
     expect(THRESHOLDS.UPVOTES_TO_VERIFY).toBe(1);
     expect(THRESHOLDS.FLAGS_TO_HIDE).toBe(2);
     expect(THRESHOLDS.PROMOTES_TO_ACTIVATE).toBe(1);
