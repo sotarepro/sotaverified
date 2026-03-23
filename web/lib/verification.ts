@@ -47,7 +47,7 @@ export async function recomputeVerificationScore(paperId: string): Promise<numbe
   const claimedValue = claimedRow?.best_metric_value ?? null;
 
   let bonusScore = 0;
-  if (claimedValue !== null) {
+  if (claimedValue !== null && claimedValue !== 0) {
     for (const r of repros) {
       if (r.actual_metric_value !== null) {
         const pct = Math.abs(r.actual_metric_value - claimedValue) / Math.abs(claimedValue);

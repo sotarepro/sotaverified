@@ -541,17 +541,12 @@ export async function getPaperUpvoteInfo(
   paperId: string,
   userId: string | null
 ): Promise<{ count: number; upvoted: boolean }> {
-  const [{ count }] = await sql<[{ count: number }]>`
-    SELECT COUNT(*)::int AS count FROM upvotes WHERE paper_id = ${paperId}
+  const [row] = await sql<[{ count: number; upvoted: boolean }]>`
+    SELECT
+      (SELECT COUNT(*)::int FROM upvotes WHERE paper_id = ${paperId}) AS count,
+      ${userId ? sql`EXISTS(SELECT 1 FROM upvotes WHERE paper_id = ${paperId} AND user_id = ${userId})` : sql`false`} AS upvoted
   `;
-  let upvoted = false;
-  if (userId) {
-    const rows = await sql`
-      SELECT 1 FROM upvotes WHERE paper_id = ${paperId} AND user_id = ${userId}
-    `;
-    upvoted = rows.length > 0;
-  }
-  return { count, upvoted };
+  return { count: row.count, upvoted: row.upvoted };
 }
 
 export async function getSiteStats(): Promise<{
