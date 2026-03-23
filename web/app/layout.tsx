@@ -67,6 +67,12 @@ export default async function RootLayout({
                 Browse
               </a>
               <Link
+                href="/leaderboard"
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Leaderboard
+              </Link>
+              <Link
                 href="/about"
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
