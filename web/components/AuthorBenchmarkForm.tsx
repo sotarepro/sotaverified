@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   paperId: string;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [taskSearch, setTaskSearch] = useState("");
   const [taskId, setTaskId] = useState("");
@@ -68,6 +70,7 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
       }
 
       setSubmitted(true);
+      router.refresh();
     } catch {
       setError("Network error, please try again.");
     } finally {

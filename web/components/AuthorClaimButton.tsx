@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface Props {
   paperId: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
   const { data: session, status } = useSession();
+  const router = useRouter();
   const [claim, setClaim] = useState<{ status: string } | null>(initialClaim);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
 
       if (data.status === "verified") {
         setClaim({ status: "verified" });
+        router.refresh();
       } else if (data.status === "not_contributor" || data.status === "no_repo" || data.status === "check_failed") {
         setMessage(data.message);
         setMessageType("error");
