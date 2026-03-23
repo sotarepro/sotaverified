@@ -53,27 +53,18 @@ export async function POST(
       SELECT upvote_count, status, user_id, tier_claimed FROM reproductions WHERE id = ${reproId}
     `;
 
-    // Check if should be auto-verified: 3+ upvotes from trusted users (rep >= 30)
+    // Auto-verify at 3+ upvotes from any users
     if (r.upvote_count >= 3 && r.status === "community") {
-      const [{ qualified_count }] = await sql<[{ qualified_count: number }]>`
-        SELECT COUNT(*)::int AS qualified_count
-        FROM reproduction_upvotes ru
-        JOIN users u ON u.github_id = ru.user_id
-        WHERE ru.reproduction_id = ${reproId} AND u.reputation_score >= 30
+      await sql`
+        UPDATE reproductions SET status = 'verified' WHERE id = ${reproId}
       `;
-
-      if (qualified_count >= 3) {
-        await sql`
-          UPDATE reproductions SET status = 'verified' WHERE id = ${reproId}
-        `;
-        // Award tier-based rep to reproduction author
-        const tier = r.tier_claimed;
-        const repGain = tier === 4 ? 20 : tier === 3 ? 15 : tier === 2 ? 10 : 5;
-        await sql`
-          UPDATE users SET reputation_score = reputation_score + ${repGain}
-          WHERE github_id = ${r.user_id}
-        `;
-      }
+      // Award tier-based rep to reproduction author
+      const tier = r.tier_claimed;
+      const repGain = tier === 4 ? 20 : tier === 3 ? 15 : tier === 2 ? 10 : 5;
+      await sql`
+        UPDATE users SET reputation_score = reputation_score + ${repGain}
+        WHERE github_id = ${r.user_id}
+      `;
     }
 
     return NextResponse.json({ upvoted: true, count: r.upvote_count });

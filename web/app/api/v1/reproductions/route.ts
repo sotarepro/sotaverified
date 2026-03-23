@@ -4,11 +4,8 @@ import { logEvent } from "@/lib/activity";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { NextRequest, NextResponse } from "next/server";
 
-function getRepLimit(repScore: number): { count: number; windowSeconds: number } {
-  if (repScore >= 200) return { count: 20, windowSeconds: 3600 };   // 20/hour
-  if (repScore >= 30)  return { count: 5,  windowSeconds: 3600 };   // 5/hour
-  return { count: 1, windowSeconds: 86400 };                        // 1/day
-}
+// Flat rate limit: 1 submission per day per API key
+const RATE_LIMIT = { count: 1, windowSeconds: 86400 };
 
 export async function POST(req: NextRequest) {
   // Auth: check Authorization: Bearer <key> header
@@ -29,12 +26,7 @@ export async function POST(req: NextRequest) {
   }
   const userId = keyRows[0].user_id;
 
-  // Get user's reputation for rate limiting
-  const [userRow] = await sql<[{ reputation_score: number }]>`
-    SELECT reputation_score FROM users WHERE github_id = ${userId}
-  `;
-  const repScore = userRow?.reputation_score ?? 0;
-  const { count: limitCount, windowSeconds } = getRepLimit(repScore);
+  const { count: limitCount, windowSeconds } = RATE_LIMIT;
 
   // Check rate limit using activity_log
   const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();

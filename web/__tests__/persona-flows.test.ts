@@ -87,16 +87,15 @@ describe("New User persona (rep=0, age-gated)", () => {
     expect(json.error).toMatch(/new/i);
   });
 
-  it("cannot promote agent reproductions (rep < 30)", async () => {
+  it("can promote agent reproductions (no rep gate at launch)", async () => {
     mockSession.mockResolvedValueOnce(newUserSession());
-    // rep check
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
+    mockSql.mockResolvedValueOnce([{ source: "api", status: "agent_pending", paper_id: "p1" }]);
+    mockSql.mockResolvedValueOnce([]);  // UPDATE status
+    mockSql.mockResolvedValueOnce([]);  // logEvent
 
     const params = { params: Promise.resolve({ id: "42" }) };
     const res = await PROMOTE_POST(makeReq("POST"), params);
-    expect(res.status).toBe(403);
-    const json = await res.json();
-    expect(json.error).toMatch(/insufficient reputation/i);
+    expect(res.status).toBe(200);
   });
 });
 
@@ -118,13 +117,11 @@ describe("Trusted User persona (rep=30+)", () => {
     expect(res.status).toBe(201);
   });
 
-  it("can promote agent reproductions (rep >= 30)", async () => {
+  it("can promote agent reproductions (no rep gate)", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
-    mockSql.mockResolvedValueOnce([{ reputation_score: 30 }]);                              // rep check
-    mockSql.mockResolvedValueOnce([{ source: "api", status: "agent_pending", paper_id: "p1" }]);  // fetch repro
-    mockSql.mockResolvedValueOnce([]);                                                       // UPDATE status
-    // recomputeVerificationScore mocked
-    mockSql.mockResolvedValueOnce([]);                                                       // logEvent
+    mockSql.mockResolvedValueOnce([{ source: "api", status: "agent_pending", paper_id: "p1" }]);
+    mockSql.mockResolvedValueOnce([]);  // UPDATE status
+    mockSql.mockResolvedValueOnce([]);  // logEvent
 
     const params = { params: Promise.resolve({ id: "42" }) };
     const res = await PROMOTE_POST(makeReq("POST"), params);
@@ -136,7 +133,6 @@ describe("Trusted User persona (rep=30+)", () => {
 
   it("cannot promote non-api reproductions", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
-    mockSql.mockResolvedValueOnce([{ reputation_score: 50 }]);
     mockSql.mockResolvedValueOnce([{ source: "community", status: "community", paper_id: "p1" }]);
 
     const params = { params: Promise.resolve({ id: "42" }) };
@@ -148,7 +144,6 @@ describe("Trusted User persona (rep=30+)", () => {
 
   it("cannot promote already-promoted reproductions", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
-    mockSql.mockResolvedValueOnce([{ reputation_score: 50 }]);
     mockSql.mockResolvedValueOnce([{ source: "api", status: "community", paper_id: "p1" }]);
 
     const params = { params: Promise.resolve({ id: "42" }) };
@@ -158,18 +153,14 @@ describe("Trusted User persona (rep=30+)", () => {
     expect(json.error).toMatch(/not in agent_pending/i);
   });
 
-  it("trusted user flag triggers auto-hide at 2 flags (trusted threshold)", async () => {
+  it("flag at 2 does NOT auto-hide (threshold is 3 for all users)", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
     mockSql.mockResolvedValueOnce([]);                                     // no existing flag
     mockSql.mockResolvedValueOnce([]);                                     // INSERT flag
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE increment
-    // Fetch state: 2 flags, community status (should trigger trusted auto-hide)
+    // Fetch state: 2 flags, community status — NOT enough to hide
     mockSql.mockResolvedValueOnce([{ flag_count: 2, status: "community", user_id: "u1", paper_id: "p1" }]);
     mockSql.mockResolvedValueOnce([]);                                     // logEvent
-    // Rep check — trusted user (rep >= 30), count=2 >= 2 → auto-hide
-    mockSql.mockResolvedValueOnce([{ reputation_score: 30 }]);
-    mockSql.mockResolvedValueOnce([]);                                     // UPDATE hidden
-    mockSql.mockResolvedValueOnce([]);                                     // UPDATE rep -20
 
     const params = { params: Promise.resolve({ id: "42" }) };
     const res = await FLAG_POST(makeReq("POST"), params);
@@ -178,8 +169,8 @@ describe("Trusted User persona (rep=30+)", () => {
     expect(res.status).toBe(200);
     expect(json.flagged).toBe(true);
     expect(json.count).toBe(2);
-    // Should have called UPDATE hidden + UPDATE rep = 8 total sql calls
-    expect(mockSql).toHaveBeenCalledTimes(8);
+    // 5 calls: check + insert + update_count + fetch + logEvent (no hide)
+    expect(mockSql).toHaveBeenCalledTimes(5);
   });
 });
 
@@ -191,7 +182,7 @@ describe("Reproduction upvote auto-verification", () => {
     mockSession.mockReset();
   });
 
-  it("auto-verifies at 3+ upvotes from trusted users (rep >= 30)", async () => {
+  it("auto-verifies at 3+ upvotes from any users", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
     mockSql.mockResolvedValueOnce([]);                                     // owner check (not owner)
     mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
@@ -199,8 +190,6 @@ describe("Reproduction upvote auto-verification", () => {
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE count +1
     // Fetch repro: 3 upvotes, community status, tier 2
     mockSql.mockResolvedValueOnce([{ upvote_count: 3, status: "community", user_id: "repro-author", tier_claimed: 2 }]);
-    // Qualified count check: 3 trusted users upvoted
-    mockSql.mockResolvedValueOnce([{ qualified_count: 3 }]);
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE status='verified'
     mockSql.mockResolvedValueOnce([]);                                     // UPDATE rep (tier 2 = +10)
 
@@ -211,31 +200,11 @@ describe("Reproduction upvote auto-verification", () => {
     expect(res.status).toBe(200);
     expect(json.upvoted).toBe(true);
     expect(json.count).toBe(3);
-    // 8 calls: owner_check + check + insert + update_count + fetch + qualified_count + update_status + update_rep
-    expect(mockSql).toHaveBeenCalledTimes(8);
+    // 7 calls: owner_check + check + insert + update_count + fetch + update_status + update_rep
+    expect(mockSql).toHaveBeenCalledTimes(7);
   });
 
-  it("does not auto-verify when only 2 trusted upvotes", async () => {
-    mockSession.mockResolvedValueOnce(trustedUserSession());
-    mockSql.mockResolvedValueOnce([]);                                     // owner check
-    mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
-    mockSql.mockResolvedValueOnce([]);                                     // INSERT upvote
-    mockSql.mockResolvedValueOnce([]);                                     // UPDATE count +1
-    // 3 total upvotes but only 2 from trusted users
-    mockSql.mockResolvedValueOnce([{ upvote_count: 3, status: "community", user_id: "repro-author", tier_claimed: 2 }]);
-    mockSql.mockResolvedValueOnce([{ qualified_count: 2 }]);               // only 2 qualified
-
-    const params = { params: Promise.resolve({ id: "42" }) };
-    const res = await UPVOTE_POST(makeReq("POST"), params);
-    const json = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(json.upvoted).toBe(true);
-    // No update_status or update_rep calls
-    expect(mockSql).toHaveBeenCalledTimes(6);
-  });
-
-  it("does not auto-verify when upvote_count < 3 even from trusted user", async () => {
+  it("does not auto-verify when upvote_count < 3", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
     mockSql.mockResolvedValueOnce([]);                                     // owner check
     mockSql.mockResolvedValueOnce([]);                                     // no existing upvote
@@ -248,7 +217,6 @@ describe("Reproduction upvote auto-verification", () => {
     const res = await UPVOTE_POST(makeReq("POST"), params);
 
     expect(res.status).toBe(200);
-    // Should NOT check qualified_count since upvote_count < 3
     expect(mockSql).toHaveBeenCalledTimes(5);
   });
 
@@ -296,18 +264,19 @@ describe("Author persona (rep=10, 3yr account)", () => {
     expect(res.status).toBe(201);
   });
 
-  it("cannot promote agent reproductions (rep 10 < 30)", async () => {
+  it("can promote agent reproductions (no rep gate)", async () => {
     mockSession.mockResolvedValueOnce(authorSession());
-    mockSql.mockResolvedValueOnce([{ reputation_score: 10 }]);
+    mockSql.mockResolvedValueOnce([{ source: "api", status: "agent_pending", paper_id: "p1" }]);
+    mockSql.mockResolvedValueOnce([]);  // UPDATE
+    mockSql.mockResolvedValueOnce([]);  // logEvent
 
     const params = { params: Promise.resolve({ id: "42" }) };
     const res = await PROMOTE_POST(makeReq("POST"), params);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
   });
 
   it("promote returns 404 for nonexistent reproduction", async () => {
     mockSession.mockResolvedValueOnce(trustedUserSession());
-    mockSql.mockResolvedValueOnce([{ reputation_score: 50 }]);
     mockSql.mockResolvedValueOnce([]);  // repro not found (empty array → undefined from destructuring)
 
     const params = { params: Promise.resolve({ id: "9999" }) };

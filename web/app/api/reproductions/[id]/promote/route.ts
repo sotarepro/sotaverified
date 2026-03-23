@@ -17,14 +17,6 @@ export async function POST(
   const reproId = parseInt(id, 10);
   const userId = session.user.github_id;
 
-  // Check user's reputation
-  const [userRow] = await sql<[{ reputation_score: number }]>`
-    SELECT reputation_score FROM users WHERE github_id = ${userId}
-  `;
-  if ((userRow?.reputation_score ?? 0) < 30) {
-    return NextResponse.json({ error: "Insufficient reputation to promote agent reproductions" }, { status: 403 });
-  }
-
   // Fetch the reproduction
   const [repro] = await sql<[{ source: string; status: string; paper_id: string }]>`
     SELECT source, status, paper_id FROM reproductions WHERE id = ${reproId}

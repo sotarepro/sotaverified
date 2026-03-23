@@ -59,14 +59,8 @@ export async function POST(
       metadata: { reproduction_id: reproId, flag_count: r.flag_count },
     });
 
-    // Check flagging user's reputation for trusted flag weight
-    const [flaggingUser] = await sql<[{ reputation_score: number }]>`
-      SELECT reputation_score FROM users WHERE github_id = ${userId}
-    `;
-    const isTrusted = (flaggingUser?.reputation_score ?? 0) >= 30;
-
-    // Auto-hide: 3 regular flags OR trusted user flag + 2 total flags
-    const shouldHide = r.flag_count >= 3 || (isTrusted && r.flag_count >= 2);
+    // Auto-hide at 3 flags from any users
+    const shouldHide = r.flag_count >= 3;
 
     if (shouldHide && r.status !== 'hidden') {
       await sql`

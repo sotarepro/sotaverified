@@ -150,8 +150,6 @@ describe("POST /api/reproductions/[id]/flag", () => {
     mockSql.mockResolvedValueOnce([{ flag_count: 1, status: "community", user_id: "u1", paper_id: "paper-1" }]);
     // logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
-    // SELECT reputation_score (not trusted, count=1 < 2)
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
 
     const req = makeReq("POST");
     const params = { params: Promise.resolve({ id: "42" }) };
@@ -198,8 +196,6 @@ describe("POST /api/reproductions/[id]/flag", () => {
     mockSql.mockResolvedValueOnce([{ flag_count: 3, status: "community", user_id: "u1", paper_id: "paper-1" }]);
     // logEvent INSERT (activity_log)
     mockSql.mockResolvedValueOnce([]);
-    // SELECT reputation_score for trusted check (not trusted, but count=3 >= 3 so auto-hide anyway)
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     // UPDATE status='hidden'
     mockSql.mockResolvedValueOnce([]);
     // UPDATE user rep -20
@@ -213,8 +209,8 @@ describe("POST /api/reproductions/[id]/flag", () => {
     expect(res.status).toBe(200);
     expect(json.flagged).toBe(true);
     expect(json.count).toBe(3);
-    // Total calls: check + insert + update_count + fetch + logEvent + rep_check + update_hidden + update_rep = 8
-    expect(mockSql).toHaveBeenCalledTimes(8);
+    // Total calls: check + insert + update_count + fetch + logEvent + update_hidden + update_rep = 7
+    expect(mockSql).toHaveBeenCalledTimes(7);
   });
 });
 

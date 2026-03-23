@@ -36,11 +36,10 @@ const validBody = {
   notes: "Reproduced BLEU 28.4",
 };
 
-// Helper: mock the standard success path (key lookup, user rep, rate limit check, paper lookup, insert, logEvent)
-function mockSuccessPath(opts: { rep?: number; recentCount?: number } = {}) {
-  const { rep = 0, recentCount = 0 } = opts;
+// Helper: mock the standard success path (key lookup, rate limit check, paper lookup, insert, logEvent)
+function mockSuccessPath(opts: { recentCount?: number } = {}) {
+  const { recentCount = 0 } = opts;
   mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);           // key_hash lookup
-  mockSql.mockResolvedValueOnce([{ reputation_score: rep }]);             // user rep
   mockSql.mockResolvedValueOnce([{ recent_count: recentCount }]);         // rate limit check
   mockSql.mockResolvedValueOnce([{ id: "paper-internal-42" }]);           // paper lookup
   mockSql.mockResolvedValueOnce([{ id: 99 }]);                           // INSERT
@@ -73,11 +72,10 @@ describe("POST /api/v1/reproductions", () => {
     expect(json.error).toMatch(/invalid api key/i);
   });
 
-  // ── Rate Limiting ──────────────────────────────────────────────────────
+  // ── Rate Limiting (flat 1/day per key) ────────────────────────────────
 
-  it("rate-limits low-rep user (rep < 30) to 1/day", async () => {
+  it("rate-limits at 1 submission per day", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);    // key lookup
-    mockSql.mockResolvedValueOnce([{ reputation_score: 5 }]);        // rep < 30
     mockSql.mockResolvedValueOnce([{ recent_count: 1 }]);            // already hit 1/day
     mockSql.mockResolvedValueOnce([]);                                // logEvent for rate_limit_hit
 
@@ -88,34 +86,8 @@ describe("POST /api/v1/reproductions", () => {
     expect(json.window_seconds).toBe(86400);
   });
 
-  it("rate-limits mid-rep user (rep 30-199) to 5/hour", async () => {
-    mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 50 }]);
-    mockSql.mockResolvedValueOnce([{ recent_count: 5 }]);
-    mockSql.mockResolvedValueOnce([]);
-
-    const res = await POST(makeReq(validBody));
-    expect(res.status).toBe(429);
-    const json = await res.json();
-    expect(json.limit).toBe(5);
-    expect(json.window_seconds).toBe(3600);
-  });
-
-  it("rate-limits high-rep user (rep 200+) to 20/hour", async () => {
-    mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 250 }]);
-    mockSql.mockResolvedValueOnce([{ recent_count: 20 }]);
-    mockSql.mockResolvedValueOnce([]);
-
-    const res = await POST(makeReq(validBody));
-    expect(res.status).toBe(429);
-    const json = await res.json();
-    expect(json.limit).toBe(20);
-    expect(json.window_seconds).toBe(3600);
-  });
-
   it("allows submission when under rate limit", async () => {
-    mockSuccessPath({ rep: 5, recentCount: 0 });
+    mockSuccessPath({ recentCount: 0 });
     const res = await POST(makeReq(validBody));
     expect(res.status).toBe(201);
   });
@@ -125,7 +97,6 @@ describe("POST /api/v1/reproductions", () => {
   it("returns 400 when required fields are missing", async () => {
     // Need to pass auth + rate limit checks first
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     mockSql.mockResolvedValueOnce([{ recent_count: 0 }]);
 
     const res = await POST(makeReq({ arxiv_id: "2401.12345" }));
@@ -136,7 +107,6 @@ describe("POST /api/v1/reproductions", () => {
 
   it("returns 400 when tier_claimed is out of range", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     mockSql.mockResolvedValueOnce([{ recent_count: 0 }]);
 
     const res = await POST(makeReq({ ...validBody, tier_claimed: 5 }));
@@ -147,7 +117,6 @@ describe("POST /api/v1/reproductions", () => {
 
   it("returns 400 when hardware_spec exceeds 500 chars", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     mockSql.mockResolvedValueOnce([{ recent_count: 0 }]);
 
     const res = await POST(makeReq({ ...validBody, hardware_spec: "x".repeat(501) }));
@@ -158,7 +127,6 @@ describe("POST /api/v1/reproductions", () => {
 
   it("returns 400 when notes exceed 2000 chars", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     mockSql.mockResolvedValueOnce([{ recent_count: 0 }]);
 
     const res = await POST(makeReq({ ...validBody, notes: "x".repeat(2001) }));
@@ -169,7 +137,6 @@ describe("POST /api/v1/reproductions", () => {
 
   it("returns 400 when actual_metric_value is Infinity", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     mockSql.mockResolvedValueOnce([{ recent_count: 0 }]);
     mockSql.mockResolvedValueOnce([{ id: "paper-42" }]); // paper found
 
@@ -183,7 +150,6 @@ describe("POST /api/v1/reproductions", () => {
 
   it("returns 404 when arxiv_id not found", async () => {
     mockSql.mockResolvedValueOnce([{ user_id: "agent-user-1" }]);
-    mockSql.mockResolvedValueOnce([{ reputation_score: 0 }]);
     mockSql.mockResolvedValueOnce([{ recent_count: 0 }]);
     mockSql.mockResolvedValueOnce([]);  // paper not found
 
