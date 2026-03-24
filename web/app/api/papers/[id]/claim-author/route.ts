@@ -150,7 +150,7 @@ export async function POST(
     });
     return NextResponse.json({
       status: "pending",
-      message: `Your GitHub account (@${username}) was not found in the contributor list for ${owner}/${repo}. Your claim has been submitted for admin review.`,
+      message: `We verify authorship by checking if your GitHub account (@${username}) is listed as a contributor on the paper's linked repository (${owner}/${repo}). Your account was not found in the contributor list. Your claim has been submitted for admin review. You can also contact support@sotaverified.org for manual verification.`,
     });
   }
 }
