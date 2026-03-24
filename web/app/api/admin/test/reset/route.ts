@@ -53,7 +53,10 @@ export async function POST() {
     // 7. api_keys
     await sql.unsafe(`DELETE FROM api_keys WHERE user_id IN (${testUsers})`);
 
-    // 8. Delete test users
+    // 8. leaderboard_results submitted by test users (FK to users)
+    await sql.unsafe(`DELETE FROM leaderboard_results WHERE submitted_by IN (${testUsers})`);
+
+    // 9. Delete test users
     await sql`DELETE FROM users WHERE is_test = true`;
 
     // 9. Test paper dependencies (FK not CASCADE)
