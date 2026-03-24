@@ -15,6 +15,10 @@ interface Reproduction {
   flag_count: number;
   status: string;
   created_at: string;
+  actual_metric_name: string | null;
+  actual_metric_value: number | null;
+  model_name: string | null;
+  dataset_name: string | null;
 }
 
 const TIER_LABELS: Record<number, string> = {
@@ -170,6 +174,22 @@ export default function ReproductionList({ paperId }: Props) {
               )}
             </div>
           </div>
+
+          {/* Metric result — model, metric, value, dataset */}
+          {(r.actual_metric_name || r.actual_metric_value != null) && (
+            <div className="text-gray-500 text-xs mb-1">
+              Result:{" "}
+              <span className="text-gray-700 font-medium">
+                {[
+                  r.model_name,
+                  r.actual_metric_name && r.actual_metric_value != null
+                    ? `${r.actual_metric_name}: ${r.actual_metric_value}`
+                    : r.actual_metric_name ?? (r.actual_metric_value != null ? String(r.actual_metric_value) : null),
+                  r.dataset_name ? `on ${r.dataset_name}` : null,
+                ].filter(Boolean).join(" — ")}
+              </span>
+            </div>
+          )}
 
           {r.hardware_spec && (
             <div className="text-gray-500 text-xs mb-1">

@@ -16,12 +16,16 @@ export async function GET(req: NextRequest) {
     username: string | null;
     tier_claimed: number;
     hardware_spec: string;
-    run_log_url: string;
+    run_log_url: string | null;
     notes: string | null;
     upvote_count: number;
     flag_count: number;
     status: string;
     created_at: string;
+    actual_metric_name: string | null;
+    actual_metric_value: number | null;
+    model_name: string | null;
+    dataset_name: string | null;
   }[]>`
     SELECT
       r.id,
@@ -34,9 +38,14 @@ export async function GET(req: NextRequest) {
       r.upvote_count,
       r.flag_count,
       r.status,
-      r.created_at::text
+      r.created_at::text,
+      r.actual_metric_name,
+      r.actual_metric_value,
+      r.model_name,
+      d.name AS dataset_name
     FROM reproductions r
     LEFT JOIN users u ON u.github_id = r.user_id
+    LEFT JOIN datasets d ON d.id = r.dataset_id
     WHERE r.paper_id = ${paperId}
       AND r.status != 'hidden'
     ORDER BY r.created_at DESC
