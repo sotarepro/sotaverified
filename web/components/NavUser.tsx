@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession, signIn, signOut } from "next-auth/react";
+import Link from "next/link";
 
 export default function NavUser() {
   const { data: session, status } = useSession();
@@ -31,7 +32,9 @@ export default function NavUser() {
           className="w-6 h-6 rounded-full"
         />
       )}
-      <span className="text-sm text-gray-700">{session.user.username}</span>
+      <Link href={`/profile/${session.user.username}`} className="text-sm text-gray-700 hover:underline">
+        {session.user.username}
+      </Link>
       <button
         onClick={() => signOut()}
         className="text-sm text-gray-400 hover:text-gray-600"
