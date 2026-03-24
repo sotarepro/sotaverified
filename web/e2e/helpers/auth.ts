@@ -51,6 +51,11 @@ export async function ensureTestData(page: Page) {
   await apiPost(page.context(), `${BASE}/api/admin/test/users`, { preset: "test_user" });
   await apiPost(page.context(), `${BASE}/api/admin/test/users`, { preset: "author" });
   await apiPost(page.context(), `${BASE}/api/admin/test/papers`, { preset: "basic" });
+  await apiPost(page.context(), `${BASE}/api/admin/test/papers`, { preset: "full" });
+
+  // Seed leaderboard data for test_full (CIFAR-10 benchmark) and author claim
+  // These are idempotent — ON CONFLICT DO NOTHING
+  await page.context().request.post(`${BASE}/api/test/seed-test-data`);
   await signOut(page);
 }
 

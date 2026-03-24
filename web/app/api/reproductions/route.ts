@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
 
   const [row] = await sql<[{ id: number }]>`
     INSERT INTO reproductions (paper_id, user_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value, dataset_id)
-    VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url}, ${notes ?? null}, ${metricName}, ${metricValue}, ${dataset_id ?? null})
+    VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url ?? null}, ${notes ?? null}, ${metricName}, ${metricValue}, ${dataset_id ?? null})
     RETURNING id
   `;
 

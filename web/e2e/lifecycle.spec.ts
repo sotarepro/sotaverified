@@ -24,7 +24,7 @@ test.describe("QA Workflow 4 — Author → Verification Lifecycle", () => {
     await expect(page.getByText("Verified Author via GitHub", { exact: true })).toBeVisible();
 
     // 'Submit benchmark results' should be visible (author-only)
-    await expect(page.locator("text=Submit benchmark results")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Submit benchmark results" })).toBeVisible();
 
     // 'I reproduced this' should NOT be visible (hidden for authors)
     await expect(page.getByTestId("repro-toggle")).not.toBeVisible();
