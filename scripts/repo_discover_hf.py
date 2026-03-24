@@ -30,7 +30,7 @@ except ImportError:
     sys.exit(1)
 
 HF_API_BASE = "https://huggingface.co/api/papers"
-SLEEP_BETWEEN_REQUESTS = 1.0
+SLEEP_BETWEEN_REQUESTS = 0.02  # ~50 req/sec, 178k papers in ~1 hour
 MAX_RETRIES = 3
 
 
@@ -99,6 +99,8 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Max papers to process (0 = unlimited)")
     parser.add_argument("--since", help="Only papers published after YYYY-MM-DD")
     parser.add_argument("--offset", type=int, default=0, help="Skip first N candidates")
+    parser.add_argument("--sleep", type=float, default=SLEEP_BETWEEN_REQUESTS,
+                        help=f"Seconds between requests (default: {SLEEP_BETWEEN_REQUESTS})")
     parser.add_argument("--dry-run", action="store_true", help="Log but don't write to DB")
     args = parser.parse_args()
 
@@ -163,7 +165,7 @@ def main():
         data = fetch_hf_paper(arxiv_id)
 
         if data is None:
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
+            time.sleep(args.sleep)
             continue
 
         stats["found_on_hf"] += 1
@@ -172,7 +174,7 @@ def main():
         github_stars = data.get("githubStars")
 
         if not github_repo:
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
+            time.sleep(args.sleep)
             continue
 
         stats["has_github_repo"] += 1
@@ -182,7 +184,7 @@ def main():
         if not normalized:
             print(f"  WARN: Could not normalize URL: {github_repo} (paper {arxiv_id})")
             stats["errors"] += 1
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
+            time.sleep(args.sleep)
             continue
 
         stars = int(github_stars) if github_stars else 0
@@ -194,7 +196,7 @@ def main():
         )
         if cur.fetchone():
             stats["duplicates"] += 1
-            time.sleep(SLEEP_BETWEEN_REQUESTS)
+            time.sleep(args.sleep)
             continue
 
         print(f"  + {arxiv_id} → {normalized} (★ {stars}) — {title[:60]}")
@@ -216,7 +218,7 @@ def main():
         else:
             stats["inserted"] += 1
 
-        time.sleep(SLEEP_BETWEEN_REQUESTS)
+        time.sleep(args.sleep)
 
     # Summary
     print(f"""
