@@ -62,12 +62,18 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
 
   if (claim?.status === "pending_admin") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 font-medium">
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Author claim pending review
-      </span>
+      <div className="space-y-2">
+        <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 font-medium">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Author claim pending review
+        </span>
+        <p className="text-xs text-amber-700 leading-relaxed">
+          We verify authorship by checking GitHub repository contributors. Your username was not found as a contributor on this paper{"'"}s linked repositories. Your claim has been submitted for manual review. If you believe this is an error, contact{" "}
+          <a href="mailto:support@sotaverified.org" className="underline">support@sotaverified.org</a>.
+        </p>
+      </div>
     );
   }
 
