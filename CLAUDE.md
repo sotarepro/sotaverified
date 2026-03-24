@@ -47,6 +47,9 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Stage 3-social ✅ DONE — activity_log table, logEvent() utility, tier-based reputation (T1:+5/T2:+10/T3:+15/T4:+20), trusted threshold at rep≥30, trusted flags (auto-hide at 2 instead of 3), Agent Write API (POST /api/v1/reproductions), PromoteButton, revamped admin dashboard (3 sections + activity feed)
 - Stage 3-test-tools ✅ DONE — admin test tools (dev/ENABLE_TEST_TOOLS=true only): create test users/papers, impersonate, reset; impersonation banner; is_test column on users+papers
 - Stage 3-taxonomy ✅ DONE — research area taxonomy: 11 areas (Code & Math folded into Language & Reasoning); General ML fully dissolved (all 1,669 zero-result tasks classified via keyword rules); 3 duplicate task merges; 32 MMLU subtasks collapsed to canonical 'mmlu'; AREA_COLORS updated in all frontend files
+- Stage 3-discover ✅ DONE — repo_discover_hf.py (Hugging Face Papers API),
+  repo_discover_abstracts.py (abstract regex extraction); auto-discovers
+  GitHub repos for papers without code links; 11,095 repos from abstracts alone
 
 ---
 
@@ -154,11 +157,33 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - After launch: all hype from organic votes only — don't re-run hype_seed.py
 - hype_seed.py has --reset flag to zero all scores before re-seeding
 
+### Auto Repo Discovery
+- `repo_discover_hf.py` — queries HF Papers API by arXiv ID, discovers
+  githubRepo URLs. No auth needed. ~2% hit rate on repo-less papers.
+- `repo_discover_abstracts.py` — regex extracts GitHub URLs from
+  papers.abstract column. Zero API calls. ~2.3% hit rate (11,095 from 474k papers).
+  Handles plain URLs, LaTeX `\url{}` and `\href{}{}` wrapping.
+- Both are idempotent, safe to re-run, insert into paper_code_links
+  with is_official=true, mentioned_in_paper=true (abstracts) or false (HF)
+- Run order: HF first (finds repos HF community curated), abstracts second
+  (catches author-mentioned repos HF doesn't know about), then github_enrich.py
+  for star/fork counts, then hype_seed.py to update hype scores
+- CLI: `--db`, `--limit`, `--since` (HF), `--pass {1,2,both}` (abstracts), `--dry-run`
+- **Key differentiator vs PWC:** proactive repo discovery vs manual author submission
+
 ### GitHub Enrichment
-- `github_enrich.py` now has `--since YYYY-MM-DD` flag to filter by paper.published
+- `github_enrich.py` has `--since YYYY-MM-DD` flag to filter by paper.published
 - Safe to re-run — skips repos enriched in last 7 days
 - `GITHUB_TOKEN` must be set as shell env var (not .env.local — Python doesn't read it)
 - Pattern: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py ...`
+
+### Full Enrichment Pipeline (run order)
+1. `arxiv_delta.py --days 7` — ingest new papers from arXiv
+2. `repo_discover_hf.py --since 2024-01-01` — discover repos via HF API
+3. `repo_discover_abstracts.py --pass 1` — discover repos from abstracts
+4. `github_enrich.py --since 2024-01-01` — fetch star/fork counts
+5. `hype_seed.py` — update hype scores from stars
+6. `semantic_scholar_enrich.py` — fetch citation counts (optional)
 
 ### Paper Detail — Author vs Reproducer
 - Verified authors see "Submit benchmark results" but NOT "I reproduced this"
