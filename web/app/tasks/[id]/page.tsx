@@ -132,7 +132,7 @@ export default async function TaskPage({
                 datasetName={dsName}
                 rows={dsRows}
                 submissionCount={dsRows.length}
-                defaultExpanded={idx === 0}
+                defaultExpanded={idx === 0 || byDataset.size <= 3 || !!datasetFilter}
                 isLowerBetter={isLowerBetterMetric(firstMetricName)}
               />
             );

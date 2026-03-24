@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { stripLatex } from "@/lib/strip-latex";
@@ -56,6 +56,13 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
   const { data: session } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  // Auto-open when navigating via #reproduce CTA link
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#reproduce") {
+      setOpen(true);
+    }
+  }, []);
   const availableTiers = hasCodeRepo ? [1, 2, 3] : [3];
   const [tierClaimed, setTierClaimed] = useState(hasCodeRepo ? 2 : 3);
   const [hardwareSpec, setHardwareSpec] = useState("");
