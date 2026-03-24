@@ -56,7 +56,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
   const nextHref = page < totalPages ? buildUrl(baseHref, { tab, pageSize, page: page + 1 }) : null;
 
   return (
-    <section id="paper-table" className="mb-8 scroll-mt-16">
+    <section id="paper-table" className="mb-8 scroll-mt-16 min-h-[400px]">
       {title && (
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
           {title}
