@@ -28,19 +28,20 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
 
   async function searchTasks(q: string) {
     setTaskSearch(q);
-    // Fetch popular defaults when empty, filtered results when typing
+    // Paper-scoped tasks first, then filtered search if typing
     const url = q.length >= 2
       ? `/api/search-entities?type=tasks&q=${encodeURIComponent(q)}`
-      : `/api/search-entities?type=tasks`;
+      : `/api/papers/${paperId}/form-options?type=tasks`;
     const res = await fetch(url);
     if (res.ok) setTaskResults(await res.json());
   }
 
   async function searchDatasets(q: string) {
     setDatasetSearch(q);
+    // Paper+task scoped datasets first, then filtered search if typing
     const url = q.length >= 2
       ? `/api/search-entities?type=datasets&q=${encodeURIComponent(q)}`
-      : `/api/search-entities?type=datasets`;
+      : `/api/papers/${paperId}/form-options?type=datasets${taskId ? `&task_id=${taskId}` : ""}`;
     const res = await fetch(url);
     if (res.ok) setDatasetResults(await res.json());
   }
