@@ -6,6 +6,7 @@
 const mockSql = jest.fn();
 jest.mock("@/lib/db", () => {
   const sql = (..._args: unknown[]) => mockSql();
+  sql.unsafe = (..._args: unknown[]) => mockSql();
   return { __esModule: true, default: sql };
 });
 
