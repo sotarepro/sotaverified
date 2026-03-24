@@ -71,6 +71,10 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
       }
 
       setSubmitted(true);
+      setTaskSearch(""); setTaskId(""); setTaskResults([]);
+      setDatasetSearch(""); setDatasetId(""); setDatasetResults([]);
+      setMetricName(""); setMetricValue(""); setModelName("");
+      setHigherIsBetter(true); setError(null);
       router.refresh();
     } catch {
       setError("Network error, please try again.");
@@ -228,7 +232,13 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
         </button>
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={() => {
+            setOpen(false);
+            setTaskSearch(""); setTaskId(""); setTaskResults([]);
+            setDatasetSearch(""); setDatasetId(""); setDatasetResults([]);
+            setMetricName(""); setMetricValue(""); setModelName("");
+            setHigherIsBetter(true); setError(null);
+          }}
           className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
         >
           Cancel
