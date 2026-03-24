@@ -101,13 +101,14 @@ reported results actually reproduce — for humans and autonomous agents alike.
 
 ### Access Model & Thresholds
 - All thresholds in `lib/thresholds.ts` — single source of truth, env-configurable
-- Sign-in: GitHub account >= 30 days (GITHUB_MIN_ACCOUNT_AGE_DAYS=30)
-- Rejected sign-ins create pending row in `sign_up_requests`; admin approve/reject
-- Admin (ADMIN_GITHUB_ID) exempt from age check
+- Sign-in: legitimacy score computed from GitHub account signals (age, repos, followers, etc.)
+- Score below LEGITIMACY_SCORE_THRESHOLD → rejected, pending row in `sign_up_requests`
+- Admin (ADMIN_GITHUB_ID) exempt from legitimacy check
+- Approved accounts bypass legitimacy check on subsequent sign-ins
 - Once signed in: full access to all features, no reputation gates
-- Auto-verify: **1 upvote** (UPVOTES_TO_VERIFY=1) flips reproduction to 'verified'
+- Human reproductions: status='community' immediately (NO auto-verify from upvotes)
+- Upvotes on reproductions: +1 rep per upvote to submitter (no status change)
 - Flag auto-hide: **2 flags** (FLAGS_TO_HIDE=2) from any users
-- Rep on verify: T1:+2, T2:+5, T3:+10, T4:+15 + metric match bonus +5
 - Rep per upvote: +1 to submitter per upvote (uncapped)
 - Rep author claim: +5 (REP_AUTHOR_VERIFIED=5)
 - Spam penalty: -20 (REP_SPAM_PENALTY=-20)
@@ -251,12 +252,24 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - `api_keys` — id SERIAL PK, user_id FK CASCADE, key_hash TEXT (SHA-256),
   label TEXT, created_at
 
-### Reproduction status values
-- `community` — submitted by user, live immediately
-- `agent_pending` — submitted via API, needs trusted-user promotion
-- `verified` — 3+ upvotes from rep≥30 users OR admin approved
-- `hidden` — auto-hidden by flag threshold (3 flags, or 2 from trusted user)
-- `removed` — admin rejected
+### Reproduction status lifecycle
+**Human reproductions:**
+- `community` — submitted by user, live immediately, counts toward score
+- Upvoted → submitter earns +1 rep per upvote (no status change)
+- `hidden` — auto-hidden at FLAGS_TO_HIDE (2) flags
+- `removed` — admin removed
+- `community` — admin restored
+
+**Agent reproductions:**
+- `agent_pending` — submitted via API, visible in separate section, NOT counted
+- `promoted` — 1 human promotion, counts toward score, moves to main section
+- Flagging/removal same as human reproductions
+
+### Benchmark status (per leaderboard row)
+- Unverified: no reproductions with this dataset_id
+- Author Reported: source='author', no community reproduction yet
+- Verified: has reproduction(s) with matching dataset_id and metric_value
+  (shows median verified value + count; green if within 5% of claimed)
 
 ---
 
@@ -265,7 +278,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
 Papers assessed on two axes:
 
 1. **verification_score** (integer, machine-readable):
-   - Official code repo exists: +5
+   - Any code repo exists: +5
    - Verified author claimed metrics: +10
    - Per active community reproduction: +10
    - Per reproduction within 5% of claimed metric: +5 bonus
@@ -275,7 +288,7 @@ Papers assessed on two axes:
 
 2. **BadgeType** (categorical, human-readable):
    - `unverified` — no repo, no author, no reproductions
-   - `code_available` — has official repo in paper_code_links
+   - `code_available` — has any repo in paper_code_links
    - `author_verified` — GitHub contributor claimed authorship
    - `community_verified` — at least one active reproduction exists
 
@@ -344,31 +357,52 @@ SEMANTIC_SCHOLAR_KEY=  ← for semantic_scholar_enrich.py (optional)
 ---
 
 ## Pre-Launch QA — Test Suite Status
-All tests run with `npm test` (no external deps — all DB/auth/API mocked).
-**172 tests, 14 suites, all passing.**
+
+### Unit Tests (`npm test`) — 172 tests, 14 suites, all passing
+All DB/auth/API mocked, no external deps.
 
 - `__tests__/auth.test.ts` — sign-in callback, age gate, allowlist bypass, JWT/session (8 tests)
 - `__tests__/upvotes.test.ts` — hype toggle, auth guard (7 tests)
 - `__tests__/api-v1.test.ts` — GET /api/v1/papers/{id} shape + 404 (6 tests)
 - `__tests__/data-layer.test.ts` — query shapes, empty states (9 tests)
 - `__tests__/reproductions.test.ts` — submit, flag auto-hide, admin approve/remove (12 tests)
-- `__tests__/author-verification.test.ts` — contributor check, no-repo, fallback (6 tests)
+- `__tests__/author-verification.test.ts` — contributor check, pending claim, no-repo (6 tests)
 - `__tests__/routing.test.ts` — paper links resolve to /papers/[id] (6 tests)
 - `__tests__/agent-api.test.ts` — agent write API: auth, rate limit, validation, paper lookup (12 tests)
 - `__tests__/sota-api.test.ts` — SOTA API: badge computation, sort, filter, empty state (11 tests)
-- `__tests__/persona-flows.test.ts` — persona flows: new user age gate, promote, flag, auto-verify (13 tests)
+- `__tests__/persona-flows.test.ts` — persona flows: new user age gate, promote, flag, upvote rep (13 tests)
 - `__tests__/verification.test.ts` — recomputeVerificationScore + getBadgeData (12 tests)
 - `__tests__/admin.test.ts` — admin author claims, reproduction approve/remove/restore (12 tests)
 - `__tests__/user-journeys.test.ts` — comprehensive journey: unauth 401s, hype toggle, repro validation,
   self-upvote block, promote, author benchmarks, admin restore, thresholds, search entities (24 tests)
+- `__tests__/admin-infrastructure.test.ts` — test tools: create users/papers, impersonate, reset (34 tests)
+
+### E2E Tests (`npm run test:e2e`) — 75 tests, 14 spec files
+Playwright + Chromium against localhost:3000. Requires dev server running.
+
+- `e2e/homepage.spec.ts` — hero, stats, 5 tabs, pagination, area cards (7 tests)
+- `e2e/paper-detail.spec.ts` — title, badge, CTA, code repos, benchmarks, arXiv, tasks (13 tests)
+- `e2e/hype.spec.ts` — toggle, count sync to detail, double-click guard, unauth 401 (4 tests)
+- `e2e/reproduction.spec.ts` — tier restriction, submit, dataset+metric, self-upvote block, unauth 401 (6 tests)
+- `e2e/author.spec.ts` — button visibility, claim flow, mutually exclusive forms (5 tests)
+- `e2e/search.spec.ts` — paper search, task search, badges, links, empty state (6 tests)
+- `e2e/admin.spec.ts` — access control, activity feed, test tools (5 tests)
+- `e2e/navigation.spec.ts` — about, agents (tier 1-3), leaderboard, tasks, 404s, profile (9 tests)
+- `e2e/lifecycle.spec.ts` — QA Workflow 4: full author→verification lifecycle (4 tests)
+- `e2e/workflow1-browsing.spec.ts` — task card click, dataset accordion (2 tests)
+- `e2e/workflow2-hype.spec.ts` — sign out reverts hearts to grey (1 test)
+- `e2e/workflow3-repro-benchmark.spec.ts` — repro with metric → benchmark shows verified (1 test)
+- `e2e/workflow5-flagging.spec.ts` — flag, auto-hide at 2, admin restore (4 tests)
+- `e2e/workflow7-admin.spec.ts` — remove/restore repro, impersonation banner, reset (4 tests)
+- `e2e/workflow8-consistency.spec.ts` — search badge = detail badge, leaderboard = profile (2 tests)
 
 ---
 
 ## User Journey Verification Checklist
 
 ### Persona 1: Unauthenticated Visitor (read-only)
-- [x] Homepage loads with hero, stats, paper table (4 tabs)
-- [x] Tab switching (recent/hyped/unverified/verified)
+- [x] Homepage loads with hero, stats, paper table (5 tabs)
+- [x] Tab switching (recent/hyped/active/unverified/verified)
 - [x] Pagination (10/25/50, URL-based with scroll anchor)
 - [x] Browse research area cards → category pages
 - [x] Task pages with scoped paper table + dataset leaderboards
@@ -380,16 +414,17 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 
 ### Persona 2: Authenticated User
 - [x] Sign-in: GitHub OAuth → user upsert → session
-- [x] Sign-in rejected: account_score < score_threshold → /auth/too-new + pending signup request
+- [x] Sign-in rejected: legitimacy score below threshold → /auth/too-new + pending signup request
 - [x] Approved accounts bypass age check on retry
 - [x] Hype toggle: heart red/grey, count increment/decrement
+- [x] Hype count consistent between table and paper detail page
+- [x] Sign out → hearts revert to grey
 - [x] Authors CAN hype their own papers (no self-hype restriction)
-- [x] Submit reproduction: tier 1-3, hardware required, optional dataset+metric+runlog+notes
+- [x] Submit reproduction: tier 1-3 (or tier 3 only if no code repo), hardware required
+- [x] Submit reproduction with dataset + metric → benchmark shows verified value
+- [x] Reproduction appears without page refresh
 - [x] Input validation: tier range, field lengths, metric finiteness, URL domain allowlist
-- [x] Auto-verify at 1 upvote (UPVOTES_TO_VERIFY=1)
-- [x] Tier-based rep: T1:+2, T2:+5, T3:+10 on verify
-- [x] Metric match bonus: +5 if within 5% of claimed
-- [x] Per-upvote rep: +1 per upvote to submitter
+- [x] Per-upvote rep: +1 per upvote to submitter (no status change on reproductions)
 - [x] Self-upvote blocked on reproductions (button hidden + API 403)
 - [x] Flag: increments count, auto-hide at 2 flags (FLAGS_TO_HIDE=2)
 - [x] Promote agent reproductions: any logged-in user, no rep gate
@@ -397,27 +432,32 @@ All tests run with `npm test` (no external deps — all DB/auth/API mocked).
 - [x] Leaderboard: /leaderboard with top 50 + "help verify" CTA
 
 ### Persona 3: Author
-- [x] Claim authorship: GitHub contributor check → auto-verify + badge + rep
-- [x] Claim rejected: not in contributors → descriptive message, no pending claim
+- [x] Claim authorship: GitHub contributor check (includes repo owners) → auto-verify + badge + rep
+- [x] Claim rejected: not in contributors → pending_admin row created for admin review
 - [x] No official repo: descriptive message
 - [x] Submit benchmark results: task + dataset + metric (author-only form)
-- [x] Benchmark creates leaderboard_results row with source='author'
-- [x] Author can also submit reproductions on own papers
+- [x] Benchmark creates leaderboard_results row with source='author', status 'Author Reported'
+- [x] Author sees 'Submit benchmark results' but NOT 'I reproduced this' on own papers
+- [x] Non-authors see 'I reproduced this' but NOT 'Submit benchmark results'
+- [x] Page updates without refresh after claim and benchmark submission
 
 ### Persona 4: Admin
 - [x] /admin: activity feed, author claims, agent pending, signup queue
 - [x] Non-admin → 404
-- [x] Approve/reject author claims
-- [x] Approve/remove/restore reproductions (restore is new)
+- [x] Approve/reject author claims + clear all pending
+- [x] Remove/restore reproductions
 - [x] Sign-up rejection queue: approve/reject/clear-all
 - [x] Test tools: create users, create papers, impersonate, reset
 - [x] Impersonation: banner, attributed actions, exit restores admin
 
 ### Cross-cutting
 - [x] All thresholds from lib/thresholds.ts (env-configurable, unit tested)
-- [x] Verification score: +5 repo, +10 author, +10 per repro, +5 metric match, +3 hardware
+- [x] Verification score: +5 any code repo, +10 author, +10 per repro, +5 metric match, +3 hardware
+- [x] Verification badge synced to papers.verification column (search matches detail)
 - [x] Paper titles link to /papers/[id] (never direct to arXiv)
 - [x] Activity logging on all user actions
+- [x] Leaderboard excludes system users (pwc-import-bot)
+- [x] Leaderboard shows model names (not repeated paper titles)
 
 ---
 
