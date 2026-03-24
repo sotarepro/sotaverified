@@ -28,15 +28,20 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
 
   async function searchTasks(q: string) {
     setTaskSearch(q);
-    if (q.length < 2) { setTaskResults([]); return; }
-    const res = await fetch(`/api/search-entities?type=tasks&q=${encodeURIComponent(q)}`);
+    // Fetch popular defaults when empty, filtered results when typing
+    const url = q.length >= 2
+      ? `/api/search-entities?type=tasks&q=${encodeURIComponent(q)}`
+      : `/api/search-entities?type=tasks`;
+    const res = await fetch(url);
     if (res.ok) setTaskResults(await res.json());
   }
 
   async function searchDatasets(q: string) {
     setDatasetSearch(q);
-    if (q.length < 2) { setDatasetResults([]); return; }
-    const res = await fetch(`/api/search-entities?type=datasets&q=${encodeURIComponent(q)}`);
+    const url = q.length >= 2
+      ? `/api/search-entities?type=datasets&q=${encodeURIComponent(q)}`
+      : `/api/search-entities?type=datasets`;
+    const res = await fetch(url);
     if (res.ok) setDatasetResults(await res.json());
   }
 
@@ -118,6 +123,7 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
           type="text"
           value={taskSearch}
           onChange={(e) => searchTasks(e.target.value)}
+          onFocus={() => { if (!taskId && !taskSearch) searchTasks(""); }}
           placeholder="Search tasks..."
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
@@ -148,6 +154,7 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
           type="text"
           value={datasetSearch}
           onChange={(e) => searchDatasets(e.target.value)}
+          onFocus={() => { if (!datasetId && !datasetSearch) searchDatasets(""); }}
           placeholder="Search datasets..."
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
