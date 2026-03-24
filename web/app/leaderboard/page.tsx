@@ -71,7 +71,7 @@ export default async function LeaderboardPage() {
                   <th className="px-4 py-3 font-medium text-gray-600 w-12 text-right">#</th>
                   <th className="px-4 py-3 font-medium text-gray-600">User</th>
                   <th className="px-4 py-3 font-medium text-gray-600 text-right">Reputation</th>
-                  <th className="px-4 py-3 font-medium text-gray-600 text-right">Verified Repros</th>
+                  <th className="px-4 py-3 font-medium text-gray-600 text-right">Reproduced Results</th>
                   <th className="px-4 py-3 font-medium text-gray-600 text-right">Authored</th>
                 </tr>
               </thead>
