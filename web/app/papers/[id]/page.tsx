@@ -287,7 +287,7 @@ export default async function PaperPage({
         {userClaim?.status !== "verified" && (
           <ReproductionForm paperId={id} benchmarks={benchmarks} hasCodeRepo={codeLinks.length > 0} />
         )}
-        <ReproductionList paperId={id} />
+        <ReproductionList paperId={id} key={`repros-${Date.now()}`} />
       </section>
 
       {/* Agent Verifications */}

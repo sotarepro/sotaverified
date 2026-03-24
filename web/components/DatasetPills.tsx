@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { stripLatex } from "@/lib/strip-latex";
 
 const VISIBLE_DEFAULT = 12;
 
@@ -49,7 +50,7 @@ export default function DatasetPills({ taskId, datasets, activeDatasetId }: Prop
               : "border-gray-300 text-gray-600 hover:bg-gray-50"
           }`}
         >
-          {d.name}
+          {stripLatex(d.name)}
         </Link>
       ))}
 
