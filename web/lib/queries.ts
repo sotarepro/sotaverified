@@ -519,6 +519,7 @@ export async function getLeaderboard(
       FROM reproductions r
       WHERE r.paper_id = lr.paper_id
         AND r.dataset_id = lr.dataset_id
+        AND (r.model_name IS NULL OR r.model_name = lr.model_name)
         AND r.actual_metric_value IS NOT NULL
         AND r.status NOT IN ('hidden', 'removed')
     ) vm ON true
@@ -644,6 +645,7 @@ export async function getPaperLeaderboardEntries(
       FROM reproductions r
       WHERE r.paper_id = lr.paper_id
         AND r.dataset_id = lr.dataset_id
+        AND (r.model_name IS NULL OR r.model_name = lr.model_name)
         AND r.actual_metric_value IS NOT NULL
         AND r.status NOT IN ('hidden', 'removed')
     ) vm ON true
@@ -654,23 +656,26 @@ export async function getPaperLeaderboardEntries(
   `;
 }
 
-/** Benchmark options for a paper's reproduction form (dataset + metric name). */
+/** Benchmark options for a paper's reproduction form (dataset + metric name + model names). */
 export async function getPaperBenchmarks(paperId: string): Promise<{
   dataset_id: string;
   dataset_name: string;
   metric_name: string | null;
+  model_names: string[];
 }[]> {
-  return sql<{ dataset_id: string; dataset_name: string; metric_name: string | null }[]>`
-    SELECT DISTINCT ON (lr.dataset_id)
+  const rows = await sql<{ dataset_id: string; dataset_name: string; metric_name: string | null; model_names: string[] }[]>`
+    SELECT
       lr.dataset_id,
       d.name AS dataset_name,
-      lr.best_metric_name AS metric_name
+      (array_agg(DISTINCT lr.best_metric_name))[1] AS metric_name,
+      array_agg(DISTINCT lr.model_name) FILTER (WHERE lr.model_name IS NOT NULL) AS model_names
     FROM leaderboard_results lr
     JOIN datasets d ON d.id = lr.dataset_id
     WHERE lr.paper_id = ${paperId}
       AND lr.best_metric_value IS NOT NULL
-    ORDER BY lr.dataset_id, lr.best_metric_value DESC
+    GROUP BY lr.dataset_id, d.name
   `;
+  return rows.map((r) => ({ ...r, model_names: r.model_names ?? [] }));
 }
 
 /** Verified metrics from reproductions, grouped by paper+dataset. */

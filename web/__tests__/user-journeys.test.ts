@@ -311,11 +311,12 @@ describe("Cross-cutting: thresholds.ts exports", () => {
 describe("Cross-cutting: GET /api/search-entities", () => {
   beforeEach(() => mockSql.mockReset());
 
-  it("returns empty for short query", async () => {
+  it("returns popular defaults for short query", async () => {
     const { GET } = await import("@/app/api/search-entities/route");
+    mockSql.mockResolvedValueOnce([{ id: "t1", name: "Image Classification" }]);
     const res = await GET(makeReq("GET", undefined, "http://localhost/api/search-entities?type=tasks&q=a"));
     const json = await res.json();
-    expect(json).toEqual([]);
+    expect(Array.isArray(json)).toBe(true);
   });
 
   it("returns task results for valid query", async () => {

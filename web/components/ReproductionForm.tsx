@@ -44,6 +44,7 @@ export interface BenchmarkOption {
   dataset_id: string;
   dataset_name: string;
   metric_name: string | null;
+  model_names: string[]; // distinct model names for this paper+dataset
 }
 
 interface Props {
@@ -69,6 +70,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
   const [runLog, setRunLog] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedDatasetId, setSelectedDatasetId] = useState("");
+  const [selectedModelName, setSelectedModelName] = useState("");
   const [actualMetricName, setActualMetricName] = useState("");
   const [actualMetricValue, setActualMetricValue] = useState("");
 
@@ -119,6 +121,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
           dataset_id: selectedDatasetId || undefined,
           actual_metric_name: selectedBenchmark?.metric_name || actualMetricName || undefined,
           actual_metric_value: actualMetricValue !== "" ? Number(actualMetricValue) : undefined,
+          model_name: selectedModelName || undefined,
         }),
       });
 
@@ -222,8 +225,16 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
               <select
                 value={selectedDatasetId}
                 onChange={(e) => {
-                  setSelectedDatasetId(e.target.value);
+                  const dsId = e.target.value;
+                  setSelectedDatasetId(dsId);
                   setActualMetricValue("");
+                  // Auto-select model if only one exists for this dataset
+                  const bench = benchmarks.find((b) => b.dataset_id === dsId);
+                  if (bench?.model_names.length === 1) {
+                    setSelectedModelName(bench.model_names[0]);
+                  } else {
+                    setSelectedModelName("");
+                  }
                 }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -234,6 +245,32 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
                   </option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {/* Model selector — shown when dataset has multiple models */}
+          {selectedBenchmark && selectedBenchmark.model_names.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Which model did you reproduce?{" "}
+                <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              {selectedBenchmark.model_names.length === 1 ? (
+                <p className="text-xs text-green-600">
+                  Auto-selected: {selectedBenchmark.model_names[0]}
+                </p>
+              ) : (
+                <select
+                  value={selectedModelName}
+                  onChange={(e) => setSelectedModelName(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— Any model —</option>
+                  {selectedBenchmark.model_names.map((m) => (
+                    <option key={m} value={m}>{stripLatex(m)}</option>
+                  ))}
+                </select>
+              )}
             </div>
           )}
 
