@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { stripLatex } from "@/lib/strip-latex";
 
 const TIER_DESCRIPTIONS: Record<number, string> = {
   1: "Code confirmed to run against the linked repository",
@@ -222,7 +223,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
                 <option value="">— None —</option>
                 {benchmarks.map((b) => (
                   <option key={b.dataset_id} value={b.dataset_id}>
-                    {b.dataset_name}{b.metric_name ? ` (${b.metric_name})` : ""}
+                    {stripLatex(b.dataset_name)}{b.metric_name ? ` (${b.metric_name})` : ""}
                   </option>
                 ))}
               </select>

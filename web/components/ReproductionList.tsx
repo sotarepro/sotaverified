@@ -9,7 +9,7 @@ interface Reproduction {
   username: string | null;
   tier_claimed: number;
   hardware_spec: string;
-  run_log_url: string;
+  run_log_url: string | null;
   notes: string | null;
   upvote_count: number;
   flag_count: number;
@@ -85,7 +85,8 @@ export default function ReproductionList({ paperId }: Props) {
     }
   }
 
-  function isUrl(s: string) {
+  function isUrl(s: string | null | undefined): boolean {
+    if (!s || typeof s !== "string") return false;
     return s.startsWith("http://") || s.startsWith("https://");
   }
 
@@ -174,23 +175,25 @@ export default function ReproductionList({ paperId }: Props) {
             Hardware: <span className="text-gray-700">{r.hardware_spec}</span>
           </div>
 
-          <div className="text-gray-500 text-xs mb-2">
-            Log:{" "}
-            {isUrl(r.run_log_url) ? (
-              <a
-                href={r.run_log_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline font-mono truncate"
-              >
-                {r.run_log_url.replace(/^https?:\/\/(www\.)?/, "")}
-              </a>
-            ) : (
-              <span className="text-gray-700 font-mono text-xs whitespace-pre-wrap break-all">
-                {r.run_log_url.slice(0, 300)}{r.run_log_url.length > 300 ? "…" : ""}
-              </span>
-            )}
-          </div>
+          {r.run_log_url && (
+            <div className="text-gray-500 text-xs mb-2">
+              Log:{" "}
+              {isUrl(r.run_log_url) ? (
+                <a
+                  href={r.run_log_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline font-mono truncate"
+                >
+                  {r.run_log_url.replace(/^https?:\/\/(www\.)?/, "")}
+                </a>
+              ) : (
+                <span className="text-gray-700 font-mono text-xs whitespace-pre-wrap break-all">
+                  {r.run_log_url.slice(0, 300)}{r.run_log_url.length > 300 ? "…" : ""}
+                </span>
+              )}
+            </div>
+          )}
 
           {r.notes && (
             <p className="text-gray-600 text-xs leading-relaxed">{r.notes}</p>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { stripLatex } from "@/lib/strip-latex";
 
 interface Props {
   paperId: string;
@@ -158,7 +159,7 @@ export default function AuthorBenchmarkForm({ paperId, paperTasks }: Props) {
                   onClick={() => { setDatasetId(d.id); setDatasetSearch(d.name); setDatasetResults([]); }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50"
                 >
-                  {d.name}
+                  {stripLatex(d.name)}
                 </button>
               </li>
             ))}

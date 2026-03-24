@@ -43,7 +43,7 @@ export default function LeaderboardSection({
         >
           ▼
         </span>
-        <span className="text-base font-semibold text-gray-900 flex-1">{datasetName}</span>
+        <span className="text-base font-semibold text-gray-900 flex-1">{stripLatex(datasetName)}</span>
         <span className="text-xs text-gray-500">{submissionCount} submissions</span>
         <span className="text-xs text-gray-400 ml-2">
           {isLowerBetter ? "↓ lower is better" : "↑ higher is better"}

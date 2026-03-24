@@ -114,7 +114,7 @@ export default function PaperBenchmarks({ entries }: Props) {
                       const hasRepro = e.repro_count > 0;
                       return (
                         <tr key={i} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 text-gray-600 text-xs">{e.dataset_name}</td>
+                          <td className="px-4 py-2 text-gray-600 text-xs">{stripLatex(e.dataset_name)}</td>
                           <td className="px-4 py-2 font-medium text-xs">{stripLatex(e.model_name)}</td>
                           <td className="px-4 py-2 text-gray-500 text-xs">{e.best_metric_name ?? "—"}</td>
                           <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
