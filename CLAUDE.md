@@ -539,6 +539,8 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
 - Author dataset creation: authors cannot add datasets that don't exist in the
   dropdown. Need "Add new dataset" option in the benchmark form for novel benchmarks.
   Required for authors working on new benchmarks not yet in the system.
+- Author claim approval notification: users who get manually approved have no way
+  to know unless they revisit the paper. Need email or on-site notification.
 - Methods as Technique Registry (future, high impact for agents)
   The methods/paper_methods tables contain noisy PWC tag data (hidden from UI since
   launch). The long-term vision is to rebuild methods as a structured technique
