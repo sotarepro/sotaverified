@@ -19,7 +19,7 @@ export default async function ProfilePage({
     created_at: string;
   }[]>`
     SELECT github_id, username, avatar_url, reputation_score, created_at::text
-    FROM users WHERE username = ${username} AND is_test = false AND COALESCE(is_system, false) = false
+    FROM users WHERE username = ${username} AND COALESCE(is_system, false) = false
   `;
 
   if (!user) notFound();
@@ -61,7 +61,7 @@ export default async function ProfilePage({
   // Leaderboard rank
   const [rankRow] = await sql<[{ rank: number }]>`
     SELECT COUNT(*)::int + 1 AS rank FROM users
-    WHERE reputation_score > ${user.reputation_score} AND is_test = false
+    WHERE reputation_score > ${user.reputation_score} AND COALESCE(is_system, false) = false
   `;
 
   const TIER_LABELS: Record<number, string> = { 1: "Code runs", 2: "Metrics match", 3: "Independent", 4: "Multi-verified" };

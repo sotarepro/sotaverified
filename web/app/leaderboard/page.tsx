@@ -30,7 +30,7 @@ export default async function LeaderboardPage() {
       (SELECT COUNT(*)::int FROM paper_authors pa
        WHERE pa.user_id = u.github_id AND pa.status = 'verified') AS authored_count
     FROM users u
-    WHERE u.is_test = false AND COALESCE(u.is_system, false) = false AND u.reputation_score > 0
+    WHERE COALESCE(u.is_system, false) = false AND u.reputation_score > 0
     ORDER BY u.reputation_score DESC
     LIMIT 50
   `;
