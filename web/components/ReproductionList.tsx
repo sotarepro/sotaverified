@@ -171,9 +171,11 @@ export default function ReproductionList({ paperId }: Props) {
             </div>
           </div>
 
-          <div className="text-gray-500 text-xs mb-1">
-            Hardware: <span className="text-gray-700">{r.hardware_spec}</span>
-          </div>
+          {r.hardware_spec && (
+            <div className="text-gray-500 text-xs mb-1">
+              Hardware: <span className="text-gray-700">{r.hardware_spec}</span>
+            </div>
+          )}
 
           {r.run_log_url && (
             <div className="text-gray-500 text-xs mb-2">
