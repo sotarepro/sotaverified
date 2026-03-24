@@ -82,6 +82,7 @@ export default async function RootLayout({
                 <input
                   type="search"
                   name="q"
+                  data-testid="search-input"
                   placeholder="Search papers &amp; tasks…"
                   className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

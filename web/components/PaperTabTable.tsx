@@ -64,10 +64,11 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-3 border-b border-gray-200">
+      <div className="flex gap-1 mb-3 border-b border-gray-200" data-testid="tab-bar">
         {tabs.map((t) => (
           <a
             key={t}
+            data-testid={`tab-${t}`}
             href={buildTabHref(baseHref, t, pageSize)}
             className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t
@@ -108,7 +109,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                 {papers.map((p) => {
                   const taskSlice = (p.tasks ?? []).slice(0, 2);
                   return (
-                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={p.id} data-testid={`paper-row-${p.id}`} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-2.5">
                         <Link
                           href={`/papers/${p.id}`}

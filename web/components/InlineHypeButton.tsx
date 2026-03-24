@@ -78,6 +78,8 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
     <button
       onClick={handleClick}
       title={hyped ? "Remove hype" : "Hype this paper"}
+      data-testid={`hype-btn-${paperId}`}
+      data-hyped={hyped}
       className={`inline-flex items-center gap-1 transition-colors ${
         hyped ? "text-pink-600 hover:text-pink-400" : "text-gray-400 hover:text-pink-500"
       }`}
@@ -91,7 +93,7 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
       >
         <path strokeLinecap="round" strokeLinejoin="round" d={heartPath} />
       </svg>
-      {count}
+      <span data-testid={`hype-count-${paperId}`}>{count}</span>
     </button>
   );
 }

@@ -137,7 +137,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
           onClick={() => setOpen(true)}
           className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 transition-colors"
         >
-          I reproduced this
+          <span data-testid="repro-toggle">I reproduced this</span>
         </button>
       ) : (
         <form
@@ -287,6 +287,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
           <div className="flex gap-2">
             <button
               type="submit"
+              data-testid="repro-submit"
               disabled={loading}
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >

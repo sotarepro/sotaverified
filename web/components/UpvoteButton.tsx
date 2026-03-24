@@ -63,6 +63,8 @@ export default function UpvoteButton({ paperId, initialCount, initialUpvoted }: 
   return (
     <button
       onClick={toggle}
+      data-testid="detail-hype-btn"
+      data-hyped={upvoted}
       title={upvoted ? "Remove hype" : "Hype this paper"}
       className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
         upvoted
@@ -79,7 +81,7 @@ export default function UpvoteButton({ paperId, initialCount, initialUpvoted }: 
       >
         <path strokeLinecap="round" strokeLinejoin="round" d={heartPath} />
       </svg>
-      {count}
+      <span data-testid="detail-hype-count">{count}</span>
     </button>
   );
 }
