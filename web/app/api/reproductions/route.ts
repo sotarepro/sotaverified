@@ -2,6 +2,7 @@ import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { logEvent } from "@/lib/activity";
+import { tierRepGain } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -120,6 +121,15 @@ export async function POST(req: NextRequest) {
     VALUES (${paper_id}, ${session.user.github_id}, ${tier_claimed}, ${hardware_spec}, ${run_log_url ?? null}, ${notes ?? null}, ${metricName}, ${metricValue}, ${dataset_id ?? null}, ${model_name ?? null})
     RETURNING id
   `;
+
+  // Award tier-based reputation to submitter
+  const repGain = tierRepGain(tier_claimed);
+  if (repGain > 0) {
+    await sql`
+      UPDATE users SET reputation_score = reputation_score + ${repGain}
+      WHERE github_id = ${session.user.github_id}
+    `;
+  }
 
   await recomputeVerificationScore(paper_id);
 
