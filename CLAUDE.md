@@ -249,7 +249,7 @@ reported results actually reproduce — for humans and autonomous agents alike.
     hype_score INT DEFAULT 0, verification_score INT DEFAULT 0, is_test BOOLEAN DEFAULT false
 - `tasks` — 4,818 rows (11 research areas, no General ML)
 - `methods` — ~4,500 rows (8,580 original minus 4,073 spam entries cleaned via clean_methods_spam.py)
-- `datasets` — 18,522 rows
+- `datasets` — ~16,300 rows (18,522 original minus 2,218 spam entries cleaned)
 - `leaderboard_results` — 59,758 rows, metrics JSONB
 - `paper_code_links` — 242k rows
   - id BIGSERIAL PK, paper_id, repo_url, is_official, framework,
@@ -536,6 +536,9 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
 ## Parking Lot
 
 **High impact — build when there's traction:**
+- Author dataset creation: authors cannot add datasets that don't exist in the
+  dropdown. Need "Add new dataset" option in the benchmark form for novel benchmarks.
+  Required for authors working on new benchmarks not yet in the system.
 - Methods as Technique Registry (future, high impact for agents)
   The methods/paper_methods tables contain noisy PWC tag data (hidden from UI since
   launch). The long-term vision is to rebuild methods as a structured technique
