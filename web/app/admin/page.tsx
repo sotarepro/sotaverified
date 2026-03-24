@@ -7,6 +7,7 @@ import AdminActions from "./AdminActions";
 import AdminAuthorActions from "./AdminAuthorActions";
 import { SignupAction, ClearAllSignups, ClearAllAuthorClaims } from "./SignupActions";
 import TestTools from "./TestTools";
+import ClearUserData from "./ClearUserData";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 
 function isAdmin(githubId: string | undefined): boolean {
@@ -164,6 +165,9 @@ export default async function AdminPage({
 
       {/* Test Tools (dev/staging only) */}
       {isTestToolsEnabled() && <TestTools />}
+
+      {/* Clear User Data */}
+      <ClearUserData />
 
       {/* Section 0: Pending Sign-ups */}
       {pendingSignups.length > 0 && (
