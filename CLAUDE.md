@@ -264,9 +264,9 @@ reported results actually reproduce — for humans and autonomous agents alike.
   - `is_system=true` for pwc-import-bot (excluded from leaderboard/profiles)
 - `upvotes` — paper_id, user_id, created_at (UNIQUE paper_id+user_id)
 - `reproductions` — id SERIAL PK, paper_id, user_id, tier_claimed (1-3),
-  hardware_spec, run_log_url, notes, upvote_count INT DEFAULT 0,
+  hardware_spec, run_log_url (nullable), notes, upvote_count INT DEFAULT 0,
   flag_count INT DEFAULT 0, status TEXT DEFAULT 'community',
-  actual_metric_name TEXT, actual_metric_value FLOAT,
+  actual_metric_name TEXT, actual_metric_value FLOAT, model_name TEXT,
   source TEXT DEFAULT 'community', created_at, reviewed_at
 - `reproduction_flags` — reproduction_id, user_id (UNIQUE)
 - `reproduction_upvotes` — reproduction_id, user_id (UNIQUE)
