@@ -2,7 +2,6 @@
 
 import { useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 interface Props {
   paperId: string;
@@ -12,7 +11,6 @@ interface Props {
 
 export default function InlineHypeButton({ paperId, initialCount, initialHyped = false }: Props) {
   const { status } = useSession();
-  const router = useRouter();
   const isAuthed = status === "authenticated";
 
   const [count, setCount] = useState(initialCount);
@@ -43,8 +41,7 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
           setHyped(wasHyped);
           setCount((c) => c - (wasHyped ? -1 : 1));
         }
-        // Refresh server components so table counts stay fresh after navigation
-        router.refresh();
+        // Don't call router.refresh() — it would re-sort the table and move the row
       } else {
         // Request failed — revert
         setHyped(wasHyped);
