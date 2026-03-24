@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
           (SELECT COUNT(*)::int FROM reproductions r WHERE r.paper_id = p.id AND r.status NOT IN ('hidden','removed')) AS repro_count,
           p.tasks,
           p.published::text AS published,
-          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id AND cl.is_official = true) AS has_repo,
+          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id) AS has_repo,
           EXISTS(SELECT 1 FROM paper_authors pa WHERE pa.paper_id = p.id AND pa.status = 'verified') AS has_author
         FROM papers p
         WHERE p.verification_score >= ${minScore}
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
           (SELECT COUNT(*)::int FROM reproductions r WHERE r.paper_id = p.id AND r.status NOT IN ('hidden','removed')) AS repro_count,
           p.tasks,
           p.published::text AS published,
-          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id AND cl.is_official = true) AS has_repo,
+          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id) AS has_repo,
           EXISTS(SELECT 1 FROM paper_authors pa WHERE pa.paper_id = p.id AND pa.status = 'verified') AS has_author
         FROM papers p
         WHERE p.verification_score >= ${minScore}
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
           (SELECT COUNT(*)::int FROM reproductions r WHERE r.paper_id = p.id AND r.status NOT IN ('hidden','removed')) AS repro_count,
           p.tasks,
           p.published::text AS published,
-          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id AND cl.is_official = true) AS has_repo,
+          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id) AS has_repo,
           EXISTS(SELECT 1 FROM paper_authors pa WHERE pa.paper_id = p.id AND pa.status = 'verified') AS has_author
         FROM papers p
         WHERE p.verification_score >= ${minScore}
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
           (SELECT COUNT(*)::int FROM reproductions r WHERE r.paper_id = p.id AND r.status NOT IN ('hidden','removed')) AS repro_count,
           p.tasks,
           p.published::text AS published,
-          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id AND cl.is_official = true) AS has_repo,
+          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id) AS has_repo,
           EXISTS(SELECT 1 FROM paper_authors pa WHERE pa.paper_id = p.id AND pa.status = 'verified') AS has_author
         FROM papers p
         WHERE p.verification_score >= ${minScore}
@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
           (SELECT COUNT(*)::int FROM reproductions r WHERE r.paper_id = p.id AND r.status NOT IN ('hidden','removed')) AS repro_count,
           p.tasks,
           p.published::text AS published,
-          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id AND cl.is_official = true) AS has_repo,
+          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id) AS has_repo,
           EXISTS(SELECT 1 FROM paper_authors pa WHERE pa.paper_id = p.id AND pa.status = 'verified') AS has_author
         FROM papers p
         WHERE p.verification_score >= ${minScore}
@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
           (SELECT COUNT(*)::int FROM reproductions r WHERE r.paper_id = p.id AND r.status NOT IN ('hidden','removed')) AS repro_count,
           p.tasks,
           p.published::text AS published,
-          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id AND cl.is_official = true) AS has_repo,
+          EXISTS(SELECT 1 FROM paper_code_links cl WHERE cl.paper_id = p.id) AS has_repo,
           EXISTS(SELECT 1 FROM paper_authors pa WHERE pa.paper_id = p.id AND pa.status = 'verified') AS has_author
         FROM papers p
         WHERE p.verification_score >= ${minScore}

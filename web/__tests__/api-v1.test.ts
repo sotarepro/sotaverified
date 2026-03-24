@@ -25,6 +25,10 @@ const fakePaper = {
   authors: ["Ashish Vaswani", "Noam Shazeer"],
   tasks: ["Machine Translation"],
   published: "2017-06-12",
+  verification_score: 5,
+  has_repo: true,
+  has_author: false,
+  repro_count: 0,
 };
 
 const fakeLbResults = [
@@ -43,6 +47,7 @@ const fakeCodeLinks = [
     url: "https://github.com/tensorflow/tensor2tensor",
     is_official: true,
     framework: "TensorFlow",
+    stars: 17096,
   },
 ];
 
@@ -69,8 +74,11 @@ describe("GET /api/v1/papers/[arxiv_id]", () => {
     expect(json).toHaveProperty("authors");
     expect(json).toHaveProperty("published");
     expect(json).toHaveProperty("tasks");
-    expect(json).toHaveProperty("leaderboard_results");
+    expect(json).toHaveProperty("leaderboard");
     expect(json).toHaveProperty("code_links");
+    expect(json).toHaveProperty("verification");
+    expect(json).toHaveProperty("verification_score");
+    expect(json).toHaveProperty("reproductions");
   });
 
   it("does NOT expose internal paper id or paper_id in response", async () => {
@@ -95,16 +103,15 @@ describe("GET /api/v1/papers/[arxiv_id]", () => {
     const res = await GET(makeReq(), params);
     const json = await res.json();
 
-    expect(json.leaderboard_results).toHaveLength(1);
-    const lb = json.leaderboard_results[0];
+    expect(json.leaderboard).toHaveLength(1);
+    const lb = json.leaderboard[0];
     expect(lb).toHaveProperty("task");
     expect(lb).toHaveProperty("dataset");
     expect(lb).toHaveProperty("model");
-    expect(lb).toHaveProperty("metric_name");
-    expect(lb).toHaveProperty("metric_value");
-    expect(lb).toHaveProperty("verification");
+    expect(lb).toHaveProperty("metric");
+    expect(lb).toHaveProperty("value");
     expect(lb.task).toBe("Machine Translation");
-    expect(lb.metric_value).toBe(28.4);
+    expect(lb.value).toBe(28.4);
   });
 
   it("code_links items have required fields", async () => {
@@ -120,9 +127,9 @@ describe("GET /api/v1/papers/[arxiv_id]", () => {
     const link = json.code_links[0];
     expect(link).toHaveProperty("url");
     expect(link).toHaveProperty("is_official");
-    expect(link).toHaveProperty("framework");
+    expect(link).toHaveProperty("stars");
     expect(link.is_official).toBe(true);
-    expect(link.framework).toBe("TensorFlow");
+    expect(link.stars).toBe(17096);
   });
 
   it("makes exactly 3 sql calls total (paper + lb + code_links)", async () => {
@@ -160,7 +167,7 @@ describe("GET /api/v1/papers/[arxiv_id]", () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(json.leaderboard_results).toEqual([]);
+    expect(json.leaderboard).toEqual([]);
     expect(json.code_links).toEqual([]);
   });
 });
