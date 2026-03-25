@@ -172,13 +172,16 @@ def run_pass(cur, conn, pass_num: int, limit: int, dry_run: bool) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description="Discover GitHub repos from paper abstracts")
-    parser.add_argument("--db", required=True, help="PostgreSQL connection string")
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL")), help="PostgreSQL connection string")
     parser.add_argument("--pass", dest="pass_num", choices=["1", "2", "both"], default="both",
                         help="Which pass to run (default: both)")
     parser.add_argument("--limit", type=int, default=0, help="Max papers per pass (0 = unlimited)")
     parser.add_argument("--dry-run", action="store_true", help="Log but don't write to DB")
     args = parser.parse_args()
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     cur = conn.cursor()
 

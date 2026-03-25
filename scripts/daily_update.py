@@ -29,7 +29,7 @@ def run_step(name: str, cmd: list[str]) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="Run daily enrichment pipeline")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
 

@@ -56,7 +56,7 @@ def main():
     parser = argparse.ArgumentParser(description="Enrich papers with Semantic Scholar citation counts")
     parser.add_argument("--limit", type=int, default=1000,
                         help="Number of papers to process per run (default: 1000)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
 
@@ -68,6 +68,9 @@ def main():
     else:
         print(f"No API key — rate limited to 1 req/sec")
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     cur = conn.cursor()
 

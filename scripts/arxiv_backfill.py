@@ -189,13 +189,16 @@ def main():
     parser.add_argument("--until", dest="until_date",
                         default=date.today().isoformat(),
                         help="End date YYYY-MM-DD (default: today)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc"),
                         help="PostgreSQL connection string")
     args = parser.parse_args()
 
     print(f"Backfilling arXiv papers from {args.from_date} to {args.until_date}")
     print(f"Categories: {', '.join(CATEGORIES)}")
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
 
     total_inserted = 0

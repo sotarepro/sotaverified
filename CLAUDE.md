@@ -66,10 +66,11 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - [ ] npm audit clean
 - [ ] Draft 2-sentence launch pitch before deploying
 
-**Step 1 — Cloud DB (Railway):**
-- [ ] Create account at railway.app, provision Postgres
-- [ ] Migrate: `pg_dump -Fc pwc | pg_restore --no-owner -d RAILWAY_URL`
-- [ ] Verify row counts match
+**Step 1 — Cloud DB (Railway): ✅ DONE**
+- [x] Created Railway Postgres instance
+- [x] Migrated via `pg_dump -Fc pwc | pg_restore --no-owner -d RAILWAY_URL`
+- [x] Row counts verified matching (658k papers, 254k code links, 59k LR, etc.)
+- [x] Scripts updated to use `DATABASE_PUBLIC_URL` env var (no --db needed)
 
 **Step 2 — Deploy (Vercel):**
 - [ ] Connect GitHub repo (github.com/sotarepro/sotaverified), set env vars in Vercel dashboard
@@ -530,6 +531,8 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
   HSTS, Referrer-Policy, Permissions-Policy
 - npm audit clean before every deploy
 - ENABLE_TEST_TOOLS must NEVER be set in production
+- Database credentials only in .env.local (gitignored) and Vercel dashboard
+- Scripts read from DATABASE_PUBLIC_URL env var — never hardcode or commit credentials
 
 ---
 

@@ -35,10 +35,13 @@ SPAM_BRANDS = [
 
 def main():
     parser = argparse.ArgumentParser(description="Delete spam methods from PWC data")
-    parser.add_argument("--db", required=True, help="Postgres connection string")
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL")), help="Postgres connection string")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted without deleting")
     args = parser.parse_args()
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     cur = conn.cursor()
 

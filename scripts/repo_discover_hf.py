@@ -95,7 +95,7 @@ def fetch_hf_paper(arxiv_id: str) -> dict | None:
 
 def main():
     parser = argparse.ArgumentParser(description="Discover GitHub repos via Hugging Face Papers API")
-    parser.add_argument("--db", required=True, help="PostgreSQL connection string")
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL")), help="PostgreSQL connection string")
     parser.add_argument("--limit", type=int, default=0, help="Max papers to process (0 = unlimited)")
     parser.add_argument("--since", help="Only papers published after YYYY-MM-DD")
     parser.add_argument("--offset", type=int, default=0, help="Skip first N candidates")
@@ -104,6 +104,9 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Log but don't write to DB")
     args = parser.parse_args()
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
 

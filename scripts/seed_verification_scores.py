@@ -4,9 +4,12 @@ import psycopg2, argparse, sys
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--db", default="dbname=pwc")
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc")))
     args = parser.parse_args()
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     cur = conn.cursor()
 

@@ -36,10 +36,13 @@ def check(cur, description: str, query: str, params=()) -> list:
 
 def main():
     parser = argparse.ArgumentParser(description="Verify no test data in DB before launch")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     conn.set_session(readonly=True)
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)

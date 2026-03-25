@@ -31,7 +31,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch last N days of arXiv papers")
     parser.add_argument("--days", type=int, default=7,
                         help="Number of days to look back (default: 7)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc"),
                         help="PostgreSQL connection string")
     args = parser.parse_args()
 
@@ -41,6 +41,9 @@ def main():
     print(f"Fetching arXiv papers from {from_date} to {until_date} ({args.days} days)")
     print(f"Categories: {', '.join(CATEGORIES)}")
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
 
     total_inserted = 0

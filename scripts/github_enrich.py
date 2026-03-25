@@ -75,7 +75,7 @@ def main():
                         help="Number of repos to process per run (default: 500)")
     parser.add_argument("--since", default=None,
                         help="Only enrich links for papers published on or after this date (YYYY-MM-DD)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
 
@@ -87,6 +87,9 @@ def main():
     else:
         print("No GITHUB_TOKEN — rate limited to 60/hr")
 
+    if not args.db:
+        print("Error: provide --db or set DATABASE_PUBLIC_URL", file=sys.stderr)
+        sys.exit(1)
     conn = psycopg2.connect(args.db)
     cur = conn.cursor()
 
