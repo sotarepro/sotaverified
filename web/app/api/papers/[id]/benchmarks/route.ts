@@ -56,7 +56,7 @@ export async function POST(
       (task_id, dataset_id, paper_id, model_name, best_metric_name, best_metric_value,
        higher_is_better, source, submitted_by, verification)
     VALUES
-      (${task_id}, ${dataset_id}, ${paperId}, ${model_name || 'Author-reported'},
+      (${task_id}, ${dataset_id}, ${paperId}, ${model_name || null},
        ${metric_name}, ${numericValue}, ${higher_is_better ?? true},
        'author', ${userId}, 'community')
     RETURNING id

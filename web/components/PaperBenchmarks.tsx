@@ -11,7 +11,7 @@ interface BenchmarkEntry {
   task_id: string;
   dataset_name: string;
   dataset_id: string;
-  model_name: string;
+  model_name: string | null;
   best_metric_name: string | null;
   best_metric_value: number | null;
   verification: string;
@@ -115,7 +115,7 @@ export default function PaperBenchmarks({ entries }: Props) {
                       return (
                         <tr key={i} className="hover:bg-gray-50">
                           <td className="px-4 py-2 text-gray-600 text-xs">{stripLatex(e.dataset_name)}</td>
-                          <td className="px-4 py-2 font-medium text-xs">{stripLatex(e.model_name)}</td>
+                          <td className="px-4 py-2 font-medium text-xs">{e.model_name ? stripLatex(e.model_name) : "—"}</td>
                           <td className="px-4 py-2 text-gray-500 text-xs">{e.best_metric_name ?? "—"}</td>
                           <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
                             {e.best_metric_value != null
