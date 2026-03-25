@@ -248,29 +248,47 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
             </div>
           )}
 
-          {/* Model selector — shown when dataset has multiple models */}
-          {selectedBenchmark && selectedBenchmark.model_names.length > 0 && (
+          {/* Model selector — Tier 3 gets free text, Tiers 1-2 get dropdown */}
+          {selectedBenchmark && (
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Which model did you reproduce?{" "}
-                <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              {selectedBenchmark.model_names.length === 1 ? (
-                <p className="text-xs text-green-600">
-                  Auto-selected: {selectedBenchmark.model_names[0]}
-                </p>
-              ) : (
-                <select
-                  value={selectedModelName}
-                  onChange={(e) => setSelectedModelName(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">— Any model —</option>
-                  {selectedBenchmark.model_names.map((m) => (
-                    <option key={m} value={m}>{stripLatex(m)}</option>
-                  ))}
-                </select>
-              )}
+              {tierClaimed === 3 ? (
+                <>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Your model/implementation name{" "}
+                    <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedModelName}
+                    onChange={(e) => setSelectedModelName(e.target.value)}
+                    placeholder="e.g. MyResNet-Custom, Independent-ViT"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </>
+              ) : selectedBenchmark.model_names.length > 0 ? (
+                <>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Which model did you reproduce?{" "}
+                    <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  {selectedBenchmark.model_names.length === 1 ? (
+                    <p className="text-xs text-green-600">
+                      Auto-selected: {selectedBenchmark.model_names[0]}
+                    </p>
+                  ) : (
+                    <select
+                      value={selectedModelName}
+                      onChange={(e) => setSelectedModelName(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">— Any model —</option>
+                      {selectedBenchmark.model_names.map((m) => (
+                        <option key={m} value={m}>{stripLatex(m)}</option>
+                      ))}
+                    </select>
+                  )}
+                </>
+              ) : null}
             </div>
           )}
 
