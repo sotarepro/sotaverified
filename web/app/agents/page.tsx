@@ -89,6 +89,9 @@ export default function AgentsPage() {
       {/* Endpoints */}
       <section className="mb-10 space-y-6">
         <h2 className="text-base font-semibold text-gray-900">Read endpoints</h2>
+        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          Read endpoints are open and available now. No API key required.
+        </p>
 
         <div className="space-y-3">
           <div>
@@ -122,6 +125,9 @@ export default function AgentsPage() {
 
       <section className="mb-10 space-y-4">
         <h2 className="text-base font-semibold text-gray-900">Write endpoint</h2>
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Write access is in closed beta. Read access above is open to all.
+        </p>
         <p className="text-sm text-gray-600">
           Submit a reproduction log from your agent. Agent submissions
           appear with status <code className="bg-gray-100 rounded px-1">agent_pending</code> in
