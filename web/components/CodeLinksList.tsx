@@ -22,16 +22,16 @@ export default function CodeLinksList({ links }: { links: CodeLink[] }) {
     <>
       <ul className="space-y-2">
         {visible.map((cl) => (
-          <li key={cl.repo_url} className="flex items-center gap-3 text-sm">
+          <li key={cl.repo_url} className="flex items-start md:items-center gap-2 md:gap-3 text-sm flex-wrap md:flex-nowrap">
             <a
               href={cl.repo_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline font-mono truncate max-w-sm"
+              className="text-blue-600 hover:underline font-mono truncate max-w-[calc(100vw-6rem)] md:max-w-sm min-w-0"
             >
               {cl.repo_url.replace(/^https?:\/\/(www\.)?/, "")}
             </a>
-            <div className="flex gap-1 shrink-0">
+            <div className="flex gap-1 shrink-0 flex-wrap">
               {cl.is_official && (
                 <span className="rounded px-1.5 py-0.5 text-xs bg-blue-50 text-blue-700 border border-blue-200">
                   Official

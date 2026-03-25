@@ -64,13 +64,13 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
       )}
 
       {/* Tab bar */}
-      <div className="flex gap-1 mb-3 border-b border-gray-200" data-testid="tab-bar">
+      <div className="flex gap-1 mb-3 border-b border-gray-200 overflow-x-auto" data-testid="tab-bar">
         {tabs.map((t) => (
           <a
             key={t}
             data-testid={`tab-${t}`}
             href={buildTabHref(baseHref, t, pageSize)}
-            className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-3 py-1.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap ${
               tab === t
                 ? "border-blue-500 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700"
@@ -95,13 +95,13 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  <th className="px-4 py-2.5 font-medium text-gray-600">Title</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600 w-28">Date</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600">Tasks</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600 text-right w-20">Hype</th>
+                  <th className="px-3 md:px-4 py-2.5 font-medium text-gray-600">Title</th>
+                  <th className="px-4 py-2.5 font-medium text-gray-600 w-28 hidden md:table-cell">Date</th>
+                  <th className="px-4 py-2.5 font-medium text-gray-600 hidden md:table-cell">Tasks</th>
+                  <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600">Status</th>
+                  <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right w-14 md:w-20">Hype</th>
                   {tab === "verified" && (
-                    <th className="px-4 py-2.5 font-medium text-gray-600 text-right w-16">Score</th>
+                    <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right w-14 md:w-16 hidden md:table-cell">Score</th>
                   )}
                 </tr>
               </thead>
@@ -110,18 +110,18 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                   const taskSlice = (p.tasks ?? []).slice(0, 2);
                   return (
                     <tr key={p.id} data-testid={`paper-row-${p.id}`} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 md:px-4 py-2.5 max-w-0 md:max-w-none">
                         <Link
                           href={`/papers/${p.id}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline line-clamp-2"
+                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline line-clamp-2 md:line-clamp-2 block truncate md:whitespace-normal md:overflow-visible md:text-clip"
                         >
                           {stripLatex(p.title)}
                         </Link>
                       </td>
-                      <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                      <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap hidden md:table-cell">
                         {formatDate(p.published)}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-2.5 hidden md:table-cell">
                         <div className="flex flex-wrap gap-1">
                           {taskSlice.map((task) => (
                             <span
@@ -134,14 +134,14 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                           ))}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5">
-                        <VerificationBadge tier={p.verification as VerificationTier} score={p.verification_score} />
+                      <td className="px-2 md:px-4 py-2.5">
+                        <VerificationBadge tier={p.verification as VerificationTier} score={p.verification_score} compact />
                       </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">
+                      <td className="px-2 md:px-4 py-2.5 text-right tabular-nums">
                         <InlineHypeButton paperId={p.id} initialCount={p.upvote_count} initialHyped={p.user_hyped} />
                       </td>
                       {tab === "verified" && (
-                        <td className="px-4 py-2.5 text-right tabular-nums text-gray-400 text-xs">
+                        <td className="px-2 md:px-4 py-2.5 text-right tabular-nums text-gray-400 text-xs hidden md:table-cell">
                           {p.verification_score}
                         </td>
                       )}

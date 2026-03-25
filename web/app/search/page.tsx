@@ -68,16 +68,16 @@ export default async function SearchPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  <th className="px-4 py-3 font-medium text-gray-600">Task</th>
-                  <th className="px-4 py-3 font-medium text-gray-600">Area</th>
-                  <th className="px-4 py-3 font-medium text-gray-600 text-right w-28">Papers</th>
-                  <th className="px-4 py-3 font-medium text-gray-600 text-right w-28">Results</th>
+                  <th className="px-3 md:px-4 py-3 font-medium text-gray-600">Task</th>
+                  <th className="px-4 py-3 font-medium text-gray-600 hidden md:table-cell">Area</th>
+                  <th className="px-4 py-3 font-medium text-gray-600 text-right w-20 md:w-28">Papers</th>
+                  <th className="px-4 py-3 font-medium text-gray-600 text-right w-20 md:w-28 hidden sm:table-cell">Results</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {displayedTasks.map((t) => (
                   <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-3 md:px-4 py-3">
                       <Link
                         href={`/tasks/${t.id}`}
                         className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
@@ -85,7 +85,7 @@ export default async function SearchPage({
                         {t.name}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 hidden md:table-cell">
                       {t.area && (
                         <span className={`text-xs rounded-full px-2 py-0.5 ${AREA_COLORS[t.area] ?? "bg-gray-100 text-gray-700"}`}>
                           {t.area}
@@ -95,7 +95,7 @@ export default async function SearchPage({
                     <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
                       {t.paper_count.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-600 tabular-nums">
+                    <td className="px-4 py-3 text-right text-gray-600 tabular-nums hidden sm:table-cell">
                       {t.result_count.toLocaleString()}
                     </td>
                   </tr>
@@ -127,30 +127,30 @@ export default async function SearchPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                  <th className="px-4 py-2.5 font-medium text-gray-600">Title</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600 w-28">Date</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600">Status</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600 text-right w-20">Hype</th>
+                  <th className="px-3 md:px-4 py-2.5 font-medium text-gray-600">Title</th>
+                  <th className="px-4 py-2.5 font-medium text-gray-600 w-28 hidden md:table-cell">Date</th>
+                  <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600">Status</th>
+                  <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right w-14 md:w-20">Hype</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {papers.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2.5">
+                    <td className="px-3 md:px-4 py-2.5 max-w-0 md:max-w-none">
                       <Link
                         href={`/papers/${p.id}`}
-                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline line-clamp-2"
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline block truncate md:whitespace-normal md:overflow-visible md:text-clip"
                       >
                         {stripLatex(p.title)}
                       </Link>
                     </td>
-                    <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">
+                    <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap hidden md:table-cell">
                       {p.published ? p.published.slice(0, 10) : "—"}
                     </td>
-                    <td className="px-4 py-2.5">
-                      <VerificationBadge tier={p.verification as VerificationTier} score={p.verification_score} />
+                    <td className="px-2 md:px-4 py-2.5">
+                      <VerificationBadge tier={p.verification as VerificationTier} score={p.verification_score} compact />
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-gray-600">
+                    <td className="px-2 md:px-4 py-2.5 text-right tabular-nums text-gray-600">
                       {p.upvote_count}
                     </td>
                   </tr>

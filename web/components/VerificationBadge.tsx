@@ -5,11 +5,13 @@ type NewProps = {
   badge: BadgeType;
   count?: number;
   score?: number;
+  compact?: boolean;
 };
 
 type LegacyProps = {
   tier: VerificationTier;
   score?: number;
+  compact?: boolean;
 };
 
 type Props = NewProps | LegacyProps;
@@ -46,6 +48,16 @@ function badgeLabel(badge: BadgeType, count?: number): string {
   }
 }
 
+function compactBadgeLabel(badge: BadgeType): string {
+  switch (badge) {
+    case "unverified": return "—";
+    case "code_available": return "Code";
+    case "author_verified": return "Author";
+    case "community_verified": return "Verified";
+    default: return "—";
+  }
+}
+
 const badgeStyles: Record<BadgeType, string> = {
   unverified: "bg-gray-100 text-gray-500 border border-gray-200",
   code_available: "bg-blue-50 text-blue-700 border border-blue-200",
@@ -57,6 +69,7 @@ export default function VerificationBadge(props: Props) {
   let badge: BadgeType;
   let count: number | undefined;
   let score: number | undefined;
+  const compact = props.compact ?? false;
 
   if (isNewProps(props)) {
     badge = props.badge;
@@ -74,11 +87,32 @@ export default function VerificationBadge(props: Props) {
   }
 
   const label = badgeLabel(badge, count);
+  const shortLabel = compactBadgeLabel(badge);
   const style = badgeStyles[badge] ?? badgeStyles.unverified;
 
-  const displayParts: string[] = [label];
-  if (badge === "community_verified" && count != null && count > 0) {
-    displayParts.push(`${count} reproduction${count !== 1 ? "s" : ""}`);
+  const fullText = badge === "community_verified" && count != null && count > 0
+    ? `${label} — ${count} reproduction${count !== 1 ? "s" : ""}`
+    : label;
+
+  if (compact) {
+    return (
+      <>
+        {/* Mobile: short label */}
+        <span
+          className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium md:hidden ${style}`}
+          title={score != null && score > 0 ? `Verification score: ${score}` : undefined}
+        >
+          {shortLabel}
+        </span>
+        {/* Desktop: full label */}
+        <span
+          className={`items-center rounded px-1.5 py-0.5 text-xs font-medium hidden md:inline-flex ${style}`}
+          title={score != null && score > 0 ? `Verification score: ${score}` : undefined}
+        >
+          {fullText}
+        </span>
+      </>
+    );
   }
 
   return (
@@ -86,9 +120,7 @@ export default function VerificationBadge(props: Props) {
       className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium ${style}`}
       title={score != null && score > 0 ? `Verification score: ${score}` : undefined}
     >
-      {badge === "community_verified" && count != null && count > 0
-        ? `${label} — ${count} reproduction${count !== 1 ? "s" : ""}`
-        : label}
+      {fullText}
     </span>
   );
 }

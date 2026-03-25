@@ -97,8 +97,8 @@ export default function PaperBenchmarks({ entries }: Props) {
             </button>
 
             {isExpanded && (
-              <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-x-auto">
+                <table className="w-full text-sm min-w-[500px]">
                   <thead>
                     <tr className="bg-white border-b border-gray-100 text-left">
                       <th className="px-4 py-2 font-medium text-gray-600">Dataset</th>
