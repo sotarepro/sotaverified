@@ -14,9 +14,17 @@ import DatasetPills from "@/components/DatasetPills";
 import PaperTabTable from "@/components/PaperTabTable";
 import LeaderboardSection from "@/components/LeaderboardSection";
 
-/** Strip attribution spans from imported task descriptions: <span class="description-source">...</span> */
+/** Strip all HTML tags and decode entities from imported task descriptions */
 function cleanDescription(raw: string): string {
-  return raw.replace(/<span[^>]*class="description-source"[^>]*>[\s\S]*?<\/span>/g, "").trim();
+  return raw
+    .replace(/<[^>]*>/g, "")           // strip all HTML tags
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .trim();
 }
 
 function isLowerBetterMetric(metricName: string | null): boolean {
