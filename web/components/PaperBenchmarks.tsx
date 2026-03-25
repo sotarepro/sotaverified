@@ -137,6 +137,10 @@ export default function PaperBenchmarks({ entries }: Props) {
                               <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                                 Verified
                               </span>
+                            ) : e.source === "community" ? (
+                              <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                                Community Reported
+                              </span>
                             ) : e.source === "author" ? (
                               <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
                                 Author Reported

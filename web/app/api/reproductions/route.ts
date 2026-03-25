@@ -149,6 +149,33 @@ export async function POST(req: NextRequest) {
     `;
   }
 
+  // Tier 3 with full benchmark data → create community leaderboard row
+  const modelNameTrimmed = (model_name ?? "").trim();
+  if (
+    tier_claimed === 3 &&
+    dataset_id &&
+    metricName &&
+    metricValue !== null &&
+    modelNameTrimmed
+  ) {
+    // Look up task_id from existing leaderboard entries for this paper+dataset
+    const [taskRow] = await sql<[{ task_id: string }?]>`
+      SELECT DISTINCT task_id FROM leaderboard_results
+      WHERE paper_id = ${paper_id} AND dataset_id = ${dataset_id}
+      LIMIT 1
+    `;
+    if (taskRow) {
+      await sql`
+        INSERT INTO leaderboard_results
+          (task_id, dataset_id, paper_id, model_name, best_metric_name, best_metric_value,
+           source, submitted_by, verification)
+        VALUES
+          (${taskRow.task_id}, ${dataset_id}, ${paper_id}, ${modelNameTrimmed},
+           ${metricName}, ${metricValue}, 'community', ${session.user.github_id}, 'community')
+      `;
+    }
+  }
+
   await recomputeVerificationScore(paper_id);
 
   await logEvent("reproduction_submitted", {
