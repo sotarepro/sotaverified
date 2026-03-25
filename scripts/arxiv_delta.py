@@ -31,7 +31,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch last N days of arXiv papers")
     parser.add_argument("--days", type=int, default=7,
                         help="Number of days to look back (default: 7)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc")),
                         help="PostgreSQL connection string")
     args = parser.parse_args()
 

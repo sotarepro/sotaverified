@@ -75,7 +75,7 @@ def main():
                         help="Number of repos to process per run (default: 500)")
     parser.add_argument("--since", default=None,
                         help="Only enrich links for papers published on or after this date (YYYY-MM-DD)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc")),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
 

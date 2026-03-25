@@ -36,7 +36,7 @@ def check(cur, description: str, query: str, params=()) -> list:
 
 def main():
     parser = argparse.ArgumentParser(description="Verify no test data in DB before launch")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc")),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     args = parser.parse_args()
 

@@ -189,7 +189,7 @@ def main():
     parser.add_argument("--until", dest="until_date",
                         default=date.today().isoformat(),
                         help="End date YYYY-MM-DD (default: today)")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "postgresql://david@localhost/pwc")),
                         help="PostgreSQL connection string")
     args = parser.parse_args()
 

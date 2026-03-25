@@ -79,7 +79,7 @@ def apply_multiplier(base_score: int, multiplier: float) -> int:
 
 def main():
     parser = argparse.ArgumentParser(description="Seed hype_score from GitHub star counts")
-    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc"),
+    parser.add_argument("--db", default=os.environ.get("DATABASE_PUBLIC_URL", os.environ.get("DATABASE_URL", "dbname=pwc")),
                         help="PostgreSQL connection string (default: dbname=pwc)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print summary without writing to DB")
