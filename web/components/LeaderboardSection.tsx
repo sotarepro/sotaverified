@@ -11,7 +11,7 @@ type Props = {
   datasetName: string;
   rows: LeaderboardRow[];
   submissionCount: number;
-  defaultExpanded: boolean;
+  defaultExpanded?: boolean; // ignored — all sections always start expanded
   isLowerBetter: boolean;
 };
 
@@ -24,7 +24,7 @@ export default function LeaderboardSection({
   defaultExpanded,
   isLowerBetter,
 }: Props) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [expanded, setExpanded] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   const visibleRows = showAll ? rows : rows.slice(0, DEFAULT_VISIBLE);
