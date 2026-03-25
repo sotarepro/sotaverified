@@ -94,8 +94,23 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
 
   if (submitted) {
     return (
-      <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-        Reproduction submitted! It will appear below.
+      <div className="mb-4">
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 mb-2">
+          Reproduction submitted! It will appear below.
+        </div>
+        <button
+          onClick={() => {
+            setSubmitted(false);
+            setOpen(false);
+            setHardwareSpec(""); setRunLog(""); setNotes("");
+            setSelectedDatasetId(""); setSelectedModelName("");
+            setActualMetricName(""); setActualMetricValue("");
+            setError(null);
+          }}
+          className="text-sm text-blue-600 hover:underline"
+        >
+          Submit another reproduction
+        </button>
       </div>
     );
   }
