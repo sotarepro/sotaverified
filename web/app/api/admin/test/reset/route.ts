@@ -23,11 +23,13 @@ export async function POST() {
     const testUsers = "SELECT github_id FROM users WHERE is_test = true";
     const testPapers = "SELECT id FROM papers WHERE is_test = true";
 
-    // Collect paper IDs affected by test user reproductions/claims (for score recompute)
+    // Collect paper IDs affected by test user activity (for score recompute)
     const affectedPapers = await sql<{ paper_id: string }[]>`
       SELECT DISTINCT paper_id FROM reproductions WHERE user_id IN (SELECT github_id FROM users WHERE is_test = true)
       UNION
       SELECT DISTINCT paper_id FROM paper_authors WHERE user_id IN (SELECT github_id FROM users WHERE is_test = true)
+      UNION
+      SELECT DISTINCT paper_id FROM upvotes WHERE user_id IN (SELECT github_id FROM users WHERE is_test = true)
     `;
 
     // FK-safe deletion order
