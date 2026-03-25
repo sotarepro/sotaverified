@@ -39,7 +39,7 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" data-scroll-behavior="smooth">
       <body className={`${geist.className} bg-white text-gray-900 antialiased`}>
         <SessionProvider>
           {impersonatingUser && <ImpersonationBanner username={impersonatingUser} />}
