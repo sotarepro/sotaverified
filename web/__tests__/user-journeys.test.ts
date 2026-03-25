@@ -269,7 +269,8 @@ describe("Persona 4: Admin reproduction management", () => {
     mockGSS.mockResolvedValueOnce({ user: { github_id: ADMIN_ID }, expires: "2099" });
 
     const { PATCH } = await import("@/app/api/admin/reproductions/[id]/route");
-    mockSql.mockResolvedValueOnce([]);                // UPDATE status=community
+    mockSql.mockResolvedValueOnce([]);                // UPDATE status=community, flag_count=0
+    mockSql.mockResolvedValueOnce([]);                // DELETE reproduction_flags
     mockSql.mockResolvedValueOnce([{ paper_id: "p1" }]); // fetch paper_id
     const res = await PATCH(
       makeReq("PATCH", { action: "restore" }),
