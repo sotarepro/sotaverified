@@ -148,7 +148,7 @@ export default async function SearchPage({
                       {p.published ? p.published.slice(0, 10) : "—"}
                     </td>
                     <td className="px-4 py-2.5">
-                      <VerificationBadge tier={p.verification as VerificationTier} />
+                      <VerificationBadge tier={p.verification as VerificationTier} score={p.verification_score} />
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums text-gray-600">
                       {p.upvote_count}

@@ -9,6 +9,7 @@ type NewProps = {
 
 type LegacyProps = {
   tier: VerificationTier;
+  score?: number;
 };
 
 type Props = NewProps | LegacyProps;
@@ -63,6 +64,13 @@ export default function VerificationBadge(props: Props) {
     score = props.score;
   } else {
     badge = tierToBadge(props.tier);
+    score = props.score;
+    // Estimate reproduction count from verification_score for legacy props
+    // Score formula: 5 (repo) + 10 (author) + 10 per repro + bonuses
+    // Rough estimate: (score - 5) / 10 gives minimum repro count
+    if (badge === "community_verified" && score != null && score > 5) {
+      count = Math.max(1, Math.floor((score - 5) / 10));
+    }
   }
 
   const label = badgeLabel(badge, count);
