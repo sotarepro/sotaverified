@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
     LEFT JOIN users u ON u.github_id = r.user_id
     LEFT JOIN datasets d ON d.id = r.dataset_id
     WHERE r.paper_id = ${paperId}
-      AND r.status != 'hidden'
+      AND r.status NOT IN ('hidden', 'removed')
     ORDER BY r.created_at DESC
   `;
 
