@@ -96,6 +96,11 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - [ ] GitHub Action: .github/workflows/arxiv-update.yml
   - Cron weekly + manual trigger, connects to Railway DB via DATABASE_URL secret
 - [ ] Railway DB backups — enable in dashboard (built-in)
+- [ ] Weekly backup cron: `scripts/backup_reproductions.sh`
+  - Backs up: reproductions, users, upvotes, paper_authors, activity_log, api_keys,
+    sign_up_requests, author-submitted leaderboard_results
+  - Restore via: `scripts/restore_reproductions.sh BACKUP_DIR`
+  - Uses CSV format (avoids pg_dump version mismatch with Railway Postgres 18)
 - [ ] UptimeRobot free tier — pings every 5 min
 - [ ] API key generation UI — api_keys table exists, no UI yet to issue keys to users
 
