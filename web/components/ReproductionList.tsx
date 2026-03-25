@@ -20,6 +20,7 @@ interface Reproduction {
   actual_metric_value: number | null;
   model_name: string | null;
   dataset_name: string | null;
+  user_upvoted: boolean;
 }
 
 const TIER_LABELS: Record<number, string> = {
@@ -51,7 +52,14 @@ export default function ReproductionList({ paperId }: Props) {
     fetch(`/api/reproductions?paper_id=${paperId}`)
       .then((r) => r.json())
       .then((data) => {
-        setItems(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setItems(list);
+        // Initialize upvote state from server data
+        const votes: Record<number, boolean> = {};
+        for (const r of list) {
+          if (r.user_upvoted) votes[r.id] = true;
+        }
+        setUserVotes(votes);
         setLoading(false);
       })
       .catch(() => setLoading(false));

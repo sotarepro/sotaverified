@@ -11,6 +11,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "paper_id required" }, { status: 400 });
   }
 
+  const session = await getEffectiveSession();
+  const userId = session?.user?.github_id ?? null;
+
   const rows = await sql<{
     id: number;
     user_id: string;
@@ -54,7 +57,20 @@ export async function GET(req: NextRequest) {
     ORDER BY r.created_at DESC
   `;
 
-  return NextResponse.json(rows);
+  // Check which reproductions the current user has upvoted
+  let upvotedIds = new Set<number>();
+  if (userId) {
+    const upvoteRows = await sql<{ reproduction_id: number }[]>`
+      SELECT reproduction_id FROM reproduction_upvotes
+      WHERE user_id = ${userId} AND reproduction_id = ANY(${rows.map((r) => r.id)})
+    `;
+    upvotedIds = new Set(upvoteRows.map((r) => r.reproduction_id));
+  }
+
+  return NextResponse.json(rows.map((r) => ({
+    ...r,
+    user_upvoted: upvotedIds.has(r.id),
+  })));
 }
 
 export async function POST(req: NextRequest) {
