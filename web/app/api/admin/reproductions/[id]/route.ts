@@ -53,18 +53,26 @@ export async function PATCH(
       await recomputeVerificationScore(r.paper_id);
     }
   } else if (action === "restore") {
+    // Get reproduction details before restoring
+    const [repro] = await sql<[{ user_id: string; tier_claimed: number; paper_id: string; upvote_count: number }]>`
+      SELECT user_id, tier_claimed, paper_id, upvote_count FROM reproductions WHERE id = ${reproId}
+    `;
     await sql`
       UPDATE reproductions
       SET status = 'community', flag_count = 0, reviewed_at = NOW()
       WHERE id = ${reproId}
     `;
-    // Clear the flags so it doesn't immediately get re-hidden
     await sql`DELETE FROM reproduction_flags WHERE reproduction_id = ${reproId}`;
-    const [r] = await sql<[{ paper_id: string }]>`
-      SELECT paper_id FROM reproductions WHERE id = ${reproId}
-    `;
-    if (r) {
-      await recomputeVerificationScore(r.paper_id);
+    if (repro) {
+      // Restore tier-based rep + upvote rep that was lost during flagging
+      const repGain = tierRepGain(repro.tier_claimed) + repro.upvote_count;
+      if (repGain > 0) {
+        await sql`
+          UPDATE users SET reputation_score = reputation_score + ${repGain}
+          WHERE github_id = ${repro.user_id}
+        `;
+      }
+      await recomputeVerificationScore(repro.paper_id);
     }
   } else {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
