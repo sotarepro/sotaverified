@@ -192,6 +192,8 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Nobody sees both on the same paper
 - Reproduction tiers: 1 (code runs), 2 (metrics match), 3 (independent) — Tier 4 removed
   (Tier 4 "multi-verified" is paper-level, not individually claimable)
+- Tier 3 uses free text model name (new implementation, not existing model)
+- Tiers 1-2 use dropdown selector from existing leaderboard models
 
 ### Code Links Display
 - Paper detail page shows top 10 repos by stars, with "Show all N repos" expand button
@@ -282,9 +284,9 @@ reported results actually reproduce — for humans and autonomous agents alike.
 **Human reproductions:**
 - `community` — submitted by user, live immediately, counts toward score
 - Upvoted → submitter earns +1 rep per upvote (no status change)
-- `hidden` — auto-hidden at FLAGS_TO_HIDE (2) flags
-- `removed` — admin removed
-- `community` — admin restored
+- `hidden` — auto-hidden at FLAGS_TO_HIDE (2) flags, visible in admin Flagged queue
+- `removed` — admin confirmed bad, permanently gone (kept in DB for audit)
+- `community` — admin restored from hidden (flag_count reset, flags cleared)
 
 **Agent reproductions:**
 - `agent_pending` — submitted via API, visible in separate section, NOT counted
@@ -458,7 +460,7 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
 - [x] Leaderboard: /leaderboard with top 50 + "help verify" CTA
 
 ### Persona 3: Author
-- [x] Claim authorship: GitHub contributor check (includes repo owners) → auto-verify + badge + rep
+- [x] Claim authorship: GitHub contributor check on ALL repos (not just official), includes repo owners → auto-verify + badge + rep
 - [x] Claim rejected: not in contributors → pending_admin row created for admin review
 - [x] No official repo: descriptive message
 - [x] Submit benchmark results: task + dataset + metric (author-only form)
@@ -468,7 +470,7 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
 - [x] Page updates without refresh after claim and benchmark submission
 
 ### Persona 4: Admin
-- [x] /admin: activity feed, author claims, agent pending, signup queue
+- [x] /admin: activity feed, author claims, agent pending, signup queue, flagged reproductions
 - [x] Non-admin → 404
 - [x] Approve/reject author claims + clear all pending
 - [x] Remove/restore reproductions
