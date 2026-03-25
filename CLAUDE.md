@@ -291,7 +291,8 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Upvoted → submitter earns +1 rep per upvote (no status change)
 - `hidden` — auto-hidden at FLAGS_TO_HIDE (2) flags, visible in admin Flagged queue
 - `removed` — admin confirmed bad, permanently gone (kept in DB for audit)
-- `community` — admin restored from hidden (flag_count reset, flags cleared)
+- `community` — admin restored from hidden (flag_count reset, flags cleared, rep restored)
+- Admin restore: restores tier_rep + upvote_count rep that was lost during flagging
 
 **Agent reproductions:**
 - `agent_pending` — submitted via API, visible in separate section, NOT counted
@@ -301,8 +302,16 @@ reported results actually reproduce — for humans and autonomous agents alike.
 ### Benchmark status (per leaderboard row)
 - Unverified: no reproductions with this dataset_id
 - Author Reported: source='author', no community reproduction yet
+- Community Reported: source='community', created from Tier 3 reproductions with dataset+metric+model
 - Verified: has reproduction(s) with matching dataset_id and metric_value
   (shows median verified value + count; green if within 5% of claimed)
+
+### Tier 3 → Leaderboard Row
+- When a Tier 3 reproduction includes dataset_id + metric_name + metric_value + model_name,
+  a `leaderboard_results` row is auto-created with source='community'
+- task_id is looked up from existing leaderboard entries for the paper+dataset
+- Displayed as "Community Reported" (teal badge) in PaperBenchmarks
+- Only fires when all four fields are present (dataset, metric name, metric value, model name)
 
 ---
 
