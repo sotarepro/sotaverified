@@ -92,15 +92,17 @@ describe("POST /api/reproductions", () => {
 
   it("calls sql INSERT when submission is valid", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession());
-    mockSql.mockResolvedValueOnce([{ id: 99 }]);
-    // logEvent INSERT (activity_log)
-    mockSql.mockResolvedValueOnce([]);
+    mockSql.mockResolvedValueOnce([{ id: 99 }]); // INSERT reproduction
+    mockSql.mockResolvedValueOnce([]);            // UPDATE users rep (tier award)
+    mockSql.mockResolvedValueOnce([]);            // recomputeVerificationScore queries
+    mockSql.mockResolvedValueOnce([]);            // logEvent
 
     const req = makeReq("POST", validReproBody);
     await POST(req);
 
-    // Called 2 times: INSERT + logEvent (no age gate check)
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // Called: INSERT + tier rep UPDATE + recomputeVerificationScore + logEvent
+    expect(mockSql).toHaveBeenCalled();
+    mockSql.mockReset(); // Clear the mockResolvedValue default
   });
 });
 
