@@ -55,9 +55,11 @@ export async function PATCH(
   } else if (action === "restore") {
     await sql`
       UPDATE reproductions
-      SET status = 'community', reviewed_at = NOW()
+      SET status = 'community', flag_count = 0, reviewed_at = NOW()
       WHERE id = ${reproId}
     `;
+    // Clear the flags so it doesn't immediately get re-hidden
+    await sql`DELETE FROM reproduction_flags WHERE reproduction_id = ${reproId}`;
     const [r] = await sql<[{ paper_id: string }]>`
       SELECT paper_id FROM reproductions WHERE id = ${reproId}
     `;

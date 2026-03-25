@@ -8,6 +8,7 @@ import AdminAuthorActions from "./AdminAuthorActions";
 import { SignupAction, ClearAllSignups, ClearAllAuthorClaims } from "./SignupActions";
 import TestTools from "./TestTools";
 import ClearUserData from "./ClearUserData";
+import FlaggedReproActions from "./FlaggedReproActions";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 
 function isAdmin(githubId: string | undefined): boolean {
@@ -57,7 +58,7 @@ export default async function AdminPage({
   const offset = (page - 1) * PAGE_SIZE;
 
   // Run all admin queries in parallel
-  const [activityFeed, [{ total }], pendingAuthors, agentPending, pendingSignups] = await Promise.all([
+  const [activityFeed, [{ total }], pendingAuthors, agentPending, pendingSignups, flaggedRepros] = await Promise.all([
     sql<{
       id: string;
       event_type: string;
@@ -155,6 +156,31 @@ export default async function AdminPage({
       WHERE status = 'pending'
       ORDER BY created_at DESC
       LIMIT 50
+    `,
+    sql<{
+      id: number;
+      paper_id: string;
+      paper_title: string | null;
+      user_id: string;
+      username: string | null;
+      tier_claimed: number;
+      hardware_spec: string;
+      flag_count: number;
+      actual_metric_name: string | null;
+      actual_metric_value: number | null;
+      model_name: string | null;
+      created_at: string;
+    }[]>`
+      SELECT
+        r.id, r.paper_id, p.title AS paper_title,
+        r.user_id, u.username, r.tier_claimed, r.hardware_spec,
+        r.flag_count, r.actual_metric_name, r.actual_metric_value,
+        r.model_name, r.created_at::text
+      FROM reproductions r
+      LEFT JOIN papers p ON p.id = r.paper_id
+      LEFT JOIN users u ON u.github_id = r.user_id
+      WHERE r.status = 'hidden'
+      ORDER BY r.flag_count DESC, r.created_at DESC
     `,
   ]);
   const totalPages = Math.ceil(total / PAGE_SIZE);
@@ -301,7 +327,53 @@ export default async function AdminPage({
         )}
       </section>
 
-      {/* Section 3: Activity Feed */}
+      {/* Section 3: Flagged Reproductions */}
+      <section className="mb-10">
+        <h2 className="text-lg font-semibold mb-4">
+          Flagged Reproductions{" "}
+          {flaggedRepros.length > 0 && (
+            <span className="ml-2 rounded-full bg-red-100 text-red-700 text-xs px-2 py-0.5">
+              {flaggedRepros.length}
+            </span>
+          )}
+        </h2>
+        {flaggedRepros.length === 0 ? (
+          <p className="text-gray-500 text-sm">No flagged reproductions.</p>
+        ) : (
+          <div className="space-y-3">
+            {flaggedRepros.map((r) => (
+              <div key={r.id} className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm">
+                <div className="flex items-start justify-between gap-4 mb-2">
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      <Link href={`/papers/${r.paper_id}`} className="hover:underline text-blue-700">
+                        {r.paper_title ?? r.paper_id}
+                      </Link>
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      by @{r.username ?? r.user_id} · Tier {r.tier_claimed} · {r.created_at.slice(0, 10)}
+                      {" · "}<span className="text-red-600 font-medium">{r.flag_count} flags</span>
+                    </p>
+                  </div>
+                  <FlaggedReproActions id={r.id} />
+                </div>
+                <p className="text-xs text-gray-600 mb-1">
+                  <span className="font-medium">Hardware:</span> {r.hardware_spec}
+                </p>
+                {r.actual_metric_name && r.actual_metric_value != null && (
+                  <p className="text-xs text-gray-600 mb-1">
+                    <span className="font-medium">Result:</span>{" "}
+                    {r.model_name ? `${r.model_name} — ` : ""}
+                    {r.actual_metric_name}: {r.actual_metric_value}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Section 4: Activity Feed */}
       <section>
         <h2 className="text-lg font-semibold mb-4">
           Activity Feed
