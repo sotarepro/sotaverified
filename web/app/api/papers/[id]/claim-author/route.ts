@@ -64,49 +64,50 @@ export async function POST(
     return NextResponse.json({ error: "Paper not found" }, { status: 404 });
   }
 
-  // Find official repo
-  const repoRows = await sql<[{ repo_url: string }]>`
+  // Find ALL repos for this paper (not just official), sorted by stars
+  const repoRows = await sql<{ repo_url: string }[]>`
     SELECT repo_url FROM paper_code_links
-    WHERE paper_id = ${paperId} AND is_official = true
-    LIMIT 1
+    WHERE paper_id = ${paperId}
+    ORDER BY is_official DESC, stars DESC NULLS LAST
   `;
 
-  const officialRepoUrl = repoRows[0]?.repo_url ?? null;
-
-  if (!officialRepoUrl) {
-    // No repo — don't create a pending claim, just explain
+  if (repoRows.length === 0) {
     return NextResponse.json({
       status: "no_repo",
       message: "This paper has no linked code repository. Author verification requires a GitHub repo. Contact support@sotaverified.org for manual verification.",
     });
   }
 
-  const parsed = extractOwnerRepo(officialRepoUrl);
-  if (!parsed) {
-    return NextResponse.json({
-      status: "no_repo",
-      message: "Could not parse the linked repository URL. Contact support@sotaverified.org for manual verification.",
-    });
-  }
-
-  const [owner, repo] = parsed;
-  let contributors: string[] = [];
+  // Check each repo until we find one where the user is a contributor/owner
+  let isContributor = false;
+  let lastCheckedRepo = "";
   let checkFailed = false;
-  try {
-    contributors = await getGitHubContributorsAndOwner(owner, repo);
-  } catch {
-    checkFailed = true;
+
+  for (const row of repoRows) {
+    const parsed = extractOwnerRepo(row.repo_url);
+    if (!parsed) continue;
+
+    const [owner, repo] = parsed;
+    lastCheckedRepo = `${owner}/${repo}`;
+
+    try {
+      const contributors = await getGitHubContributorsAndOwner(owner, repo);
+      if (username !== "" && contributors.includes(username.toLowerCase())) {
+        isContributor = true;
+        break;
+      }
+    } catch {
+      checkFailed = true;
+      // Continue to next repo — one failing doesn't mean all fail
+    }
   }
 
-  if (checkFailed) {
+  if (!isContributor && checkFailed && repoRows.length === 1) {
     return NextResponse.json({
       status: "check_failed",
       message: "Could not reach GitHub to verify contributor status. Please try again later.",
     });
   }
-
-  const isContributor =
-    username !== "" && contributors.includes(username.toLowerCase());
 
   if (isContributor) {
     await sql`
@@ -146,11 +147,11 @@ export async function POST(
     await logEvent("author_claim_failed", {
       userId,
       paperId,
-      metadata: { username, repo: `${owner}/${repo}` },
+      metadata: { username, repos_checked: repoRows.length },
     });
     return NextResponse.json({
       status: "pending",
-      message: `We verify authorship by checking if your GitHub account (@${username}) is listed as a contributor on the paper's linked repository (${owner}/${repo}). Your account was not found in the contributor list. Your claim has been submitted for admin review. You can also contact support@sotaverified.org for manual verification.`,
+      message: `We checked ${repoRows.length} linked repository${repoRows.length !== 1 ? "ies" : "y"} for your GitHub account (@${username}). Your account was not found as a contributor on any of them. Your claim has been submitted for admin review. You can also contact support@sotaverified.org for manual verification.`,
     });
   }
 }
