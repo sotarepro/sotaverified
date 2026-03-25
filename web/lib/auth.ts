@@ -1,4 +1,4 @@
-import type { NextAuthOptions, Profile } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import sql from "./db";
 import { THRESHOLDS } from "./thresholds";
@@ -8,11 +8,13 @@ import {
   computeLegitimacyScore,
 } from "./account-check";
 
-// GitHub OAuth profile includes fields beyond the base Profile type
-interface GithubProfile extends Profile {
+// Full GitHub OAuth profile shape (standalone — not extending Profile
+// because GitHub returns `name: string | null` while Profile expects `string | undefined`)
+interface GithubProfile {
   id: number;
   login: string;
   name: string | null;
+  email: string | null;
   avatar_url: string;
   created_at: string;
   public_repos: number;
