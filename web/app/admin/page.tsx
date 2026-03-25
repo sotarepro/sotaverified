@@ -96,6 +96,7 @@ export default async function AdminPage({
       paper_title: string | null;
       user_id: string;
       username: string | null;
+      display_name: string | null;
       avatar_url: string | null;
       created_at: string;
     }[]>`
@@ -104,6 +105,7 @@ export default async function AdminPage({
         p.title AS paper_title,
         pa.user_id,
         u.username,
+        u.display_name,
         u.avatar_url,
         pa.created_at::text
       FROM paper_authors pa
@@ -270,7 +272,7 @@ export default async function AdminPage({
                     </Link>
                   </p>
                   <p className="text-xs text-gray-500">
-                    claimed by @{a.username ?? a.user_id} · {a.created_at.slice(0, 10)}
+                    {a.display_name ? `${a.display_name} (@${a.username})` : `@${a.username ?? a.user_id}`} · {a.created_at.slice(0, 10)}
                   </p>
                 </div>
                 <AdminAuthorActions paperId={a.paper_id} userId={a.user_id} />

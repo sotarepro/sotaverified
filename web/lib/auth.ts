@@ -12,6 +12,7 @@ import {
 interface GithubProfile extends Profile {
   id: number;
   login: string;
+  name: string | null;
   avatar_url: string;
   created_at: string;
   public_repos: number;
@@ -20,6 +21,8 @@ interface GithubProfile extends Profile {
   following: number;
   bio: string | null;
   blog: string | null;
+  company: string | null;
+  location: string | null;
   twitter_username: string | null;
 }
 
@@ -97,18 +100,24 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
-      // Upsert user — always update username/avatar/email
+      // Upsert user — always update profile fields from GitHub
       const accountCreatedAt = new Date(p.created_at);
       await sql`
         INSERT INTO users
-          (github_id, username, email, avatar_url, account_created_at, is_flagged_new_account)
+          (github_id, username, email, avatar_url, account_created_at,
+           is_flagged_new_account, display_name, bio, company, location)
         VALUES
           (${githubId}, ${p.login}, ${p.email ?? null},
-           ${p.avatar_url}, ${accountCreatedAt.toISOString()}, false)
+           ${p.avatar_url}, ${accountCreatedAt.toISOString()}, false,
+           ${p.name ?? null}, ${p.bio ?? null}, ${p.company ?? null}, ${p.location ?? null})
         ON CONFLICT (github_id) DO UPDATE SET
-          username   = EXCLUDED.username,
-          email      = EXCLUDED.email,
-          avatar_url = EXCLUDED.avatar_url
+          username     = EXCLUDED.username,
+          email        = EXCLUDED.email,
+          avatar_url   = EXCLUDED.avatar_url,
+          display_name = EXCLUDED.display_name,
+          bio          = EXCLUDED.bio,
+          company      = EXCLUDED.company,
+          location     = EXCLUDED.location
       `;
 
       try {

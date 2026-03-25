@@ -14,11 +14,16 @@ export default async function ProfilePage({
   const [user] = await sql<{
     github_id: string;
     username: string;
+    display_name: string | null;
     avatar_url: string | null;
+    bio: string | null;
+    company: string | null;
+    location: string | null;
     reputation_score: number;
     created_at: string;
   }[]>`
-    SELECT github_id, username, avatar_url, reputation_score, created_at::text
+    SELECT github_id, username, display_name, avatar_url, bio, company, location,
+           reputation_score, created_at::text
     FROM users WHERE username = ${username} AND COALESCE(is_system, false) = false
   `;
 
@@ -26,7 +31,6 @@ export default async function ProfilePage({
 
   const isOwn = session?.user?.github_id === user.github_id;
 
-  // Reproductions
   const reproductions = await sql<{
     id: number;
     paper_id: string;
@@ -45,7 +49,6 @@ export default async function ProfilePage({
     LIMIT 50
   `;
 
-  // Authored papers
   const authoredPapers = await sql<{
     paper_id: string;
     paper_title: string | null;
@@ -58,25 +61,41 @@ export default async function ProfilePage({
     LIMIT 50
   `;
 
-  // Leaderboard rank
   const [rankRow] = await sql<[{ rank: number }]>`
     SELECT COUNT(*)::int + 1 AS rank FROM users
     WHERE reputation_score > ${user.reputation_score} AND COALESCE(is_system, false) = false
   `;
 
-  const TIER_LABELS: Record<number, string> = { 1: "Code runs", 2: "Metrics match", 3: "Independent", 4: "Multi-verified" };
+  const TIER_LABELS: Record<number, string> = { 1: "Code runs", 2: "Metrics match", 3: "Independent" };
+  const displayName = user.display_name || user.username;
+  const meta = [user.company, user.location].filter(Boolean).join(" · ");
 
   return (
     <div className="max-w-2xl">
       {/* Profile header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-start gap-5 mb-6">
         {user.avatar_url && (
-          <img src={user.avatar_url} alt="" className="w-16 h-16 rounded-full" />
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={user.avatar_url} alt="" className="w-20 h-20 rounded-full shrink-0" />
         )}
-        <div>
-          <h1 className="text-2xl font-bold">{user.username}</h1>
-          <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
-            <span className="font-semibold text-gray-900">{user.reputation_score} rep</span>
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight">{displayName}</h1>
+          <a
+            href={`https://github.com/${user.username}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            @{user.username}
+          </a>
+          {user.bio && (
+            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{user.bio}</p>
+          )}
+          {meta && (
+            <p className="text-xs text-gray-400 mt-1">{meta}</p>
+          )}
+          <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
+            <span className="font-semibold text-gray-900">{user.reputation_score} reputation</span>
             {user.reputation_score > 0 && (
               <span>#{rankRow.rank} on leaderboard</span>
             )}
@@ -104,11 +123,9 @@ export default async function ProfilePage({
                   <p className="text-sm font-medium text-gray-900 line-clamp-1">
                     {r.paper_title ?? r.paper_id}
                   </p>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-gray-500">
-                      Tier {r.tier_claimed} — {TIER_LABELS[r.tier_claimed]}
-                    </span>
-                  </div>
+                  <span className="text-xs text-gray-500 shrink-0">
+                    Tier {r.tier_claimed} — {TIER_LABELS[r.tier_claimed]}
+                  </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {new Date(r.created_at).toLocaleDateString()}
@@ -141,7 +158,6 @@ export default async function ProfilePage({
         )}
       </section>
 
-      {/* API key management (own profile only) */}
       {isOwn && (
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">API Keys</h2>

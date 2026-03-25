@@ -15,6 +15,7 @@ export default async function LeaderboardPage() {
   const users = await sql<{
     github_id: string;
     username: string;
+    display_name: string | null;
     avatar_url: string | null;
     reputation_score: number;
     repro_count: number;
@@ -23,6 +24,7 @@ export default async function LeaderboardPage() {
     SELECT
       u.github_id,
       u.username,
+      u.display_name,
       u.avatar_url,
       u.reputation_score,
       (SELECT COUNT(*)::int FROM reproductions r
@@ -101,11 +103,14 @@ export default async function LeaderboardPage() {
                           />
                         )}
                         <span className="font-medium text-gray-900">
-                          {u.username}
+                          {u.display_name || u.username}
                           {u.github_id === currentUserId && (
                             <span className="ml-1 text-blue-600 text-xs">(you)</span>
                           )}
                         </span>
+                        {u.display_name && (
+                          <span className="text-xs text-gray-400 ml-1">@{u.username}</span>
+                        )}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums font-semibold text-gray-900">

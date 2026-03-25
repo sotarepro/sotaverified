@@ -7,6 +7,7 @@ interface Reproduction {
   id: number;
   user_id: string;
   username: string | null;
+  display_name: string | null;
   tier_claimed: number;
   hardware_spec: string;
   run_log_url: string | null;
@@ -125,7 +126,7 @@ export default function ReproductionList({ paperId }: Props) {
                   rel="noopener noreferrer"
                   className="text-gray-600 hover:underline"
                 >
-                  {r.username ?? r.user_id}
+                  {r.display_name || r.username || r.user_id}
                 </a>
               </span>
               <span className="text-xs text-gray-400">

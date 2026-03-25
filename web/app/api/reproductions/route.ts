@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     id: number;
     user_id: string;
     username: string | null;
+    display_name: string | null;
     tier_claimed: number;
     hardware_spec: string;
     run_log_url: string | null;
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
       r.id,
       r.user_id,
       u.username,
+      u.display_name,
       r.tier_claimed,
       r.hardware_spec,
       r.run_log_url,
