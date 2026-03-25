@@ -13,43 +13,41 @@ test.describe("QA Workflow 8 — Cross-page Consistency", () => {
   });
 
   test("WF8.3: search verification badge matches paper detail badge", async ({ page }) => {
-    // Search for a known paper
     await page.goto("/search?q=attention+is+all+you+need", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "Search results" })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Search results" })).toBeVisible();
 
-    // Get the badge text from search results (first paper row, status column)
-    const searchStatusCell = page.locator("tbody tr:first-child td:nth-child(3) span").first();
-    const searchBadge = await searchStatusCell.textContent();
+    // Get the badge text from search results
+    const searchBadge = page.locator("tbody tr:first-child td:nth-child(3) span").first();
+    const searchBadgeText = (await searchBadge.textContent())?.trim() ?? "";
 
-    // Navigate to the paper detail page
-    await page.locator("a[href^='/papers/']").first().click();
+    // Navigate to paper detail
+    await page.locator("a[href*='attention-is-all-you-need']").first().click();
     await page.waitForURL(/\/papers\//);
 
-    // Get the badge text from paper detail (should match search)
-    // The detail page shows the badge near the top
-    const detailBadge = page.locator("[class*='rounded'][class*='text-xs'][class*='font-medium']").first();
-    const detailBadgeText = await detailBadge.textContent();
+    // Detail page should show a badge — verify it exists and contains recognizable text
+    const detailBadge = page.locator("span", {
+      hasText: /Code Available|Community Verified|Author Verified|Unverified/,
+    }).first();
+    const detailText = (await detailBadge.textContent())?.trim() ?? "";
 
-    // Both should show the same badge type (e.g., "Code Available")
-    expect(detailBadgeText).toContain(searchBadge!.trim());
+    // Both badges should reference the same verification state
+    // Extract just the badge type before any " — N reproductions" suffix
+    const normalize = (s: string) => s.split(/\s*[—-]\s*/)[0]?.trim();
+    expect(normalize(searchBadgeText)).toBeTruthy();
+    expect(normalize(detailText)).toContain(normalize(searchBadgeText)!);
   });
 
   test("WF8.4: leaderboard reputation matches profile page", async ({ page }) => {
     await page.goto("/leaderboard");
-    // Find a user row with reputation
     const userRow = page.locator("tbody tr").first();
     if (await userRow.count()) {
-      // Get username from the row
       const usernameLink = userRow.locator("a[href^='/profile/']");
       if (await usernameLink.count()) {
         const profileHref = await usernameLink.getAttribute("href");
-        // Get reputation from leaderboard
         const repCell = userRow.locator("td:nth-child(3)");
         const leaderboardRep = (await repCell.textContent())?.trim();
 
-        // Navigate to profile
         await page.goto(profileHref!);
-        // Profile should show the same reputation
         const profileRep = page.getByText(/reputation/i).first();
         if (await profileRep.count()) {
           const profileText = await profileRep.textContent();

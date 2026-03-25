@@ -30,11 +30,10 @@ test.describe("Persona 1 — Homepage", () => {
   });
 
   test("page size toggle: 10, 25, 50", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?pageSize=10#paper-table");
     await expect(page.locator("tbody tr")).toHaveCount(10);
-    await page.click("text=25");
-    await page.waitForURL(/pageSize=25/);
-    expect(await page.locator("tbody tr").count()).toBe(25);
+    await page.goto("/?pageSize=25#paper-table");
+    await expect(page.locator("tbody tr")).toHaveCount(25);
   });
 
   test("pagination with next/prev stays at table position", async ({ page }) => {

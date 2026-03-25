@@ -14,8 +14,8 @@ test.describe("QA Workflow 7 — Admin Functions", () => {
   });
 
   test("WF7.4-5: admin removes reproduction via API, then restores it", async ({ page }) => {
-    // Create a reproduction as test_user (direct session, not impersonation)
-    await signIn(page, "test_user", "test_user");
+    // Create a reproduction as admin (guaranteed to exist in DB)
+    await signInAsAdmin(page);
     const createRes = await page.context().request.post("http://localhost:3000/api/reproductions", {
       data: {
         paper_id: "attention-is-all-you-need",
@@ -25,7 +25,6 @@ test.describe("QA Workflow 7 — Admin Functions", () => {
     });
     expect(createRes.ok()).toBe(true);
     const { id: reproId } = await createRes.json();
-    await signOut(page);
 
     // Admin removes it
     const removeRes = await page.context().request.patch(`http://localhost:3000/api/admin/reproductions/${reproId}`, {
