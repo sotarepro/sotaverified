@@ -519,7 +519,14 @@ export async function getLeaderboard(
       FROM reproductions r
       WHERE r.paper_id = lr.paper_id
         AND r.dataset_id = lr.dataset_id
-        AND (r.model_name IS NULL OR r.model_name = lr.model_name)
+        AND (
+          r.model_name = lr.model_name
+          OR (r.model_name IS NULL AND (
+            SELECT COUNT(DISTINCT model_name) FROM leaderboard_results
+            WHERE paper_id = lr.paper_id AND dataset_id = lr.dataset_id
+              AND best_metric_name = lr.best_metric_name AND model_name IS NOT NULL
+          ) <= 1)
+        )
         AND r.actual_metric_value IS NOT NULL
         AND r.status NOT IN ('hidden', 'removed')
     ) vm ON true
@@ -645,7 +652,14 @@ export async function getPaperLeaderboardEntries(
       FROM reproductions r
       WHERE r.paper_id = lr.paper_id
         AND r.dataset_id = lr.dataset_id
-        AND (r.model_name IS NULL OR r.model_name = lr.model_name)
+        AND (
+          r.model_name = lr.model_name
+          OR (r.model_name IS NULL AND (
+            SELECT COUNT(DISTINCT model_name) FROM leaderboard_results
+            WHERE paper_id = lr.paper_id AND dataset_id = lr.dataset_id
+              AND best_metric_name = lr.best_metric_name AND model_name IS NOT NULL
+          ) <= 1)
+        )
         AND r.actual_metric_value IS NOT NULL
         AND r.status NOT IN ('hidden', 'removed')
     ) vm ON true
