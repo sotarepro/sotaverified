@@ -555,6 +555,17 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
 ## Parking Lot
 
 **High impact — build when there's traction:**
+- Code links display — official vs community implementations:
+  Many popular papers have community code links from other teams
+  that built on or reimplemented the work. These show alongside
+  the official repo on the paper detail page, which is confusing.
+  Fix: on paper detail, show only is_official=true repos by
+  default. Add a "Show N community implementations" expand
+  button for the rest. This separates the author's own code
+  from third-party reimplementations. Also consider: admin tool
+  to manually mark repos as official/community, and a script
+  to auto-detect community repos (repo owner != paper author
+  org, repo name doesn't match paper name, etc).
 - Author dataset creation: authors cannot add datasets that don't exist in the
   dropdown. Need "Add new dataset" option in the benchmark form for novel benchmarks.
   Required for authors working on new benchmarks not yet in the system.
