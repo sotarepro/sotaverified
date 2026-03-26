@@ -220,7 +220,7 @@ def main():
             SELECT repo_url FROM paper_code_links
             GROUP BY repo_url HAVING COUNT(DISTINCT paper_id) >= 5
         """)
-        shared_repos = {row[0] for row in cur.fetchall()}
+        shared_repos = {row[0].lower() for row in cur.fetchall()}
         print(f"Loaded {len(shared_repos)} shared mega-repos to exclude")
 
     # Build candidate query: papers with arxiv_id and no code links
@@ -276,8 +276,15 @@ def main():
         "errors": 0,
     }
 
-    # Prepare email CSV
-    email_rows: list[dict] = []
+    # Prepare email CSV — open file immediately so rows flush incrementally
+    email_file = None
+    email_writer = None
+    emails_written = 0
+    if do_emails:
+        email_file = open(args.emails_csv, "w", newline="")
+        email_writer = csv.DictWriter(email_file, fieldnames=["arxiv_id", "paper_title", "email", "context"])
+        email_writer.writeheader()
+        email_file.flush()
 
     for i, row in enumerate(candidates):
         paper_id = row["id"]
@@ -342,25 +349,25 @@ def main():
                     print(f"  + REPO {arxiv_id} → {repo_url} — {title[:50]}")
 
         # --- Email extraction ---
-        if do_emails:
+        if do_emails and email_writer:
             emails = extract_emails(markdown)
             if emails:
                 stats["emails_found"] += len(emails)
                 for email, context in emails:
-                    email_rows.append({
+                    email_writer.writerow({
                         "arxiv_id": arxiv_id,
                         "paper_title": title[:120],
                         "email": email,
                         "context": context[:80],
                     })
+                    emails_written += 1
+                email_file.flush()  # type: ignore[union-attr]
 
-    # Write emails CSV
-    if do_emails and email_rows:
-        with open(args.emails_csv, "w", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=["arxiv_id", "paper_title", "email", "context"])
-            writer.writeheader()
-            writer.writerows(email_rows)
-        print(f"\nWrote {len(email_rows)} emails to {args.emails_csv}")
+    # Close email CSV
+    if email_file:
+        email_file.close()
+        if emails_written > 0:
+            print(f"\nWrote {emails_written} emails to {args.emails_csv}")
 
     # Summary
     print(f"""
