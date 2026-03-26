@@ -136,10 +136,10 @@ export default async function SearchPage({
               <tbody className="divide-y divide-gray-100">
                 {papers.map((p) => (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-3 md:px-4 py-2.5 max-w-0 md:max-w-none">
+                    <td className="px-3 md:px-4 py-2.5 max-w-0 overflow-hidden">
                       <Link
                         href={`/papers/${p.id}`}
-                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline block truncate md:whitespace-normal md:overflow-visible md:text-clip"
+                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline block truncate md:whitespace-normal md:text-clip md:line-clamp-2 md:overflow-hidden"
                       >
                         {stripLatex(p.title)}
                       </Link>

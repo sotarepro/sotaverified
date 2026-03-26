@@ -110,10 +110,10 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                   const taskSlice = (p.tasks ?? []).slice(0, 2);
                   return (
                     <tr key={p.id} data-testid={`paper-row-${p.id}`} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 md:px-4 py-2.5 max-w-0 md:max-w-none">
+                      <td className="px-3 md:px-4 py-2.5 max-w-0 overflow-hidden">
                         <Link
                           href={`/papers/${p.id}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline line-clamp-2 md:line-clamp-2 block truncate md:whitespace-normal md:overflow-visible md:text-clip"
+                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline block truncate md:whitespace-normal md:text-clip md:line-clamp-2 md:overflow-hidden"
                         >
                           {stripLatex(p.title)}
                         </Link>
