@@ -92,16 +92,24 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
           </p>
 
           <div className="rounded-xl border border-gray-200 overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[55%] md:w-[45%]" />
+                <col className="hidden md:table-column md:w-[100px]" />
+                <col className="hidden md:table-column md:w-[160px]" />
+                <col className="w-[25%] md:w-[130px]" />
+                <col className="w-[20%] md:w-[70px]" />
+                {tab === "verified" && <col className="hidden md:table-column md:w-[60px]" />}
+              </colgroup>
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-left">
                   <th className="px-3 md:px-4 py-2.5 font-medium text-gray-600">Title</th>
-                  <th className="px-4 py-2.5 font-medium text-gray-600 w-28 hidden md:table-cell">Date</th>
+                  <th className="px-4 py-2.5 font-medium text-gray-600 hidden md:table-cell">Date</th>
                   <th className="px-4 py-2.5 font-medium text-gray-600 hidden md:table-cell">Tasks</th>
                   <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600">Status</th>
-                  <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right w-14 md:w-20">Hype</th>
+                  <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right">Hype</th>
                   {tab === "verified" && (
-                    <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right w-14 md:w-16 hidden md:table-cell">Score</th>
+                    <th className="px-2 md:px-4 py-2.5 font-medium text-gray-600 text-right hidden md:table-cell">Score</th>
                   )}
                 </tr>
               </thead>
@@ -110,10 +118,10 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                   const taskSlice = (p.tasks ?? []).slice(0, 2);
                   return (
                     <tr key={p.id} data-testid={`paper-row-${p.id}`} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 md:px-4 py-2.5 max-w-0 overflow-hidden">
+                      <td className="px-3 md:px-4 py-2.5 overflow-hidden">
                         <Link
                           href={`/papers/${p.id}`}
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline block truncate md:whitespace-normal md:text-clip md:line-clamp-2 md:overflow-hidden"
+                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline block line-clamp-1 md:line-clamp-2"
                         >
                           {stripLatex(p.title)}
                         </Link>
@@ -121,7 +129,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                       <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap hidden md:table-cell">
                         {formatDate(p.published)}
                       </td>
-                      <td className="px-4 py-2.5 hidden md:table-cell">
+                      <td className="px-4 py-2.5 hidden md:table-cell overflow-hidden">
                         <div className="flex flex-wrap gap-1">
                           {taskSlice.map((task) => (
                             <span
@@ -134,7 +142,7 @@ export default function PaperTabTable({ tab, papers, baseHref, title, page, page
                           ))}
                         </div>
                       </td>
-                      <td className="px-2 md:px-4 py-2.5">
+                      <td className="px-2 md:px-4 py-2.5 overflow-hidden">
                         <VerificationBadge tier={p.verification as VerificationTier} score={p.verification_score} compact />
                       </td>
                       <td className="px-2 md:px-4 py-2.5 text-right tabular-nums">
