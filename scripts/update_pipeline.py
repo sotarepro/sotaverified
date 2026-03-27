@@ -3,10 +3,11 @@
 Production update pipeline — single command to keep SOTAVerified current.
 
 Runs weekly (or on-demand):
-  1. arxiv_delta     — fetch new papers from arXiv
-  2. repo_discover_hf — find repos for papers missing code links
-  3. github_enrich   — get star/fork counts for repos
-  4. backup          — backup user-generated data
+  1. arxiv_delta          — fetch new papers from arXiv
+  2. repo_discover_abstracts — regex scan abstracts for GitHub URLs (no API calls)
+  3. repo_discover_hf     — find repos via HF API for remaining papers
+  4. github_enrich        — get star/fork counts for repos
+  5. backup               — backup user-generated data
 
 Environment variables (required):
   DATABASE_URL   — Railway PostgreSQL connection string
@@ -106,6 +107,11 @@ def main():
             "arXiv delta (last {days} days)".format(days=args.days),
             [python, str(SCRIPT_DIR / "arxiv_delta.py"),
              "--days", str(args.days), "--db", db_url],
+        ),
+        (
+            "Abstract repo discovery (pass 1 — papers with no code links)",
+            [python, str(SCRIPT_DIR / "repo_discover_abstracts.py"),
+             "--pass", "1", "--db", db_url],
         ),
         (
             "HF repo discovery ({limit} papers since {since})".format(

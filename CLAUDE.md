@@ -194,16 +194,16 @@ python3 scripts/update_pipeline.py
 
 Steps run in sequence:
 1. `arxiv_delta.py --days 7` — ingest new papers from arXiv
-2. `repo_discover_hf.py --limit 2000 --since 2025-01-01` — discover repos via HF API (2 req/s)
-3. `github_enrich.py --limit 2000` — fetch star/fork counts from GitHub
-4. `backup_reproductions.sh` — CSV backup of user-generated tables
+2. `repo_discover_abstracts.py --pass 1` — regex scan new paper abstracts for GitHub URLs (zero API calls, instant)
+3. `repo_discover_hf.py --limit 2000 --since 2025-01-01` — discover repos via HF API for papers still missing code links (2 req/s)
+4. `github_enrich.py --limit 2000` — fetch star/fork counts from GitHub
+5. `backup_reproductions.sh` — CSV backup of user-generated tables
 
 Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-backup`, `--dry-run`
 
 **Parked scripts (do not run in production):**
 - `hype_seed.py` — one-time launch bootstrapping, organic hype post-launch
 - `repo_discover_fulltext.py` — high false positive rate, needs manual audit
-- `repo_discover_abstracts.py` — useful for one-time backfill, not regular use
 - `daily_update.py` — deprecated, replaced by `update_pipeline.py`
 - `ingest.py`, `link_papers.py`, `seed_verification_scores.py` — one-time setup
 
