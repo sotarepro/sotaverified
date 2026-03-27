@@ -94,7 +94,7 @@ export const authOptions: NextAuthOptions = {
                 VALUES
                   (${githubId}, ${p.login}, ${p.avatar_url}, 0,
                    ${breakdown.total}, ${JSON.stringify(breakdown)})
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (github_id) DO NOTHING
               `;
             } catch { /* swallow */ }
             return "/auth/too-new";
