@@ -183,13 +183,29 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - `GITHUB_TOKEN` must be set as shell env var (not .env.local — Python doesn't read it)
 - Pattern: `GITHUB_TOKEN=ghp_... python3 scripts/github_enrich.py ...`
 
-### Full Enrichment Pipeline (run order)
+### Script Pipeline
+
+**Production pipeline (weekly, single command):**
+```
+export DATABASE_URL="postgresql://..."
+export GITHUB_TOKEN="ghp_..."
+python3 scripts/update_pipeline.py
+```
+
+Steps run in sequence:
 1. `arxiv_delta.py --days 7` — ingest new papers from arXiv
-2. `repo_discover_hf.py --since 2024-01-01` — discover repos via HF API
-3. `repo_discover_abstracts.py --pass 1` — discover repos from abstracts
-4. `github_enrich.py --since 2024-01-01` — fetch star/fork counts
-5. `hype_seed.py` — update hype scores from stars
-6. `semantic_scholar_enrich.py` — fetch citation counts (optional)
+2. `repo_discover_hf.py --limit 2000 --since 2025-01-01` — discover repos via HF API (2 req/s)
+3. `github_enrich.py --limit 2000` — fetch star/fork counts from GitHub
+4. `backup_reproductions.sh` — CSV backup of user-generated tables
+
+Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-backup`, `--dry-run`
+
+**Parked scripts (do not run in production):**
+- `hype_seed.py` — one-time launch bootstrapping, organic hype post-launch
+- `repo_discover_fulltext.py` — high false positive rate, needs manual audit
+- `repo_discover_abstracts.py` — useful for one-time backfill, not regular use
+- `daily_update.py` — deprecated, replaced by `update_pipeline.py`
+- `ingest.py`, `link_papers.py`, `seed_verification_scores.py` — one-time setup
 
 ### Paper Detail — Author vs Reproducer
 - Verified authors see "Submit benchmark results" but NOT "I reproduced this"

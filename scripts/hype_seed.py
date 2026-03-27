@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# PARKED: Hype seeding completed for launch bootstrapping.
+# Post-launch, organic user hype is the signal.
+# Do not run unless bootstrapping a new deployment.
 """
 One-time hype seeding script — converts GitHub star counts to hype_score.
 

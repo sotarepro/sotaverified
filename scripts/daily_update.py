@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+# DEPRECATED: Use update_pipeline.py instead
 """
 Master daily update script — runs enrichment pipeline in sequence.
+
+DEPRECATED: Use update_pipeline.py instead. This script is kept for
+reference but should not be used in production.
 
 Usage:
     python scripts/daily_update.py

@@ -30,7 +30,7 @@ except ImportError:
     sys.exit(1)
 
 HF_API_BASE = "https://huggingface.co/api/papers"
-SLEEP_BETWEEN_REQUESTS = 0.02  # ~50 req/sec, 178k papers in ~1 hour
+SLEEP_BETWEEN_REQUESTS = 0.5  # 2 req/sec — polite rate for regular use
 MAX_RETRIES = 3
 
 
