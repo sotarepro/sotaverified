@@ -70,9 +70,10 @@ describe("PATCH /api/admin/paper-authors/[paperId]/[userId]", () => {
     expect(res.status).toBe(403);
   });
 
-  it("approves author claim — sets verified=true, status=verified, method=manual_admin", async () => {
+  it("approves author claim — sets verified=true, awards rep, recomputes score", async () => {
     mockSession.mockResolvedValueOnce(adminSession());
     mockSql.mockResolvedValueOnce([]);  // UPDATE paper_authors
+    mockSql.mockResolvedValueOnce([]);  // UPDATE users rep
 
     const params = { params: Promise.resolve({ paperId: "p1", userId: "u1" }) };
     const res = await AUTHOR_PATCH(makePatch({ action: "approve" }), params);
@@ -80,12 +81,13 @@ describe("PATCH /api/admin/paper-authors/[paperId]/[userId]", () => {
 
     expect(res.status).toBe(200);
     expect(json).toEqual({ ok: true });
-    expect(mockSql).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects author claim — sets status=rejected, verified=false", async () => {
+  it("rejects author claim — deducts rep if was verified", async () => {
     mockSession.mockResolvedValueOnce(adminSession());
-    mockSql.mockResolvedValueOnce([]);
+    mockSql.mockResolvedValueOnce([{ verified: true }]);  // SELECT verified
+    mockSql.mockResolvedValueOnce([]);                     // UPDATE paper_authors
+    mockSql.mockResolvedValueOnce([]);                     // UPDATE users rep (deduct)
 
     const params = { params: Promise.resolve({ paperId: "p1", userId: "u1" }) };
     const res = await AUTHOR_PATCH(makePatch({ action: "reject" }), params);

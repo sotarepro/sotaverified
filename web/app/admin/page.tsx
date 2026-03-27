@@ -5,7 +5,7 @@ import sql from "@/lib/db";
 import Link from "next/link";
 import AdminActions from "./AdminActions";
 import AdminAuthorActions from "./AdminAuthorActions";
-import { SignupAction, ClearAllSignups, ClearAllAuthorClaims } from "./SignupActions";
+import { SignupAction, ClearAllSignups } from "./SignupActions";
 import TestTools from "./TestTools";
 import ClearUserData from "./ClearUserData";
 import FlaggedReproActions from "./FlaggedReproActions";
@@ -98,6 +98,8 @@ export default async function AdminPage({
       username: string | null;
       display_name: string | null;
       avatar_url: string | null;
+      status: string;
+      verification_method: string | null;
       created_at: string;
     }[]>`
       SELECT
@@ -107,12 +109,14 @@ export default async function AdminPage({
         u.username,
         u.display_name,
         u.avatar_url,
+        pa.status,
+        pa.verification_method,
         pa.created_at::text
       FROM paper_authors pa
       LEFT JOIN papers p ON p.id = pa.paper_id
       LEFT JOIN users u ON u.github_id = pa.user_id
-      WHERE pa.status = 'pending_admin'
-      ORDER BY pa.created_at ASC
+      ORDER BY pa.created_at DESC
+      LIMIT 30
     `,
     sql<{
       id: number;
@@ -246,10 +250,10 @@ export default async function AdminPage({
         </section>
       )}
 
-      {/* Section 1: Pending Author Claims */}
+      {/* Section 1: Author Claims */}
       <section className="mb-10">
         <h2 className="text-lg font-semibold mb-4">
-          Pending Author Claims{" "}
+          Author Claims{" "}
           {pendingAuthors.length > 0 && (
             <span className="ml-2 rounded-full bg-purple-100 text-purple-700 text-xs px-2 py-0.5">
               {pendingAuthors.length}
@@ -257,7 +261,7 @@ export default async function AdminPage({
           )}
         </h2>
         {pendingAuthors.length === 0 ? (
-          <p className="text-gray-500 text-sm">No pending claims.</p>
+          <p className="text-gray-500 text-sm">No author claims yet.</p>
         ) : (
           <div className="space-y-3">
             {pendingAuthors.map((a) => (
@@ -273,12 +277,17 @@ export default async function AdminPage({
                   </p>
                   <p className="text-xs text-gray-500">
                     {a.display_name ? `${a.display_name} (@${a.username})` : `@${a.username ?? a.user_id}`} · {a.created_at.slice(0, 10)}
+                    {a.status === "verified" && (
+                      <span className="ml-2 rounded-full bg-green-100 text-green-700 px-2 py-0.5 text-xs">Auto-approved</span>
+                    )}
+                    {a.status === "pending_admin" && (
+                      <span className="ml-2 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs">Pending</span>
+                    )}
                   </p>
                 </div>
                 <AdminAuthorActions paperId={a.paper_id} userId={a.user_id} />
               </div>
             ))}
-            <ClearAllAuthorClaims />
           </div>
         )}
       </section>

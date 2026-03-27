@@ -1,12 +1,11 @@
 /**
- * Unit tests for Stage 3-author author verification (claim-author).
+ * Unit tests for author verification (claim-author).
  * All DB and external fetch calls are mocked — no real network or DB connections.
  *
- * Behavior (updated Stage 3-author spec):
- * - no_repo: returns {status:"no_repo"} with explanation, no DB write
- * - not_contributor: creates pending_admin row, returns {status:"pending"} for admin review
- * - check_failed: returns {status:"check_failed"} with explanation, no DB write
- * - verified: DB insert + rep +10, returns {status:"verified"}
+ * Current behavior (early launch, SKIP_CONTRIBUTOR_CHECK = true):
+ * - All claims auto-approved immediately
+ * - No GitHub contributor check
+ * - Rep awarded, verification score recomputed
  */
 
 // Mock the postgres db module before importing routes
@@ -36,7 +35,6 @@ const mockGetServerSession = getServerSession as jest.MockedFunction<typeof getS
 
 // Mock global fetch for GitHub API calls
 global.fetch = jest.fn();
-const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
 
 function makeReq(method = "POST"): NextRequest {
   return new NextRequest(new URL("http://localhost/api/papers/paper123/claim-author"), { method });
@@ -50,14 +48,11 @@ function makeSession(githubId = "12345", username = "testuser") {
 }
 
 const fakePaperRow = { id: "paper123" };
-const fakeOfficialRepoRow = { repo_url: "https://github.com/tensorflow/tensor2tensor" };
 
 describe("POST /api/papers/[id]/claim-author", () => {
   beforeEach(() => {
-    // mockReset clears both call history AND queued mockResolvedValueOnce values
     mockSql.mockReset();
     mockGetServerSession.mockReset();
-    mockFetch.mockReset();
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -82,39 +77,11 @@ describe("POST /api/papers/[id]/claim-author", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns no_repo when no official repo is found — no DB write", async () => {
-    mockGetServerSession.mockResolvedValueOnce(makeSession());
-    mockSql.mockResolvedValueOnce([fakePaperRow]);  // paper found
-    mockSql.mockResolvedValueOnce([]);              // no official repo
-
-    const req = makeReq();
-    const params = { params: Promise.resolve({ id: "paper123" }) };
-    const res = await POST(req, params);
-    const json = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(json.status).toBe("no_repo");
-    expect(json.message).toMatch(/no linked code repository/i);
-    // Only 2 SQL calls (paper + repo lookup), no INSERT
-    expect(mockSql).toHaveBeenCalledTimes(2);
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
-  it("returns verified when user IS in GitHub contributors", async () => {
+  it("auto-approves claim immediately (early launch mode)", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("12345", "testuser"));
-    mockSql.mockResolvedValueOnce([fakePaperRow]);        // paper found
-    mockSql.mockResolvedValueOnce([fakeOfficialRepoRow]); // official repo found
-    // Two fetch calls: contributors + repo owner
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [{ login: "testuser" }, { login: "otherdev" }],
-    } as Response);
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ owner: { login: "tensorflow" } }),
-    } as Response);
-    mockSql.mockResolvedValueOnce([]);  // INSERT paper_authors
-    mockSql.mockResolvedValueOnce([]);  // UPDATE users rep
+    mockSql.mockResolvedValueOnce([fakePaperRow]);  // paper found
+    mockSql.mockResolvedValueOnce([]);               // INSERT paper_authors
+    mockSql.mockResolvedValueOnce([]);               // UPDATE users rep
 
     const req = makeReq();
     const params = { params: Promise.resolve({ id: "paper123" }) };
@@ -123,51 +90,21 @@ describe("POST /api/papers/[id]/claim-author", () => {
 
     expect(res.status).toBe(200);
     expect(json.status).toBe("verified");
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-  });
-
-  it("creates pending_admin claim when user is NOT in contributors", async () => {
-    mockGetServerSession.mockResolvedValueOnce(makeSession("12345", "testuser"));
-    mockSql.mockResolvedValueOnce([fakePaperRow]);        // paper found
-    mockSql.mockResolvedValueOnce([fakeOfficialRepoRow]); // official repo found
-    // Two fetch calls: contributors + repo owner
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => [{ login: "otheruser" }, { login: "anotherdev" }],
-    } as Response);
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ owner: { login: "tensorflow" } }),
-    } as Response);
-    mockSql.mockResolvedValueOnce([]);                    // INSERT paper_authors pending_admin
-
-    const req = makeReq();
-    const params = { params: Promise.resolve({ id: "paper123" }) };
-    const res = await POST(req, params);
-    const json = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(json.status).toBe("pending");
-    expect(json.message).toMatch(/admin review/);
-    // 3+ SQL calls: paper + repo + INSERT pending (+ logEvent swallows errors)
+    // No GitHub API calls (contributor check skipped)
     expect(mockSql).toHaveBeenCalledTimes(3);
   });
 
-  it("returns check_failed gracefully when GitHub API fetch throws — no DB write", async () => {
+  it("awards rep on auto-approved claim", async () => {
     mockGetServerSession.mockResolvedValueOnce(makeSession("12345", "testuser"));
-    mockSql.mockResolvedValueOnce([fakePaperRow]);        // paper found
-    mockSql.mockResolvedValueOnce([fakeOfficialRepoRow]); // official repo found
-    mockFetch.mockRejectedValueOnce(new Error("Network error"));
+    mockSql.mockResolvedValueOnce([fakePaperRow]);  // paper found
+    mockSql.mockResolvedValueOnce([]);               // INSERT paper_authors
+    mockSql.mockResolvedValueOnce([]);               // UPDATE users rep
 
     const req = makeReq();
     const params = { params: Promise.resolve({ id: "paper123" }) };
-    const res = await POST(req, params);
-    const json = await res.json();
+    await POST(req, params);
 
-    expect(res.status).toBe(200);
-    expect(json.status).toBe("check_failed");
-    expect(json.message).toMatch(/try again later/i);
-    // Only 2 SQL calls (paper + repo), no INSERT
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // 3 SQL calls: paper check, INSERT paper_authors, UPDATE users rep
+    expect(mockSql).toHaveBeenCalledTimes(3);
   });
 });

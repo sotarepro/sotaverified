@@ -120,6 +120,9 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Flag auto-hide: **2 flags** (FLAGS_TO_HIDE=2) from any users
 - Rep per upvote: +1 to submitter per upvote (uncapped)
 - Rep author claim: +5 (REP_AUTHOR_VERIFIED=5)
+- Author claims: **auto-approved immediately** during early launch (SKIP_CONTRIBUTOR_CHECK=true).
+  All claims visible in admin panel for spot-checking. Admin can remove bad claims
+  (deducts rep + recomputes verification score). Re-enable GitHub contributor check at scale.
 - Spam penalty: -20 (REP_SPAM_PENALTY=-20)
 - Agent rate limit: 2/day (AGENT_SUBMISSIONS_PER_DAY=2)
 - Authors CAN hype their own papers

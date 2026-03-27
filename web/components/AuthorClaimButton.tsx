@@ -32,11 +32,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
       if (data.status === "verified") {
         setClaim({ status: "verified" });
         router.refresh();
-      } else if (data.status === "pending") {
-        setClaim({ status: "pending_admin" });
-        setMessage(data.message);
-        setMessageType("info");
-      } else if (data.status === "not_contributor" || data.status === "no_repo" || data.status === "check_failed") {
+      } else {
         setMessage(data.message);
         setMessageType("error");
       }
@@ -57,23 +53,6 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
         </svg>
         Verified Author via GitHub
       </span>
-    );
-  }
-
-  if (claim?.status === "pending_admin") {
-    return (
-      <div className="space-y-2">
-        <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm text-amber-800 font-medium">
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Author claim pending review
-        </span>
-        <p className="text-xs text-amber-700 leading-relaxed">
-          We verify authorship by checking GitHub repository contributors. Your username was not found as a contributor on this paper{"'"}s linked repositories. Your claim has been submitted for manual review. If you believe this is an error, contact{" "}
-          <a href="mailto:support@sotaverified.org" className="underline">support@sotaverified.org</a>.
-        </p>
-      </div>
     );
   }
 
@@ -113,7 +92,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Checking GitHub contributors...
+            Verifying...
           </>
         ) : (
           <>

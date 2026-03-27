@@ -64,94 +64,96 @@ export async function POST(
     return NextResponse.json({ error: "Paper not found" }, { status: 404 });
   }
 
-  // Find ALL repos for this paper (not just official), sorted by stars
-  const repoRows = await sql<{ repo_url: string }[]>`
-    SELECT repo_url FROM paper_code_links
-    WHERE paper_id = ${paperId}
-    ORDER BY is_official DESC, stars DESC NULLS LAST
-  `;
+  // Early launch: auto-approve all author claims immediately.
+  // Re-enable contributor check at scale by setting SKIP_CONTRIBUTOR_CHECK = false.
+  const SKIP_CONTRIBUTOR_CHECK = true;
 
-  if (repoRows.length === 0) {
-    return NextResponse.json({
-      status: "no_repo",
-      message: "This paper has no linked code repository. Author verification requires a GitHub repo. Contact support@sotaverified.org for manual verification.",
-    });
-  }
+  if (!SKIP_CONTRIBUTOR_CHECK) {
+    // Find ALL repos for this paper (not just official), sorted by stars
+    const repoRows = await sql<{ repo_url: string }[]>`
+      SELECT repo_url FROM paper_code_links
+      WHERE paper_id = ${paperId}
+      ORDER BY is_official DESC, stars DESC NULLS LAST
+    `;
 
-  // Check each repo until we find one where the user is a contributor/owner
-  let isContributor = false;
-  let lastCheckedRepo = "";
-  let checkFailed = false;
+    if (repoRows.length === 0) {
+      return NextResponse.json({
+        status: "no_repo",
+        message: "This paper has no linked code repository. Author verification requires a GitHub repo. Contact support@sotaverified.org for manual verification.",
+      });
+    }
 
-  for (const row of repoRows) {
-    const parsed = extractOwnerRepo(row.repo_url);
-    if (!parsed) continue;
+    // Check each repo until we find one where the user is a contributor/owner
+    let isContributor = false;
+    let checkFailed = false;
 
-    const [owner, repo] = parsed;
-    lastCheckedRepo = `${owner}/${repo}`;
+    for (const row of repoRows) {
+      const parsed = extractOwnerRepo(row.repo_url);
+      if (!parsed) continue;
 
-    try {
-      const contributors = await getGitHubContributorsAndOwner(owner, repo);
-      if (username !== "" && contributors.includes(username.toLowerCase())) {
-        isContributor = true;
-        break;
+      const [owner, repo] = parsed;
+
+      try {
+        const contributors = await getGitHubContributorsAndOwner(owner, repo);
+        if (username !== "" && contributors.includes(username.toLowerCase())) {
+          isContributor = true;
+          break;
+        }
+      } catch {
+        checkFailed = true;
       }
-    } catch {
-      checkFailed = true;
-      // Continue to next repo — one failing doesn't mean all fail
+    }
+
+    if (!isContributor && checkFailed && repoRows.length === 1) {
+      return NextResponse.json({
+        status: "check_failed",
+        message: "Could not reach GitHub to verify contributor status. Please try again later.",
+      });
+    }
+
+    if (!isContributor) {
+      await sql`
+        INSERT INTO paper_authors (paper_id, user_id, verified, verification_method, status)
+        VALUES (${paperId}, ${userId}, false, 'github_contributor_failed', 'pending_admin')
+        ON CONFLICT (paper_id, user_id) DO UPDATE SET
+          status = 'pending_admin',
+          verification_method = 'github_contributor_failed'
+      `;
+      await logEvent("author_claim_failed", {
+        userId,
+        paperId,
+        metadata: { username, repos_checked: repoRows.length },
+      });
+      return NextResponse.json({
+        status: "pending",
+        message: `Your claim has been submitted for admin review.`,
+      });
     }
   }
 
-  if (!isContributor && checkFailed && repoRows.length === 1) {
-    return NextResponse.json({
-      status: "check_failed",
-      message: "Could not reach GitHub to verify contributor status. Please try again later.",
-    });
-  }
-
-  if (isContributor) {
-    await sql`
-      INSERT INTO paper_authors (paper_id, user_id, verified, verified_at, verification_method, status)
-      VALUES (${paperId}, ${userId}, true, NOW(), 'github_contributor', 'verified')
-      ON CONFLICT (paper_id, user_id) DO UPDATE SET
-        verified = true,
-        verified_at = NOW(),
-        verification_method = 'github_contributor',
-        status = 'verified'
-    `;
-    // Award rep for auto-verified author claim
-    const { THRESHOLDS: T } = await import("@/lib/thresholds");
-    await sql`
-      UPDATE users SET reputation_score = reputation_score + ${T.REP_AUTHOR_VERIFIED}
-      WHERE github_id = ${userId}
-    `;
-    await recomputeVerificationScore(paperId);
-    await logEvent("author_claimed", {
-      userId,
-      paperId,
-      metadata: { status: "verified" },
-    });
-    return NextResponse.json({
-      status: "verified",
-      message: "Verified as GitHub contributor",
-    });
-  } else {
-    // Not a contributor — create pending claim for admin review
-    await sql`
-      INSERT INTO paper_authors (paper_id, user_id, verified, verification_method, status)
-      VALUES (${paperId}, ${userId}, false, 'github_contributor_failed', 'pending_admin')
-      ON CONFLICT (paper_id, user_id) DO UPDATE SET
-        status = 'pending_admin',
-        verification_method = 'github_contributor_failed'
-    `;
-    await logEvent("author_claim_failed", {
-      userId,
-      paperId,
-      metadata: { username, repos_checked: repoRows.length },
-    });
-    return NextResponse.json({
-      status: "pending",
-      message: `We checked ${repoRows.length} linked repository${repoRows.length !== 1 ? "ies" : "y"} for your GitHub account (@${username}). Your account was not found as a contributor on any of them. Your claim has been submitted for admin review. You can also contact support@sotaverified.org for manual verification.`,
-    });
-  }
+  // Auto-approve: immediately verify the author claim
+  await sql`
+    INSERT INTO paper_authors (paper_id, user_id, verified, verified_at, verification_method, status)
+    VALUES (${paperId}, ${userId}, true, NOW(), 'self_claim', 'verified')
+    ON CONFLICT (paper_id, user_id) DO UPDATE SET
+      verified = true,
+      verified_at = NOW(),
+      verification_method = 'self_claim',
+      status = 'verified'
+  `;
+  const { THRESHOLDS: T } = await import("@/lib/thresholds");
+  await sql`
+    UPDATE users SET reputation_score = reputation_score + ${T.REP_AUTHOR_VERIFIED}
+    WHERE github_id = ${userId}
+  `;
+  await recomputeVerificationScore(paperId);
+  await logEvent("author_claimed", {
+    userId,
+    paperId,
+    metadata: { status: "verified", method: "self_claim" },
+  });
+  return NextResponse.json({
+    status: "verified",
+    message: "Author claim verified",
+  });
 }
