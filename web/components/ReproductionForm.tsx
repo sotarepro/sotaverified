@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { stripLatex } from "@/lib/strip-latex";
@@ -74,7 +74,57 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
   const [actualMetricName, setActualMetricName] = useState("");
   const [actualMetricValue, setActualMetricValue] = useState("");
 
+  // Dataset search state for Tier 3 (when no existing benchmarks)
+  const [datasetSearch, setDatasetSearch] = useState("");
+  const [datasetResults, setDatasetResults] = useState<{ id: string; name: string }[]>([]);
+  const [selectedDatasetName, setSelectedDatasetName] = useState("");
+  const [showDatasetDropdown, setShowDatasetDropdown] = useState(false);
+  const datasetSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const datasetRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (datasetRef.current && !datasetRef.current.contains(e.target as Node)) {
+        setShowDatasetDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function handleDatasetSearch(query: string) {
+    setDatasetSearch(query);
+    setSelectedDatasetId("");
+    setSelectedDatasetName("");
+    if (datasetSearchTimer.current) clearTimeout(datasetSearchTimer.current);
+    if (query.trim().length < 2) {
+      setDatasetResults([]);
+      setShowDatasetDropdown(false);
+      return;
+    }
+    datasetSearchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/datasets?search=${encodeURIComponent(query.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setDatasetResults(data);
+          setShowDatasetDropdown(data.length > 0);
+        }
+      } catch { /* ignore */ }
+    }, 300);
+  }
+
+  function selectDataset(id: string, name: string) {
+    setSelectedDatasetId(id);
+    setSelectedDatasetName(name);
+    setDatasetSearch(name);
+    setShowDatasetDropdown(false);
+  }
+
   const selectedBenchmark = benchmarks.find((b) => b.dataset_id === selectedDatasetId);
+  const isTier3 = tierClaimed === 3;
+  const hasBenchmarks = benchmarks.length > 0;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -105,6 +155,8 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
             setHardwareSpec(""); setRunLog(""); setNotes("");
             setSelectedDatasetId(""); setSelectedModelName("");
             setActualMetricName(""); setActualMetricValue("");
+            setDatasetSearch(""); setSelectedDatasetName("");
+            setDatasetResults([]);
             setError(null);
           }}
           className="text-sm text-blue-600 hover:underline"
@@ -233,58 +285,162 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
             </p>
           </div>
 
-          {/* Optional benchmark + metric */}
-          {benchmarks.length > 0 && (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Which dataset did you evaluate on?{" "}
-                <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              <select
-                value={selectedDatasetId}
-                onChange={(e) => {
-                  const dsId = e.target.value;
-                  setSelectedDatasetId(dsId);
-                  setActualMetricValue("");
-                  // Auto-select model if only one exists for this dataset
-                  const bench = benchmarks.find((b) => b.dataset_id === dsId);
-                  if (bench?.model_names.length === 1) {
-                    setSelectedModelName(bench.model_names[0]);
-                  } else {
-                    setSelectedModelName("");
-                  }
-                }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">— None —</option>
-                {benchmarks.map((b) => (
-                  <option key={b.dataset_id} value={b.dataset_id}>
-                    {stripLatex(b.dataset_name)}{b.metric_name ? ` (${b.metric_name})` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* --- Tier 3: always show model + dataset search + metric --- */}
+          {isTier3 && (
+            <>
+              {/* Model name (free text, always shown for Tier 3) */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Your model/implementation name{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={selectedModelName}
+                  onChange={(e) => setSelectedModelName(e.target.value)}
+                  placeholder="e.g. ResNet20v1-Custom, Independent-ViT"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-          {/* Model selector — Tier 3 gets free text, Tiers 1-2 get dropdown */}
-          {selectedBenchmark && (
-            <div>
-              {tierClaimed === 3 ? (
-                <>
+              {/* Dataset: use existing benchmarks dropdown if available, otherwise search */}
+              {hasBenchmarks ? (
+                <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Your model/implementation name{" "}
+                    Dataset{" "}
                     <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <select
+                    value={selectedDatasetId}
+                    onChange={(e) => {
+                      setSelectedDatasetId(e.target.value);
+                      setActualMetricValue("");
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">— None —</option>
+                    {benchmarks.map((b) => (
+                      <option key={b.dataset_id} value={b.dataset_id}>
+                        {stripLatex(b.dataset_name)}{b.metric_name ? ` (${b.metric_name})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div ref={datasetRef} className="relative">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Dataset{" "}
+                    <span className="text-gray-400 font-normal">(optional — search by name)</span>
                   </label>
                   <input
                     type="text"
-                    value={selectedModelName}
-                    onChange={(e) => setSelectedModelName(e.target.value)}
-                    placeholder="e.g. MyResNet-Custom, Independent-ViT"
+                    value={datasetSearch}
+                    onChange={(e) => handleDatasetSearch(e.target.value)}
+                    onFocus={() => datasetResults.length > 0 && setShowDatasetDropdown(true)}
+                    placeholder="Search datasets... e.g., CIFAR-10, ImageNet"
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </>
-              ) : selectedBenchmark.model_names.length > 0 ? (
-                <>
+                  {selectedDatasetName && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Selected: {selectedDatasetName}
+                    </p>
+                  )}
+                  {showDatasetDropdown && datasetResults.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {datasetResults.map((d) => (
+                        <li key={d.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectDataset(d.id, d.name)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                          >
+                            {d.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {/* Metric: use benchmark metric name if dataset selected from benchmarks, otherwise free text */}
+              {selectedBenchmark ? (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Your result — {selectedBenchmark.metric_name ?? "metric"} on {selectedBenchmark.dataset_name}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={actualMetricValue}
+                    onChange={(e) => setActualMetricValue(e.target.value)}
+                    placeholder="e.g. 76.3"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Reproduced metric{" "}
+                    <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={actualMetricName}
+                      onChange={(e) => setActualMetricName(e.target.value)}
+                      placeholder="e.g. Top-1 Accuracy"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="number"
+                      step="any"
+                      value={actualMetricValue}
+                      onChange={(e) => setActualMetricValue(e.target.value)}
+                      placeholder="e.g. 76.3"
+                      className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* --- Tiers 1-2: existing benchmark fields (only when paper has benchmarks) --- */}
+          {!isTier3 && hasBenchmarks && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Which dataset did you evaluate on?{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <select
+                  value={selectedDatasetId}
+                  onChange={(e) => {
+                    const dsId = e.target.value;
+                    setSelectedDatasetId(dsId);
+                    setActualMetricValue("");
+                    const bench = benchmarks.find((b) => b.dataset_id === dsId);
+                    if (bench?.model_names.length === 1) {
+                      setSelectedModelName(bench.model_names[0]);
+                    } else {
+                      setSelectedModelName("");
+                    }
+                  }}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— None —</option>
+                  {benchmarks.map((b) => (
+                    <option key={b.dataset_id} value={b.dataset_id}>
+                      {stripLatex(b.dataset_name)}{b.metric_name ? ` (${b.metric_name})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Model dropdown for Tiers 1-2 */}
+              {selectedBenchmark && selectedBenchmark.model_names.length > 0 && (
+                <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
                     Which model did you reproduce?{" "}
                     <span className="text-gray-400 font-normal">(optional)</span>
@@ -305,26 +461,54 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
                       ))}
                     </select>
                   )}
-                </>
-              ) : null}
-            </div>
+                </div>
+              )}
+
+              {/* Metric for Tiers 1-2 */}
+              {selectedBenchmark ? (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Your result — {selectedBenchmark.metric_name ?? "metric"} on {selectedBenchmark.dataset_name}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={actualMetricValue}
+                    onChange={(e) => setActualMetricValue(e.target.value)}
+                    placeholder="e.g. 76.3"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Reproduced metric{" "}
+                    <span className="text-gray-400 font-normal">(optional — enables automated score calculation)</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={actualMetricName}
+                      onChange={(e) => setActualMetricName(e.target.value)}
+                      placeholder="e.g. Top-1 Accuracy"
+                      className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="number"
+                      step="any"
+                      value={actualMetricValue}
+                      onChange={(e) => setActualMetricValue(e.target.value)}
+                      placeholder="e.g. 76.3"
+                      className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
-          {selectedBenchmark ? (
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Your result — {selectedBenchmark.metric_name ?? "metric"} on {selectedBenchmark.dataset_name}
-              </label>
-              <input
-                type="number"
-                step="any"
-                value={actualMetricValue}
-                onChange={(e) => setActualMetricValue(e.target.value)}
-                placeholder="e.g. 76.3"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          ) : (
+          {/* --- No benchmarks, not Tier 3: just free-text metric --- */}
+          {!isTier3 && !hasBenchmarks && (
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
                 Reproduced metric{" "}

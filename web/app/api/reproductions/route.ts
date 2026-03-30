@@ -158,10 +158,23 @@ export async function POST(req: NextRequest) {
     metricValue !== null &&
     modelNameTrimmed
   ) {
-    // Look up task_id from existing leaderboard entries for this paper+dataset
+    // Look up task_id: first from existing entries for this paper+dataset,
+    // then from the paper's assigned tasks, then from any entry with this dataset
     const [taskRow] = await sql<[{ task_id: string }?]>`
-      SELECT DISTINCT task_id FROM leaderboard_results
-      WHERE paper_id = ${paper_id} AND dataset_id = ${dataset_id}
+      SELECT task_id FROM (
+        SELECT DISTINCT task_id FROM leaderboard_results
+        WHERE paper_id = ${paper_id} AND dataset_id = ${dataset_id}
+        LIMIT 1
+      ) a
+      UNION ALL
+      SELECT task_id FROM (
+        SELECT task_id FROM paper_tasks WHERE paper_id = ${paper_id} LIMIT 1
+      ) b
+      UNION ALL
+      SELECT task_id FROM (
+        SELECT DISTINCT task_id FROM leaderboard_results
+        WHERE dataset_id = ${dataset_id} LIMIT 1
+      ) c
       LIMIT 1
     `;
     if (taskRow) {
