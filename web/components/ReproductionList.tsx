@@ -100,7 +100,12 @@ export default function ReproductionList({ paperId }: Props) {
 
   function isUrl(s: string | null | undefined): boolean {
     if (!s || typeof s !== "string") return false;
-    return s.startsWith("http://") || s.startsWith("https://");
+    return /^https?:\/\//.test(s) || /^[a-z0-9-]+\.[a-z]{2,}\//i.test(s);
+  }
+
+  function ensureScheme(url: string): string {
+    if (/^https?:\/\//.test(url)) return url;
+    return `https://${url}`;
   }
 
   if (loading) return null;
@@ -211,7 +216,7 @@ export default function ReproductionList({ paperId }: Props) {
               Log:{" "}
               {isUrl(r.run_log_url) ? (
                 <a
-                  href={r.run_log_url}
+                  href={ensureScheme(r.run_log_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline font-mono truncate"

@@ -174,6 +174,15 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
     const logErr = validateRunLog(runLog);
     if (logErr) { setError(logErr); return; }
 
+    // Normalize scheme-less URLs before sending
+    let normalizedRunLog = runLog.trim();
+    if (normalizedRunLog && !normalizedRunLog.startsWith("http://") && !normalizedRunLog.startsWith("https://")) {
+      const looksLikeUrl = /^[a-z0-9-]+\.[a-z]{2,}\//i.test(normalizedRunLog) || normalizedRunLog.startsWith("www.");
+      if (looksLikeUrl) {
+        normalizedRunLog = `https://${normalizedRunLog}`;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/reproductions", {
@@ -183,7 +192,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
           paper_id: paperId,
           tier_claimed: tierClaimed,
           hardware_spec: hardwareSpec,
-          run_log_url: runLog,
+          run_log_url: normalizedRunLog,
           notes,
           dataset_id: selectedDatasetId || undefined,
           actual_metric_name: selectedBenchmark?.metric_name || actualMetricName || undefined,
