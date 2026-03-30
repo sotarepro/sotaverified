@@ -46,7 +46,7 @@ async function getGitHubContributorsAndOwner(
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getEffectiveSession();
@@ -57,6 +57,31 @@ export async function POST(
   const { id: paperId } = await params;
   const userId = session.user.github_id;
   const username = session.user.username ?? "";
+
+  // Parse optional repo_url from request body
+  let repoUrl: string | null = null;
+  try {
+    const body = await req.json();
+    if (body.repo_url && typeof body.repo_url === "string") {
+      const trimmed = body.repo_url.trim();
+      // Validate: must be a github.com URL
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.hostname !== "github.com" && !parsed.hostname.endsWith(".github.com")) {
+          return NextResponse.json({ error: "Repository URL must be on github.com" }, { status: 400 });
+        }
+        const ownerRepo = extractOwnerRepo(trimmed);
+        if (!ownerRepo) {
+          return NextResponse.json({ error: "Invalid GitHub repository URL. Expected format: https://github.com/owner/repo" }, { status: 400 });
+        }
+        repoUrl = `https://github.com/${ownerRepo[0]}/${ownerRepo[1]}`;
+      } catch {
+        return NextResponse.json({ error: "Invalid URL format" }, { status: 400 });
+      }
+    }
+  } catch {
+    // No body or not JSON — that's fine, repo_url is optional
+  }
 
   // Check paper exists
   const papers = await sql`SELECT id FROM papers WHERE id = ${paperId}`;
@@ -129,6 +154,15 @@ export async function POST(
         message: `Your claim has been submitted for admin review.`,
       });
     }
+  }
+
+  // If author provided a repo URL, insert it as an official code link
+  if (repoUrl) {
+    await sql`
+      INSERT INTO paper_code_links (paper_id, repo_url, is_official, stars, mentioned_in_paper)
+      VALUES (${paperId}, ${repoUrl}, true, 0, false)
+      ON CONFLICT DO NOTHING
+    `;
   }
 
   // Auto-approve: immediately verify the author claim

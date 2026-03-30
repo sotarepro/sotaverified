@@ -126,7 +126,7 @@ export default async function PaperPage({
 
       {/* Author claim button */}
       <div className="mb-5">
-        <AuthorClaimButton paperId={id} initialClaim={userClaim} />
+        <AuthorClaimButton paperId={id} initialClaim={userClaim} hasCodeRepo={codeLinks.length > 0} />
       </div>
 
       {/* Links row */}
