@@ -12,7 +12,7 @@ export default function AdminAuthorActions({ paperId, userId }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  async function doAction(action: "approve" | "reject" | "remove") {
+  async function doAction(action: "approve" | "reject") {
     setLoading(true);
     await fetch(`/api/admin/paper-authors/${paperId}/${userId}`, {
       method: "PATCH",
@@ -26,11 +26,18 @@ export default function AdminAuthorActions({ paperId, userId }: Props) {
   return (
     <div className="flex gap-2 shrink-0">
       <button
-        onClick={() => doAction("remove")}
+        onClick={() => doAction("approve")}
+        disabled={loading}
+        className="rounded px-3 py-1 text-xs font-medium bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 disabled:opacity-50 transition-colors"
+      >
+        Approve
+      </button>
+      <button
+        onClick={() => doAction("reject")}
         disabled={loading}
         className="rounded px-3 py-1 text-xs font-medium bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 transition-colors"
       >
-        Remove
+        Reject
       </button>
     </div>
   );

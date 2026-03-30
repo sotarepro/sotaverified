@@ -12,7 +12,9 @@ export type EventType =
   | "agent_reproduction_promoted"
   | "rate_limit_hit"
   | "author_benchmark_submitted"
-  | "author_claim_failed";
+  | "author_claim_failed"
+  | "author_claim_approved"
+  | "author_claim_rejected";
 
 export async function logEvent(
   eventType: EventType,

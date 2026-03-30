@@ -115,6 +115,7 @@ export default async function AdminPage({
       FROM paper_authors pa
       LEFT JOIN papers p ON p.id = pa.paper_id
       LEFT JOIN users u ON u.github_id = pa.user_id
+      WHERE pa.admin_reviewed = false
       ORDER BY pa.created_at DESC
       LIMIT 30
     `,
@@ -261,7 +262,7 @@ export default async function AdminPage({
           )}
         </h2>
         {pendingAuthors.length === 0 ? (
-          <p className="text-gray-500 text-sm">No author claims yet.</p>
+          <p className="text-gray-500 text-sm">No pending claims.</p>
         ) : (
           <div className="space-y-3">
             {pendingAuthors.map((a) => (

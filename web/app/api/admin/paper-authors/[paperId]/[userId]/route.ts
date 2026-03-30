@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { THRESHOLDS } from "@/lib/thresholds";
+import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
 function isAdmin(githubId: string | undefined): boolean {
@@ -27,26 +28,25 @@ export async function PATCH(
       SET verified = true,
           verified_at = NOW(),
           verification_method = 'manual_admin',
-          status = 'verified'
+          status = 'verified',
+          admin_reviewed = true
       WHERE paper_id = ${paperId} AND user_id = ${userId}
     `;
-    await sql`
-      UPDATE users SET reputation_score = reputation_score + ${THRESHOLDS.REP_AUTHOR_VERIFIED}
-      WHERE github_id = ${userId}
-    `;
-    await recomputeVerificationScore(paperId);
-  } else if (action === "reject" || action === "remove") {
-    // Check if this was a verified claim (auto-approved or admin-approved)
+    await logEvent("author_claim_approved", {
+      userId,
+      paperId,
+      metadata: { admin: true },
+    });
+  } else if (action === "reject") {
     const [claim] = await sql<[{ verified: boolean }?]>`
       SELECT verified FROM paper_authors
       WHERE paper_id = ${paperId} AND user_id = ${userId}
     `;
     await sql`
       UPDATE paper_authors
-      SET status = 'rejected', verified = false
+      SET status = 'rejected', verified = false, admin_reviewed = true
       WHERE paper_id = ${paperId} AND user_id = ${userId}
     `;
-    // If removing a verified claim, deduct rep and recompute
     if (claim?.verified) {
       await sql`
         UPDATE users SET reputation_score = GREATEST(0, reputation_score - ${THRESHOLDS.REP_AUTHOR_VERIFIED})
@@ -54,12 +54,11 @@ export async function PATCH(
       `;
       await recomputeVerificationScore(paperId);
     }
-  } else if (action === "clear_all") {
-    await sql`
-      UPDATE paper_authors
-      SET status = 'rejected', verified = false
-      WHERE status = 'pending_admin'
-    `;
+    await logEvent("author_claim_rejected", {
+      userId,
+      paperId,
+      metadata: { admin: true },
+    });
   } else {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
