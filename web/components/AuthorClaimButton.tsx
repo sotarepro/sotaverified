@@ -175,19 +175,13 @@ export default function AuthorClaimButton({ paperId, initialClaim, hasCodeRepo =
     <div className="flex flex-col gap-3">
       {/* Repo URL field — shown when paper has no code links */}
       {!hasCodeRepo && (
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-1">
-            Link your repository{" "}
-            <span className="text-gray-400 font-normal">(optional)</span>
-          </label>
-          <input
-            type="url"
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            placeholder="https://github.com/your-org/your-repo"
-            className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <input
+          type="url"
+          value={repoUrl}
+          onChange={(e) => setRepoUrl(e.target.value)}
+          placeholder="https://github.com/your-org/your-repo (optional)"
+          className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       )}
 
       <button
