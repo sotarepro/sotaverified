@@ -51,16 +51,41 @@ export async function POST(
     return NextResponse.json({ error: "Dataset not found" }, { status: 404 });
   }
 
-  const [row] = await sql<[{ id: number }]>`
-    INSERT INTO leaderboard_results
-      (task_id, dataset_id, paper_id, model_name, best_metric_name, best_metric_value,
-       higher_is_better, source, submitted_by, verification)
-    VALUES
-      (${task_id}, ${dataset_id}, ${paperId}, ${model_name || null},
-       ${metric_name}, ${numericValue}, ${higher_is_better ?? true},
-       'author', ${userId}, 'community')
-    RETURNING id
+  // Upsert: if a row exists for same (paper, dataset, model, metric), update it
+  const existingRow = await sql<[{ id: number }?]>`
+    SELECT id FROM leaderboard_results
+    WHERE paper_id = ${paperId}
+      AND dataset_id = ${dataset_id}
+      AND model_name = ${model_name || null}
+      AND best_metric_name = ${metric_name}
+    LIMIT 1
   `;
+
+  let row: { id: number };
+  if (existingRow.length > 0 && existingRow[0]) {
+    // Update existing row with author's claimed value
+    await sql`
+      UPDATE leaderboard_results
+      SET best_metric_value = ${numericValue},
+          higher_is_better = ${higher_is_better ?? true},
+          source = 'author',
+          submitted_by = ${userId},
+          updated_at = NOW()
+      WHERE id = ${existingRow[0].id}
+    `;
+    row = existingRow[0];
+  } else {
+    [row] = await sql<[{ id: number }]>`
+      INSERT INTO leaderboard_results
+        (task_id, dataset_id, paper_id, model_name, best_metric_name, best_metric_value,
+         higher_is_better, source, submitted_by, verification)
+      VALUES
+        (${task_id}, ${dataset_id}, ${paperId}, ${model_name || null},
+         ${metric_name}, ${numericValue}, ${higher_is_better ?? true},
+         'author', ${userId}, 'community')
+      RETURNING id
+    `;
+  }
 
   await recomputeVerificationScore(paperId);
 
