@@ -7,10 +7,9 @@ import { useRouter } from "next/navigation";
 interface Props {
   paperId: string;
   initialClaim: { status: string } | null;
-  hasCodeRepo?: boolean;
 }
 
-export default function AuthorClaimButton({ paperId, initialClaim, hasCodeRepo = false }: Props) {
+export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [claim, setClaim] = useState<{ status: string } | null>(initialClaim);
@@ -28,20 +27,11 @@ export default function AuthorClaimButton({ paperId, initialClaim, hasCodeRepo =
     setLoading(true);
     setMessage(null);
 
-    // Validate repo URL if provided
-    const trimmedRepo = repoUrl.trim();
-    if (trimmedRepo && !trimmedRepo.includes("github.com/")) {
-      setMessage("Repository URL must be on github.com");
-      setMessageType("error");
-      setLoading(false);
-      return;
-    }
-
     try {
       const resp = await fetch(`/api/papers/${paperId}/claim-author`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(trimmedRepo ? { repo_url: trimmedRepo } : {}),
+        body: JSON.stringify({}),
       });
       const data = (await resp.json()) as { status: string; message: string; error?: string };
 
@@ -173,17 +163,6 @@ export default function AuthorClaimButton({ paperId, initialClaim, hasCodeRepo =
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Repo URL field — shown when paper has no code links */}
-      {!hasCodeRepo && (
-        <input
-          type="url"
-          value={repoUrl}
-          onChange={(e) => setRepoUrl(e.target.value)}
-          placeholder="https://github.com/your-org/your-repo (optional)"
-          className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      )}
-
       <button
         onClick={handleClaim}
         disabled={loading}
