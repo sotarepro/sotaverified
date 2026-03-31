@@ -11,6 +11,7 @@ type NewProps = {
 type LegacyProps = {
   tier: VerificationTier;
   score?: number;
+  reproCount?: number;
   compact?: boolean;
 };
 
@@ -78,7 +79,7 @@ export default function VerificationBadge(props: Props) {
   } else {
     badge = tierToBadge(props.tier);
     score = props.score;
-    // Legacy path (tables): don't estimate count — only paper detail has real counts
+    count = props.reproCount;
   }
 
   const label = badgeLabel(badge, count);

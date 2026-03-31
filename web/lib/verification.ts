@@ -69,7 +69,7 @@ export async function recomputeVerificationScore(paperId: string): Promise<numbe
   else if (repoRow.has_repo) badge = "code_available";
 
   await sql`
-    UPDATE papers SET verification_score = ${total}, verification = ${badge} WHERE id = ${paperId}
+    UPDATE papers SET verification_score = ${total}, verification = ${badge}, repro_count = ${reproCount} WHERE id = ${paperId}
   `;
 
   return total;

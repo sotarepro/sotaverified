@@ -10,6 +10,7 @@ export type TabPaperRow = {
   verification: string;
   upvote_count: number;
   verification_score: number;
+  repro_count: number;
   user_hyped: boolean; // set by server pages after getUserHypedSet(); defaults to false
 };
 
@@ -43,14 +44,14 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score, p.created_at
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score, p.created_at
           FROM papers p
           JOIN paper_tasks pt ON pt.paper_id = p.id
           WHERE pt.task_id = ${scope.taskId}
           ORDER BY p.id, p.published DESC NULLS LAST, p.created_at DESC
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY published DESC NULLS LAST, created_at DESC LIMIT ${limit} OFFSET ${offset}) b
       `;
@@ -58,14 +59,14 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           JOIN paper_tasks pt ON pt.paper_id = p.id
           WHERE pt.task_id = ${scope.taskId}
           ORDER BY p.id
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY hype_score DESC, published DESC NULLS LAST LIMIT ${limit} OFFSET ${offset}) b
         ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
@@ -73,7 +74,7 @@ export async function getTabPapers(
     } else if (tab === "active") {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM (
           SELECT DISTINCT al.paper_id, MAX(al.created_at) AS last_activity
@@ -93,14 +94,14 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           JOIN paper_tasks pt ON pt.paper_id = p.id
           WHERE pt.task_id = ${scope.taskId}
           ORDER BY p.id
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY hype_score DESC, verification_score ASC LIMIT ${limit} OFFSET ${offset}) b
         ORDER BY b.hype_score DESC, b.verification_score ASC
@@ -109,14 +110,14 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT DISTINCT ON (p.id) p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           JOIN paper_tasks pt ON pt.paper_id = p.id
           WHERE pt.task_id = ${scope.taskId}
           ORDER BY p.id
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM (SELECT * FROM base ORDER BY verification_score DESC, hype_score DESC LIMIT ${limit} OFFSET ${offset}) b
         ORDER BY b.verification_score DESC, b.hype_score DESC
@@ -131,7 +132,7 @@ export async function getTabPapers(
     if (tab === "recent") {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM papers p
         WHERE ${inArea}
@@ -141,7 +142,7 @@ export async function getTabPapers(
     } else if (tab === "hyped") {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM papers p
         WHERE ${inArea}
@@ -151,7 +152,7 @@ export async function getTabPapers(
     } else if (tab === "active") {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM (
           SELECT al.paper_id, MAX(al.created_at) AS last_activity
@@ -172,7 +173,7 @@ export async function getTabPapers(
     } else if (tab === "unverified") {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM papers p
         WHERE ${inArea}
@@ -182,7 +183,7 @@ export async function getTabPapers(
     } else {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM papers p
         WHERE ${inArea}
@@ -197,13 +198,13 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           ORDER BY p.published DESC NULLS LAST, p.created_at DESC
           LIMIT ${limit} OFFSET ${offset}
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM base b
       `;
@@ -211,13 +212,13 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           ORDER BY p.hype_score DESC, p.published DESC NULLS LAST
           LIMIT ${limit} OFFSET ${offset}
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM base b
         ORDER BY b.hype_score DESC, b.published DESC NULLS LAST
@@ -225,7 +226,7 @@ export async function getTabPapers(
     } else if (tab === "active") {
       return sql<TabPaperRow[]>`
         SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-               p.tasks, p.verification, p.verification_score,
+               p.tasks, p.verification, p.verification_score, p.repro_count,
                p.hype_score AS upvote_count
         FROM (
           SELECT paper_id, MAX(created_at) AS last_activity
@@ -243,13 +244,13 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           ORDER BY p.hype_score DESC, p.verification_score ASC
           LIMIT ${limit} OFFSET ${offset}
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM base b
         ORDER BY b.hype_score DESC, b.verification_score ASC
@@ -258,14 +259,14 @@ export async function getTabPapers(
       return sql<TabPaperRow[]>`
         WITH base AS (
           SELECT p.id, p.arxiv_id, p.title, p.published::text AS published,
-                 p.tasks, p.verification, p.verification_score, p.hype_score
+                 p.tasks, p.verification, p.verification_score, p.repro_count, p.hype_score
           FROM papers p
           WHERE p.verification_score > 0
           ORDER BY p.verification_score DESC, p.hype_score DESC
           LIMIT ${limit} OFFSET ${offset}
         )
         SELECT b.id, b.arxiv_id, b.title, b.published, b.tasks, b.verification,
-               b.verification_score,
+               b.verification_score, b.repro_count,
                b.hype_score AS upvote_count
         FROM base b
         ORDER BY b.verification_score DESC, b.hype_score DESC
@@ -355,7 +356,7 @@ export async function getTabPapersCount(
 export async function searchPapers(q: string, limit = 20, offset = 0): Promise<TabPaperRow[]> {
   return sql<TabPaperRow[]>`
     SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
-           p.verification_score,
+           p.verification_score, p.repro_count,
            p.hype_score AS upvote_count
     FROM papers p
     WHERE p.title ILIKE ${"%" + q + "%"}
