@@ -118,12 +118,16 @@ export default function PaperBenchmarks({ entries }: Props) {
                           <td className="px-4 py-2 font-medium text-xs">{e.model_name ? stripLatex(e.model_name) : "—"}</td>
                           <td className="px-4 py-2 text-gray-500 text-xs">{e.best_metric_name ?? "—"}</td>
                           <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
-                            {e.best_metric_value != null
+                            {e.source !== "community" && e.best_metric_value != null
                               ? Number(e.best_metric_value).toLocaleString(undefined, { maximumFractionDigits: 2 })
                               : "—"}
                           </td>
                           <td className="px-4 py-2 text-right tabular-nums font-mono text-xs">
-                            {hasRepro && e.verified_median != null ? (
+                            {e.source === "community" && !hasRepro && e.best_metric_value != null ? (
+                              <span className="text-teal-700">
+                                {Number(e.best_metric_value).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                              </span>
+                            ) : hasRepro && e.verified_median != null ? (
                               <span className="text-green-700">
                                 {Number(e.verified_median).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                 <span className="text-gray-400 font-sans ml-1">({e.repro_count})</span>
