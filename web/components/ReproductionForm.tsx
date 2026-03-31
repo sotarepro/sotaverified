@@ -51,9 +51,10 @@ interface Props {
   paperId: string;
   benchmarks?: BenchmarkOption[];
   hasCodeRepo?: boolean;
+  paperTasks?: string[];
 }
 
-export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo = false }: Props) {
+export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo = false, paperTasks = [] }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -73,6 +74,62 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
   const [selectedModelName, setSelectedModelName] = useState("");
   const [actualMetricName, setActualMetricName] = useState("");
   const [actualMetricValue, setActualMetricValue] = useState("");
+
+  // Task selector state for Tier 3
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [taskSearch, setTaskSearch] = useState("");
+  const [taskResults, setTaskResults] = useState<{ id: string; name: string }[]>([]);
+  const [showTaskDropdown, setShowTaskDropdown] = useState(false);
+  const taskSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const taskRef = useRef<HTMLDivElement>(null);
+
+  // Close task dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (taskRef.current && !taskRef.current.contains(e.target as Node)) {
+        setShowTaskDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function handleTaskSearch(query: string) {
+    setTaskSearch(query);
+    setSelectedTaskId("");
+    if (taskSearchTimer.current) clearTimeout(taskSearchTimer.current);
+    if (query.trim().length < 2) {
+      setTaskResults([]);
+      setShowTaskDropdown(false);
+      return;
+    }
+    taskSearchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search-entities?type=tasks&q=${encodeURIComponent(query.trim())}`);
+        if (res.ok) {
+          const data = await res.json();
+          setTaskResults(data);
+          setShowTaskDropdown(data.length > 0);
+        }
+      } catch { /* ignore */ }
+    }, 300);
+  }
+
+  function selectTask(id: string, name: string) {
+    setSelectedTaskId(id);
+    setTaskSearch(name);
+    setShowTaskDropdown(false);
+  }
+
+  // Load paper's tasks on mount for the task dropdown
+  const [paperTaskOptions, setPaperTaskOptions] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (paperTasks.length === 0) return;
+    fetch(`/api/papers/${paperId}/form-options?type=tasks`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setPaperTaskOptions(data))
+      .catch(() => {});
+  }, [paperId, paperTasks.length]);
 
   // Dataset search state for Tier 3 (when no existing benchmarks)
   const [datasetSearch, setDatasetSearch] = useState("");
@@ -157,6 +214,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
             setActualMetricName(""); setActualMetricValue("");
             setDatasetSearch(""); setSelectedDatasetName("");
             setDatasetResults([]);
+            setSelectedTaskId(""); setTaskSearch(""); setTaskResults([]);
             setError(null);
           }}
           className="text-sm text-blue-600 hover:underline"
@@ -195,6 +253,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
           run_log_url: normalizedRunLog,
           notes,
           dataset_id: selectedDatasetId || undefined,
+          task_id: selectedTaskId || undefined,
           actual_metric_name: selectedBenchmark?.metric_name || actualMetricName || undefined,
           actual_metric_value: actualMetricValue !== "" ? Number(actualMetricValue) : undefined,
           model_name: selectedModelName || undefined,
@@ -311,6 +370,56 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {/* Task selector for Tier 3 */}
+              {paperTaskOptions.length > 0 ? (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Task{" "}
+                    <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <select
+                    value={selectedTaskId}
+                    onChange={(e) => setSelectedTaskId(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">— None —</option>
+                    {paperTaskOptions.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div ref={taskRef} className="relative">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Task{" "}
+                    <span className="text-gray-400 font-normal">(optional — search by name)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={taskSearch}
+                    onChange={(e) => handleTaskSearch(e.target.value)}
+                    onFocus={() => taskResults.length > 0 && setShowTaskDropdown(true)}
+                    placeholder="Search tasks... e.g., Image Classification"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {showTaskDropdown && taskResults.length > 0 && (
+                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {taskResults.map((t) => (
+                        <li key={t.id}>
+                          <button
+                            type="button"
+                            onClick={() => selectTask(t.id, t.name)}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                          >
+                            {t.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               {/* Dataset: use existing benchmarks dropdown if available, otherwise search */}
               {hasBenchmarks ? (

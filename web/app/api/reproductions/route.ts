@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { paper_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value, dataset_id, model_name } = body;
+  const { paper_id, tier_claimed, hardware_spec, run_log_url, notes, actual_metric_name, actual_metric_value, dataset_id, model_name, task_id: form_task_id } = body;
 
   if (!paper_id || !tier_claimed || !hardware_spec) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -168,31 +168,35 @@ export async function POST(req: NextRequest) {
       LIMIT 1
     `;
     if (existing.length === 0) {
-      // Look up task_id: from existing entries, paper tasks, or dataset entries
-      const [taskRow] = await sql<[{ task_id: string }?]>`
-        SELECT task_id FROM (
-          SELECT DISTINCT task_id FROM leaderboard_results
-          WHERE paper_id = ${paper_id} AND dataset_id = ${dataset_id}
+      // Use form-submitted task_id, or look up from existing entries / paper tasks / dataset
+      let resolvedTaskId: string | null = form_task_id ?? null;
+      if (!resolvedTaskId) {
+        const [taskRow] = await sql<[{ task_id: string }?]>`
+          SELECT task_id FROM (
+            SELECT DISTINCT task_id FROM leaderboard_results
+            WHERE paper_id = ${paper_id} AND dataset_id = ${dataset_id}
+            LIMIT 1
+          ) a
+          UNION ALL
+          SELECT task_id FROM (
+            SELECT task_id FROM paper_tasks WHERE paper_id = ${paper_id} LIMIT 1
+          ) b
+          UNION ALL
+          SELECT task_id FROM (
+            SELECT DISTINCT task_id FROM leaderboard_results
+            WHERE dataset_id = ${dataset_id} LIMIT 1
+          ) c
           LIMIT 1
-        ) a
-        UNION ALL
-        SELECT task_id FROM (
-          SELECT task_id FROM paper_tasks WHERE paper_id = ${paper_id} LIMIT 1
-        ) b
-        UNION ALL
-        SELECT task_id FROM (
-          SELECT DISTINCT task_id FROM leaderboard_results
-          WHERE dataset_id = ${dataset_id} LIMIT 1
-        ) c
-        LIMIT 1
-      `;
-      if (taskRow) {
+        `;
+        resolvedTaskId = taskRow?.task_id ?? null;
+      }
+      if (resolvedTaskId) {
         await sql`
           INSERT INTO leaderboard_results
             (task_id, dataset_id, paper_id, model_name, best_metric_name, best_metric_value,
              source, submitted_by, verification)
           VALUES
-            (${taskRow.task_id}, ${dataset_id}, ${paper_id}, ${modelNameTrimmed},
+            (${resolvedTaskId}, ${dataset_id}, ${paper_id}, ${modelNameTrimmed},
              ${metricName}, ${metricValue}, 'community', ${session.user.github_id}, 'community')
         `;
       }

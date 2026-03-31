@@ -285,7 +285,7 @@ export default async function PaperPage({
       <section id="reproduce" className="mb-8">
         <h2 className="text-base font-semibold mb-3">Reproductions</h2>
         {userClaim?.status !== "verified" && (
-          <ReproductionForm paperId={id} benchmarks={benchmarks} hasCodeRepo={codeLinks.length > 0} />
+          <ReproductionForm paperId={id} benchmarks={benchmarks} hasCodeRepo={codeLinks.length > 0} paperTasks={paper.tasks ?? []} />
         )}
         <ReproductionList paperId={id} key={`repros-${Date.now()}`} />
       </section>
