@@ -94,13 +94,23 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  // Load paper's tasks on mount as default quick-pick options
+  const [paperTaskOptions, setPaperTaskOptions] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    fetch(`/api/papers/${paperId}/form-options?type=tasks`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setPaperTaskOptions(data))
+      .catch(() => {});
+  }, [paperId]);
+
   function handleTaskSearch(query: string) {
     setTaskSearch(query);
     setSelectedTaskId("");
     if (taskSearchTimer.current) clearTimeout(taskSearchTimer.current);
     if (query.trim().length < 2) {
-      setTaskResults([]);
-      setShowTaskDropdown(false);
+      // Show paper's tasks as defaults when input is cleared
+      setTaskResults(paperTaskOptions);
+      setShowTaskDropdown(paperTaskOptions.length > 0);
       return;
     }
     taskSearchTimer.current = setTimeout(async () => {
@@ -121,23 +131,19 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
     setShowTaskDropdown(false);
   }
 
-  // Load paper's tasks on mount for the task dropdown
-  const [paperTaskOptions, setPaperTaskOptions] = useState<{ id: string; name: string }[]>([]);
-  useEffect(() => {
-    if (paperTasks.length === 0) return;
-    fetch(`/api/papers/${paperId}/form-options?type=tasks`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setPaperTaskOptions(data))
-      .catch(() => {});
-  }, [paperId, paperTasks.length]);
-
-  // Dataset search state for Tier 3 (when no existing benchmarks)
+  // Dataset search state for Tier 3
   const [datasetSearch, setDatasetSearch] = useState("");
   const [datasetResults, setDatasetResults] = useState<{ id: string; name: string }[]>([]);
   const [selectedDatasetName, setSelectedDatasetName] = useState("");
   const [showDatasetDropdown, setShowDatasetDropdown] = useState(false);
   const datasetSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const datasetRef = useRef<HTMLDivElement>(null);
+
+  // Build default dataset options from benchmarks prop
+  const defaultDatasetOptions: { id: string; name: string }[] = benchmarks.map(b => ({
+    id: b.dataset_id,
+    name: b.dataset_name + (b.metric_name ? ` (${b.metric_name})` : ""),
+  }));
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -156,13 +162,14 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
     setSelectedDatasetName("");
     if (datasetSearchTimer.current) clearTimeout(datasetSearchTimer.current);
     if (query.trim().length < 2) {
-      setDatasetResults([]);
-      setShowDatasetDropdown(false);
+      // Show paper's datasets as defaults when input is cleared
+      setDatasetResults(defaultDatasetOptions);
+      setShowDatasetDropdown(defaultDatasetOptions.length > 0);
       return;
     }
     datasetSearchTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/datasets?search=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/search-entities?type=datasets&q=${encodeURIComponent(query.trim())}`);
         if (res.ok) {
           const data = await res.json();
           setDatasetResults(data);
@@ -371,115 +378,89 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
                 />
               </div>
 
-              {/* Task selector for Tier 3 */}
-              {paperTaskOptions.length > 0 ? (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Task{" "}
-                    <span className="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <select
-                    value={selectedTaskId}
-                    onChange={(e) => setSelectedTaskId(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">— None —</option>
-                    {paperTaskOptions.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
+              {/* Task selector — searchable combobox, paper tasks as defaults */}
+              <div ref={taskRef} className="relative">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Task{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={taskSearch}
+                  onChange={(e) => handleTaskSearch(e.target.value)}
+                  onFocus={() => {
+                    if (!selectedTaskId) {
+                      // Show paper tasks as defaults on focus
+                      const opts = taskSearch.trim().length >= 2 ? taskResults : paperTaskOptions;
+                      if (opts.length > 0) {
+                        setTaskResults(opts);
+                        setShowTaskDropdown(true);
+                      }
+                    }
+                  }}
+                  placeholder="Search tasks... e.g., Image Classification"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {showTaskDropdown && taskResults.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {taskResults.map((t) => (
+                      <li key={t.id}>
+                        <button
+                          type="button"
+                          onClick={() => selectTask(t.id, t.name)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                        >
+                          {t.name}
+                        </button>
+                      </li>
                     ))}
-                  </select>
-                </div>
-              ) : (
-                <div ref={taskRef} className="relative">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Task{" "}
-                    <span className="text-gray-400 font-normal">(optional — search by name)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={taskSearch}
-                    onChange={(e) => handleTaskSearch(e.target.value)}
-                    onFocus={() => taskResults.length > 0 && setShowTaskDropdown(true)}
-                    placeholder="Search tasks... e.g., Image Classification"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {showTaskDropdown && taskResults.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {taskResults.map((t) => (
-                        <li key={t.id}>
-                          <button
-                            type="button"
-                            onClick={() => selectTask(t.id, t.name)}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
-                          >
-                            {t.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+                  </ul>
+                )}
+              </div>
 
-              {/* Dataset: use existing benchmarks dropdown if available, otherwise search */}
-              {hasBenchmarks ? (
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Dataset{" "}
-                    <span className="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <select
-                    value={selectedDatasetId}
-                    onChange={(e) => {
-                      setSelectedDatasetId(e.target.value);
-                      setActualMetricValue("");
-                    }}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">— None —</option>
-                    {benchmarks.map((b) => (
-                      <option key={b.dataset_id} value={b.dataset_id}>
-                        {stripLatex(b.dataset_name)}{b.metric_name ? ` (${b.metric_name})` : ""}
-                      </option>
+              {/* Dataset — searchable combobox, paper datasets as defaults */}
+              <div ref={datasetRef} className="relative">
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Dataset{" "}
+                  <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={datasetSearch}
+                  onChange={(e) => handleDatasetSearch(e.target.value)}
+                  onFocus={() => {
+                    if (!selectedDatasetId) {
+                      const opts = datasetSearch.trim().length >= 2 ? datasetResults : defaultDatasetOptions;
+                      if (opts.length > 0) {
+                        setDatasetResults(opts);
+                        setShowDatasetDropdown(true);
+                      }
+                    }
+                  }}
+                  placeholder="Search datasets... e.g., CIFAR-10, ImageNet"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {selectedDatasetName && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Selected: {selectedDatasetName}
+                  </p>
+                )}
+                {showDatasetDropdown && datasetResults.length > 0 && (
+                  <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {datasetResults.map((d) => (
+                      <li key={d.id}>
+                        <button
+                          type="button"
+                          onClick={() => selectDataset(d.id, d.name)}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                        >
+                          {d.name}
+                        </button>
+                      </li>
                     ))}
-                  </select>
-                </div>
-              ) : (
-                <div ref={datasetRef} className="relative">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Dataset{" "}
-                    <span className="text-gray-400 font-normal">(optional — search by name)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={datasetSearch}
-                    onChange={(e) => handleDatasetSearch(e.target.value)}
-                    onFocus={() => datasetResults.length > 0 && setShowDatasetDropdown(true)}
-                    placeholder="Search datasets... e.g., CIFAR-10, ImageNet"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {selectedDatasetName && (
-                    <p className="text-xs text-green-600 mt-1">
-                      Selected: {selectedDatasetName}
-                    </p>
-                  )}
-                  {showDatasetDropdown && datasetResults.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                      {datasetResults.map((d) => (
-                        <li key={d.id}>
-                          <button
-                            type="button"
-                            onClick={() => selectDataset(d.id, d.name)}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
-                          >
-                            {d.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+                  </ul>
+                )}
+              </div>
 
               {/* Metric: use benchmark metric name if dataset selected from benchmarks, otherwise free text */}
               {selectedBenchmark ? (
