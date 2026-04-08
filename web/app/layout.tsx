@@ -80,6 +80,12 @@ export default async function RootLayout({
               >
                 About
               </Link>
+              <Link
+                href="/blog"
+                className="text-sm text-gray-600 hover:text-gray-900 hidden md:inline"
+              >
+                Blog
+              </Link>
               <form method="GET" action="/search" className="flex-1 max-w-xs mx-2 md:mx-4 min-w-0">
                 <input
                   type="search"

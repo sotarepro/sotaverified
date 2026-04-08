@@ -56,6 +56,13 @@ export default function MobileMenu() {
             >
               About
             </Link>
+            <Link
+              href="/blog"
+              onClick={() => setOpen(false)}
+              className="text-sm text-gray-700 hover:text-gray-900 py-1"
+            >
+              Blog
+            </Link>
             <div className="border-t border-gray-100 pt-3">
               <NavUser />
             </div>
