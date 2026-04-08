@@ -6,8 +6,6 @@ author: "David Colmenares"
 tags: ["autoresearch", "agents", "infrastructure", "harness engineering"]
 ---
 
-# The Dark Factory Harness: Turning Autonomous Hill-Climbing into Autonomous Research
-
 You point an agent at a training script, tell it to optimize a metric, and go to sleep. You wake up to 50 experiments. The agent swapped activation functions, varied the depth, and tweaked the loss weighting. Each experiment ran, evaluated, and was kept or discarded. The log is clean. The metric improved.
 
 But when you read the log, there's no story. The experiments are a random walk through code space that happened to go uphill. There's no throughline, no reasoning, no sense that experiment 23 built on what experiment 14 learned. The agent can write code, run training, and check results. What it can't do is research.
