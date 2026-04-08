@@ -12,7 +12,7 @@ export default function BlogIndex() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight mb-6">Blog</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-6 text-gray-900 dark:text-gray-100">Blog</h1>
 
       {posts.length === 0 ? (
         <p className="text-sm text-gray-500">No posts yet.</p>
@@ -24,10 +24,10 @@ export default function BlogIndex() {
                 href={`/blog/${post.slug}`}
                 className="group block"
               >
-                <h2 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {post.title}
                 </h2>
-                <time className="text-xs text-gray-400 mt-1 block">
+                <time className="text-xs text-gray-400 dark:text-gray-500 mt-1 block">
                   {new Date(post.date).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
@@ -35,11 +35,11 @@ export default function BlogIndex() {
                   })}
                 </time>
                 {post.excerpt && (
-                  <p className="text-sm text-gray-600 leading-relaxed mt-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mt-2">
                     {post.excerpt}
                   </p>
                 )}
-                <span className="text-sm text-blue-600 mt-2 inline-block group-hover:underline">
+                <span className="text-sm text-blue-600 dark:text-blue-400 mt-2 inline-block group-hover:underline">
                   Read more
                 </span>
               </Link>

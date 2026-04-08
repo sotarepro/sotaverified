@@ -39,17 +39,17 @@ export default async function BlogPostPage({ params }: Props) {
     <div className="max-w-2xl">
       <Link
         href="/blog"
-        className="text-sm text-blue-600 hover:underline mb-4 inline-block"
+        className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-4 inline-block"
       >
         &larr; Back to blog
       </Link>
 
       <article>
-        <h1 className="text-2xl font-bold tracking-tight mb-2">
+        <h1 className="text-2xl font-bold tracking-tight mb-2 text-gray-900 dark:text-gray-100">
           {post.title}
         </h1>
 
-        <div className="flex items-center gap-3 text-xs text-gray-400 mb-6">
+        <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500 mb-6">
           <time>
             {new Date(post.date).toLocaleDateString("en-US", {
               year: "numeric",
@@ -70,7 +70,7 @@ export default async function BlogPostPage({ params }: Props) {
             {post.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-600"
+                className="rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs text-gray-600 dark:text-gray-400"
               >
                 {tag}
               </span>
@@ -78,7 +78,7 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        <div className="prose prose-sm prose-gray max-w-none text-gray-700 leading-relaxed">
+        <div className="prose prose-sm prose-gray dark:prose-invert max-w-none leading-relaxed">
           <ReactMarkdown>{post.content}</ReactMarkdown>
         </div>
       </article>

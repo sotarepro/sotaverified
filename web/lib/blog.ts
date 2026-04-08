@@ -40,20 +40,30 @@ export function getAllPosts(): BlogPost[] {
   );
 }
 
+/** Strip a leading H1 from markdown if it duplicates the frontmatter title */
+function stripLeadingH1(content: string, title: string): string {
+  const match = content.match(/^#\s+(.+)\n/);
+  if (match && match[1].trim() === title.trim()) {
+    return content.slice(match[0].length);
+  }
+  return content;
+}
+
 export function getPostBySlug(slug: string): BlogPost | null {
   const filePath = path.join(BLOG_DIR, `${slug}.md`);
   if (!fs.existsSync(filePath)) return null;
 
   const raw = fs.readFileSync(filePath, "utf-8");
   const { data, content } = matter(raw);
+  const title = data.title ?? slug;
 
   return {
     slug,
-    title: data.title ?? slug,
+    title,
     date: data.date ?? "",
     excerpt: data.excerpt ?? "",
     author: data.author,
     tags: data.tags,
-    content,
+    content: stripLeadingH1(content, title),
   };
 }
