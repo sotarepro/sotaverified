@@ -56,14 +56,7 @@ And it explains why dropout and MC Dropout don't achieve the same effect. Dropou
 
 If a network is sufficiently overparameterized, it doesn't just contain one winning lottery ticket. It contains several. MIMO (Havasi et al., 2021) exploits this directly by routing M different input streams through a shared backbone to M separate output heads, encouraging each stream to discover and train an independent subnetwork. At inference, you run one forward pass and get M diverse predictions to ensemble. Near-zero extra cost.
 
-I tested this on ResNet20 (272K params) and the results tell a clean story about the relationship between capacity and mode diversity:
-
-| Method | Ensemble Acc | Per-head Acc | Disagreement (D_dis) |
-|---|---|---|---|
-| MIMO M=1 | 89.53% | 89.53% | 0.000 |
-| MIMO M=2 | 89.45% | ~87.5% avg | 0.139 |
-| MIMO M=3 | 86.91% | ~84% avg | 0.153 |
-| Naive M=3 | 89.30% | ~89.3% | 0.005 |
+I tested this on ResNet20 (272K params) and the results tell a clean story about the relationship between capacity and mode diversity. With M=1, the baseline is 89.53% accuracy and zero disagreement. M=2 finds real diversity (D_dis=0.139, comparable to independent seeds!) but per-head accuracy drops to ~87.5%, leaving ensemble accuracy unchanged. M=3 breaks entirely: per-head accuracy falls to ~84% and the ensemble drops to 86.91%. The naive multi-head baseline is the telling control: 89.3% accuracy per head but D_dis=0.005, essentially zero diversity.
 
 The M=2 result is interesting. The network finds real diversity (D_dis=0.139, comparable to independent seeds!) but the per-head accuracy drops enough that the ensemble accuracy is unchanged. The capacity cost of fitting two independent tickets exactly cancels the diversity benefit at this model size.
 
@@ -87,6 +80,6 @@ The next time you train a model and get 90% accuracy, remember that another vers
 
 ---
 
-*This is the first post in a "Why Machine Learning Works" series exploring the mechanisms behind deep learning phenomena. The experimental results (10% cross-seed disagreement, MIMO scaling behavior) were reproduced on an RTX 3090 with ResNet20v1 on CIFAR-10. Full reproduction details available on request.*
+*This is the first post in a "Why Machine Learning Works" series exploring the mechanisms behind deep learning phenomena. The experimental results are reproduced on an RTX 3090 with ResNet20v1 on CIFAR-10. Check out the full reproductions on SOTAVerified with wandb logs and code: [Deep Ensembles](https://sotaverified.org/papers/simple-and-scalable-predictive-uncertainty), [Loss Landscape Perspective](https://sotaverified.org/papers/deep-ensembles-a-loss-landscape-perspective-1), and [MIMO](https://sotaverified.org/papers/training-independent-subnetworks-for-robust-1).*
 
 *I'd love to hear from practitioners who've seen the seed sensitivity problem in production, or from anyone working on uncertainty estimation for on-device models where ensembles aren't an option.*
