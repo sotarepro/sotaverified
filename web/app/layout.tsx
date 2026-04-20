@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { Analytics } from "@vercel/analytics/react";
 import SessionProvider from "@/components/SessionProvider";
 import NavUser from "@/components/NavUser";
 import MobileMenu from "@/components/MobileMenu";
@@ -106,6 +107,7 @@ export default async function RootLayout({
           </header>
           <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
         </SessionProvider>
+        <Analytics />
       </body>
     </html>
   );
