@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -8,9 +9,14 @@ interface Props {
 }
 
 export default function PromoteButton({ reproductionId }: Props) {
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+
+  if (status !== "authenticated" || !session?.user?.github_id) {
+    return null;
+  }
 
   async function handlePromote() {
     if (!confirm("Promote this agent reproduction to community status?")) return;

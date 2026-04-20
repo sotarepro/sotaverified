@@ -1,23 +1,28 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { invalidatePaperState, usePaperState } from "@/lib/use-paper-state";
 
 interface Props {
   paperId: string;
   initialCount: number;
-  initialUpvoted: boolean;
 }
 
 const heartPath = "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z";
 
-export default function UpvoteButton({ paperId, initialCount, initialUpvoted }: Props) {
+export default function UpvoteButton({ paperId, initialCount }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
+  const { state } = usePaperState(paperId);
   const [count, setCount] = useState(initialCount);
-  const [upvoted, setUpvoted] = useState(initialUpvoted);
+  const [upvoted, setUpvoted] = useState(false);
   const inFlight = useRef(false);
+
+  useEffect(() => {
+    if (state) setUpvoted(state.upvoted);
+  }, [state]);
 
   if (!session) {
     return (
@@ -47,6 +52,7 @@ export default function UpvoteButton({ paperId, initialCount, initialUpvoted }: 
         const data = await res.json();
         setUpvoted(data.upvoted);
         setCount(data.count);
+        invalidatePaperState(paperId);
         router.refresh();
       } else {
         setUpvoted(wasUpvoted);

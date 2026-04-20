@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { stripLatex } from "@/lib/strip-latex";
 import {
@@ -9,21 +8,26 @@ import {
   getPaperLeaderboardEntries,
   getPaperUpvoteInfo,
   getPaperBenchmarks,
-  type PaperLbEntry,
 } from "@/lib/queries";
 import { getBadgeData } from "@/lib/verification";
 import VerificationBadge from "@/components/VerificationBadge";
 import UpvoteButton from "@/components/UpvoteButton";
 import CopyJsonButton from "@/components/CopyJsonButton";
-import ReproductionForm from "@/components/ReproductionForm";
 import PaperBenchmarks from "@/components/PaperBenchmarks";
-import AuthorBenchmarkForm from "@/components/AuthorBenchmarkForm";
-import ReproductionList from "@/components/ReproductionList";
-import AuthorClaimButton from "@/components/AuthorClaimButton";
 import VerifiedAuthors from "@/components/VerifiedAuthors";
 import PromoteButton from "@/components/PromoteButton";
 import CodeLinksList from "@/components/CodeLinksList";
-import type { VerificationTier } from "@/lib/types";
+import AuthorClaimButton from "@/components/AuthorClaimButton";
+import AuthorVerifiedCTA from "@/components/AuthorVerifiedCTA";
+import PaperReproSection from "@/components/PaperReproSection";
+
+export const revalidate = 86400;
+export const dynamic = "force-static";
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 export default async function PaperPage({
   params,
@@ -32,32 +36,17 @@ export default async function PaperPage({
 }) {
   const { id } = await params;
 
-  const session = await getEffectiveSession();
-  const userId = session?.user?.github_id ?? null;
-
-  // Check paper exists first to avoid crashes on invalid IDs like /papers/admin
   const paper = await getPaper(id);
   if (!paper) notFound();
 
   const [codeLinks, lbEntries, upvoteInfo, badgeData, benchmarks] = await Promise.all([
     getPaperCodeLinks(id),
     getPaperLeaderboardEntries(id),
-    getPaperUpvoteInfo(id, userId),
+    getPaperUpvoteInfo(id, null),
     getBadgeData(id),
     getPaperBenchmarks(id),
   ]);
 
-  // Fetch user's existing author claim
-  let userClaim: { status: string } | null = null;
-  if (userId) {
-    const claimRows = await sql<{ status: string }[]>`
-      SELECT status FROM paper_authors
-      WHERE paper_id = ${id} AND user_id = ${userId}
-    `;
-    userClaim = claimRows[0] ?? null;
-  }
-
-  // Fetch agent reproductions (pending review)
   const agentRepros = await sql<{
     id: number;
     tier_claimed: number;
@@ -81,10 +70,6 @@ export default async function PaperPage({
     ORDER BY r.created_at DESC
   `;
 
-  const isLoggedIn = !!userId;
-
-  if (!paper) notFound();
-
   return (
     <div className="max-w-3xl">
       {/* Breadcrumb */}
@@ -107,11 +92,7 @@ export default async function PaperPage({
           <span className="text-sm font-medium text-gray-700">{paper.proceeding.replace(/\s+\d+$/, "")}</span>
         )}
         <VerificationBadge badge={badgeData.badge} count={badgeData.reproduction_count} score={badgeData.verification_score} />
-        <UpvoteButton
-          paperId={id}
-          initialCount={upvoteInfo.count}
-          initialUpvoted={upvoteInfo.upvoted}
-        />
+        <UpvoteButton paperId={id} initialCount={upvoteInfo.count} />
       </div>
 
       {/* Authors */}
@@ -126,7 +107,7 @@ export default async function PaperPage({
 
       {/* Author claim button */}
       <div className="mb-5">
-        <AuthorClaimButton paperId={id} initialClaim={userClaim} />
+        <AuthorClaimButton paperId={id} />
       </div>
 
       {/* Links row */}
@@ -187,31 +168,7 @@ export default async function PaperPage({
         </div>
       )}
       {badgeData.badge === "author_verified" && badgeData.reproduction_count === 0 && (
-        userClaim?.status === "verified" ? (
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 mb-6 flex items-center justify-between gap-4">
-            <p className="text-sm text-green-800">
-              <span className="font-semibold">Author Verified</span> — Submit benchmark results to add your metrics to the leaderboard.
-            </p>
-            <a
-              href="#author-benchmarks"
-              className="shrink-0 rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors"
-            >
-              Submit Benchmark
-            </a>
-          </div>
-        ) : (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 mb-6 flex items-center justify-between gap-4">
-            <p className="text-sm text-blue-800">
-              <span className="font-semibold">Author Verified</span> — Help verify by reproducing this paper.
-            </p>
-            <a
-              href="#reproduce"
-              className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-            >
-              Reproduce
-            </a>
-          </div>
-        )
+        <AuthorVerifiedCTA paperId={id} />
       )}
       {badgeData.badge === "community_verified" && badgeData.verification_score < 30 && (
         <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 mb-6">
@@ -274,21 +231,14 @@ export default async function PaperPage({
           <PaperBenchmarks entries={lbEntries} />
         </section>
       )}
-      {/* Author benchmark submission — only for verified authors */}
-      {userClaim?.status === "verified" && (
-        <section id="author-benchmarks" className="mb-8 scroll-mt-16">
-          <AuthorBenchmarkForm paperId={id} paperTasks={paper.tasks ?? []} />
-        </section>
-      )}
 
-      {/* Reproductions */}
-      <section id="reproduce" className="mb-8">
-        <h2 className="text-base font-semibold mb-3">Reproductions</h2>
-        {userClaim?.status !== "verified" && (
-          <ReproductionForm paperId={id} benchmarks={benchmarks} hasCodeRepo={codeLinks.length > 0} paperTasks={paper.tasks ?? []} />
-        )}
-        <ReproductionList paperId={id} key={`repros-${Date.now()}`} />
-      </section>
+      {/* Reproductions + author benchmark forms (client-gated by claim status) */}
+      <PaperReproSection
+        paperId={id}
+        benchmarks={benchmarks}
+        hasCodeRepo={codeLinks.length > 0}
+        paperTasks={paper.tasks ?? []}
+      />
 
       {/* Agent Verifications */}
       {agentRepros.length > 0 && (
@@ -319,9 +269,7 @@ export default async function PaperPage({
                         {new Date(r.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    {isLoggedIn && (
-                      <PromoteButton reproductionId={r.id} />
-                    )}
+                    <PromoteButton reproductionId={r.id} />
                   </div>
                   <div className="text-gray-400 text-xs mb-1">
                     Hardware: <span className="text-gray-300">{r.hardware_spec}</span>

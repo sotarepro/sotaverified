@@ -90,9 +90,9 @@ test.describe("Persona 3 — Author flow", () => {
 
     const reproBtn = page.getByTestId("repro-toggle");
     const benchBtn = page.locator("text=Submit benchmark results");
+    await expect(reproBtn.or(benchBtn).first()).toBeVisible();
     const hasRepro = await reproBtn.count();
     const hasBench = await benchBtn.count();
-    expect(hasRepro + hasBench).toBeGreaterThan(0);
     if (hasRepro > 0 && hasBench > 0) {
       throw new Error("Both 'I reproduced this' and 'Submit benchmark results' are visible — should be mutually exclusive");
     }

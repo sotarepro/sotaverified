@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { invalidatePaperState, usePaperState } from "@/lib/use-paper-state";
 
 interface Props {
   paperId: string;
-  initialClaim: { status: string } | null;
 }
 
-export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
+export default function AuthorClaimButton({ paperId }: Props) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [claim, setClaim] = useState<{ status: string } | null>(initialClaim);
+  const { state, loading: stateLoading } = usePaperState(paperId);
+  const [claim, setClaim] = useState<{ status: string } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (state) setClaim(state.claim);
+  }, [state]);
   const [message, setMessage] = useState<string | null>(null);
   const [messageType, setMessageType] = useState<"info" | "error">("info");
   const [repoUrl, setRepoUrl] = useState("");
@@ -40,6 +45,7 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
         setMessageType("error");
       } else if (data.status === "verified") {
         setClaim({ status: "verified" });
+        invalidatePaperState(paperId);
         router.refresh();
       } else {
         setMessage(data.message);
@@ -144,6 +150,10 @@ export default function AuthorClaimButton({ paperId, initialClaim }: Props) {
         Authorship claim rejected
       </span>
     );
+  }
+
+  if (isLoggedIn && stateLoading) {
+    return null;
   }
 
   if (!isLoggedIn) {

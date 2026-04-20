@@ -52,9 +52,10 @@ interface Props {
   benchmarks?: BenchmarkOption[];
   hasCodeRepo?: boolean;
   paperTasks?: string[];
+  onSubmitted?: () => void;
 }
 
-export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo = false, paperTasks = [] }: Props) {
+export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo = false, paperTasks = [], onSubmitted }: Props) {
   const { data: session } = useSession();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -275,6 +276,7 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
 
       setSubmitted(true);
       setOpen(false);
+      onSubmitted?.();
       router.refresh();
     } catch {
       setError("Network error, please try again.");
