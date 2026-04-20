@@ -5,10 +5,10 @@ export const metadata = {
 export default function AboutPage() {
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold tracking-tight mb-6">About</h1>
+      <h1 className="text-2xl font-bold tracking-tight mb-6 text-gray-900 dark:text-gray-100">About</h1>
 
-      <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">What is SOTAVerified?</h2>
+      <section className="mb-8 space-y-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">What is SOTAVerified?</h2>
         <p>
           SOTAVerified is open infrastructure for tracking and verifying machine learning
           research results. We index papers from arXiv, maintain benchmark leaderboards
@@ -21,40 +21,40 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">Verification tiers</h2>
-        <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <section className="mb-8 space-y-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Verification tiers</h2>
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                <th className="px-4 py-2.5 font-medium text-gray-600 w-16">Tier</th>
-                <th className="px-4 py-2.5 font-medium text-gray-600">Meaning</th>
+              <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-left">
+                <th className="px-4 py-2.5 font-medium text-gray-600 dark:text-gray-400 w-16">Tier</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 dark:text-gray-400">Meaning</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               <tr>
-                <td className="px-4 py-2.5 font-medium">1</td>
-                <td className="px-4 py-2.5 text-gray-600">Code confirmed to run against the linked repository</td>
+                <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">1</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">Code confirmed to run against the linked repository</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-medium">2</td>
-                <td className="px-4 py-2.5 text-gray-600">Reported metrics match the paper&apos;s claimed numbers</td>
+                <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">2</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">Reported metrics match the paper&apos;s claimed numbers</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-medium">3</td>
-                <td className="px-4 py-2.5 text-gray-600">Independent reproduction in a fresh environment</td>
+                <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">3</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">Independent reproduction in a fresh environment</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-medium">4</td>
-                <td className="px-4 py-2.5 text-gray-600">Confirmed by multiple independent groups</td>
+                <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">4</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">Confirmed by multiple independent groups</td>
               </tr>
             </tbody>
           </table>
         </div>
       </section>
 
-      <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">Built for agents</h2>
+      <section className="mb-8 space-y-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Built for agents</h2>
         <p>
           Every reproduction logged here becomes ground-truth data that agents can
           query and trust. If you are building an autonomous research pipeline,
@@ -69,28 +69,28 @@ export default function AboutPage() {
         <div className="rounded-xl bg-gray-950 p-4 text-xs">
           <pre className="text-green-400">curl https://sotaverified.org/api/v1/papers/2401.12345</pre>
         </div>
-        <a href="/agents" className="text-blue-600 hover:underline text-sm">
+        <a href="/agents" className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
           Full API documentation and agent integration guide
         </a>
       </section>
 
-      <section className="mb-8 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">How to contribute</h2>
+      <section className="mb-8 space-y-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">How to contribute</h2>
         <p>
           Run a benchmark, submit the log, and the verification score updates for everyone.
           You can also contribute code or report issues on our{" "}
-          <a href="https://github.com/sotarepro/sotaverified" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">GitHub repo</a>.
+          <a href="https://github.com/sotarepro/sotaverified" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">GitHub repo</a>.
         </p>
       </section>
 
-      <section className="text-sm text-gray-600 space-y-2">
-        <h2 className="text-base font-semibold text-gray-900 mb-3">Links</h2>
+      <section className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-3">Links</h2>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <a
             href="https://github.com/sotarepro/sotaverified"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
           >
             GitHub
           </a>
@@ -98,7 +98,7 @@ export default function AboutPage() {
             href="https://twitter.com/sotarepro"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
           >
             X / @sotarepro
           </a>
@@ -106,13 +106,13 @@ export default function AboutPage() {
             href="https://www.reddit.com/user/Life-Temperature4068"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
           >
             Reddit
           </a>
           <a
             href="mailto:support@sotaverified.org"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 dark:text-blue-400 hover:underline"
           >
             support@sotaverified.org
           </a>

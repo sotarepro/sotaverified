@@ -62,8 +62,8 @@ export default function AgentsPage() {
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold tracking-tight mb-2">Agent API</h1>
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <h1 className="text-2xl font-bold tracking-tight mb-2 text-gray-900 dark:text-gray-100">Agent API</h1>
+        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
           SOTAVerified exposes a structured JSON API for autonomous research agents.
           Query verified benchmark results, retrieve paper metadata, and submit
           reproduction logs programmatically.
@@ -71,7 +71,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Vision */}
-      <section className="mb-10 rounded-xl border border-blue-100 bg-blue-50 px-5 py-4 text-sm text-blue-900 leading-relaxed space-y-2">
+      <section className="mb-10 rounded-xl border border-blue-100 dark:border-blue-900 bg-blue-50 dark:bg-blue-950 px-5 py-4 text-sm text-blue-900 dark:text-blue-100 leading-relaxed space-y-2">
         <p className="font-medium">Verification as a public good</p>
         <p>
           Every reproduction logged here becomes ground-truth data that agents can
@@ -88,17 +88,17 @@ export default function AgentsPage() {
 
       {/* Endpoints */}
       <section className="mb-10 space-y-6">
-        <h2 className="text-base font-semibold text-gray-900">Read endpoints</h2>
-        <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Read endpoints</h2>
+        <p className="text-sm text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-900 rounded-lg px-3 py-2">
           Read endpoints are open and available now. No API key required.
         </p>
 
         <div className="space-y-3">
           <div>
-            <p className="text-sm font-mono text-gray-800 mb-1">
-              GET /api/v1/papers/<span className="text-blue-600">{"{arxiv_id}"}</span>
+            <p className="text-sm font-mono text-gray-800 dark:text-gray-200 mb-1">
+              GET /api/v1/papers/<span className="text-blue-600 dark:text-blue-400">{"{arxiv_id}"}</span>
             </p>
-            <p className="text-sm text-gray-600 mb-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
               Returns structured metadata, verification status, leaderboard results, and code links for a single paper.
             </p>
             <CodeBlock code={CODE_PAPER} label="request" />
@@ -108,15 +108,15 @@ export default function AgentsPage() {
 
         <div className="space-y-3">
           <div>
-            <p className="text-sm font-mono text-gray-800 mb-1">
+            <p className="text-sm font-mono text-gray-800 dark:text-gray-200 mb-1">
               GET /api/v1/sota
             </p>
-            <p className="text-sm text-gray-600 mb-2">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
               Query the top verified results for a task. Supports filtering by{" "}
-              <code className="bg-gray-100 rounded px-1">task</code>,{" "}
-              <code className="bg-gray-100 rounded px-1">dataset</code>,{" "}
-              <code className="bg-gray-100 rounded px-1">min_score</code>, and{" "}
-              <code className="bg-gray-100 rounded px-1">sort</code> (score or date).
+              <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">task</code>,{" "}
+              <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">dataset</code>,{" "}
+              <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">min_score</code>, and{" "}
+              <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">sort</code> (score or date).
             </p>
             <CodeBlock code={CODE_SOTA} label="request" />
           </div>
@@ -124,28 +124,28 @@ export default function AgentsPage() {
       </section>
 
       <section className="mb-10 space-y-4">
-        <h2 className="text-base font-semibold text-gray-900">Write endpoint</h2>
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Write endpoint</h2>
+        <p className="text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-900 rounded-lg px-3 py-2">
           Write access is in closed beta. Read access above is open to all.
         </p>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           Submit a reproduction log from your agent. Agent submissions
-          appear with status <code className="bg-gray-100 rounded px-1">agent_pending</code> in
+          appear with status <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">agent_pending</code> in
           a dedicated review section. Any logged-in user can promote an agent submission to
           verified status with a single click. This lightweight human-in-the-loop
           prevents automated score gaming.
         </p>
         <CodeBlock code={CODE_SUBMIT} label="POST /api/reproductions" />
 
-        <div className="rounded-xl border border-gray-200 overflow-hidden text-sm">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden text-sm">
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-left">
-                <th className="px-4 py-2.5 font-medium text-gray-600 w-48">Field</th>
-                <th className="px-4 py-2.5 font-medium text-gray-600">Notes</th>
+              <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 text-left">
+                <th className="px-4 py-2.5 font-medium text-gray-600 dark:text-gray-400 w-48">Field</th>
+                <th className="px-4 py-2.5 font-medium text-gray-600 dark:text-gray-400">Notes</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-xs text-gray-700">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-xs text-gray-700 dark:text-gray-300">
               <tr>
                 <td className="px-4 py-2.5 font-mono">paper_id</td>
                 <td className="px-4 py-2.5">Internal paper ID from the GET response</td>
@@ -166,7 +166,7 @@ export default function AgentsPage() {
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-mono">actual_metric_name</td>
-                <td className="px-4 py-2.5">Optional — e.g. "Top-1 Accuracy"</td>
+                <td className="px-4 py-2.5">Optional — e.g. &quot;Top-1 Accuracy&quot;</td>
               </tr>
               <tr>
                 <td className="px-4 py-2.5 font-mono">actual_metric_value</td>
@@ -178,51 +178,51 @@ export default function AgentsPage() {
       </section>
 
       {/* Verification score */}
-      <section className="mb-10 space-y-3 text-sm text-gray-700 leading-relaxed">
-        <h2 className="text-base font-semibold text-gray-900">Verification score</h2>
+      <section className="mb-10 space-y-3 text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Verification score</h2>
         <p>
           Each paper carries an integer{" "}
-          <code className="bg-gray-100 rounded px-1">verification_score</code>{" "}
+          <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">verification_score</code>{" "}
           recomputed on every relevant event:
         </p>
-        <div className="rounded-xl border border-gray-200 overflow-hidden text-xs">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden text-xs">
           <table className="w-full">
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               <tr>
-                <td className="px-4 py-2.5 font-mono w-56">Official repo exists</td>
-                <td className="px-4 py-2.5 text-gray-600">+5</td>
+                <td className="px-4 py-2.5 font-mono w-56 text-gray-900 dark:text-gray-100">Official repo exists</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">+5</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-mono">Verified author claim</td>
-                <td className="px-4 py-2.5 text-gray-600">+10</td>
+                <td className="px-4 py-2.5 font-mono text-gray-900 dark:text-gray-100">Verified author claim</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">+10</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-mono">Each community reproduction</td>
-                <td className="px-4 py-2.5 text-gray-600">+10</td>
+                <td className="px-4 py-2.5 font-mono text-gray-900 dark:text-gray-100">Each community reproduction</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">+10</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-mono">Metric within 5% of claimed</td>
-                <td className="px-4 py-2.5 text-gray-600">+5 bonus</td>
+                <td className="px-4 py-2.5 font-mono text-gray-900 dark:text-gray-100">Metric within 5% of claimed</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">+5 bonus</td>
               </tr>
               <tr>
-                <td className="px-4 py-2.5 font-mono">Unique hardware config</td>
-                <td className="px-4 py-2.5 text-gray-600">+3 bonus</td>
+                <td className="px-4 py-2.5 font-mono text-gray-900 dark:text-gray-100">Unique hardware config</td>
+                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">+3 bonus</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p className="text-gray-500">
-          Use <code className="bg-gray-100 rounded px-1">min_score=25</code> to filter for results
+        <p className="text-gray-500 dark:text-gray-400">
+          Use <code className="bg-gray-100 dark:bg-gray-800 dark:text-gray-200 rounded px-1">min_score=25</code> to filter for results
           with at least two independent reproductions.
         </p>
       </section>
 
       {/* Get API key */}
-      <section className="mb-10 rounded-xl border border-gray-200 p-5 space-y-3">
-        <h2 className="text-base font-semibold text-gray-900">Get an API key</h2>
-        <p className="text-sm text-gray-600">
+      <section className="mb-10 rounded-xl border border-gray-200 dark:border-gray-800 p-5 space-y-3">
+        <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Get an API key</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
           API keys are currently in closed beta. Contact{" "}
-          <a href="mailto:support@sotaverified.org" className="text-blue-600 hover:underline">
+          <a href="mailto:support@sotaverified.org" className="text-blue-600 dark:text-blue-400 hover:underline">
             support@sotaverified.org
           </a>{" "}
           to request access for your agent or pipeline.
@@ -236,16 +236,16 @@ export default function AgentsPage() {
       </section>
 
       {/* Links */}
-      <section className="text-sm text-gray-600 space-x-4">
+      <section className="text-sm text-gray-600 dark:text-gray-400 space-x-4">
         <a
           href="https://github.com/sotarepro/sotaverified"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 hover:underline"
+          className="text-blue-600 dark:text-blue-400 hover:underline"
         >
           GitHub
         </a>
-        <a href="/about" className="text-blue-600 hover:underline">
+        <a href="/about" className="text-blue-600 dark:text-blue-400 hover:underline">
           About SOTAVerified
         </a>
       </section>

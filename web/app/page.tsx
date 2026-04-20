@@ -95,27 +95,27 @@ export default async function HomePage({
   return (
     <div>
       {/* Hero */}
-      <div className="py-6 mb-6 border-b border-gray-100">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
+      <div className="py-6 mb-6 border-b border-gray-100 dark:border-gray-800">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-2">
           The Open Verification Layer for ML Research
         </h1>
-        <p className="text-gray-500 text-sm mb-4 max-w-xl">
+        <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 max-w-xl">
           Community benchmark tracking and reproducibility verification.
           Built for researchers and autonomous research agents.
         </p>
 
         {/* Stat bar */}
-        <div className="flex flex-wrap gap-4 mb-5 text-xs text-gray-500">
+        <div className="flex flex-wrap gap-4 mb-5 text-xs text-gray-500 dark:text-gray-400">
           <span>
-            <span className="font-semibold text-gray-800">{stats.paper_count.toLocaleString()}</span>{" "}
+            <span className="font-semibold text-gray-800 dark:text-gray-200">{stats.paper_count.toLocaleString()}</span>{" "}
             papers
           </span>
           <span>
-            <span className="font-semibold text-gray-800">{stats.code_links_count.toLocaleString()}</span>{" "}
+            <span className="font-semibold text-gray-800 dark:text-gray-200">{stats.code_links_count.toLocaleString()}</span>{" "}
             code links
           </span>
           <span>
-            <span className="font-semibold text-gray-800">{stats.task_count.toLocaleString()}</span>{" "}
+            <span className="font-semibold text-gray-800 dark:text-gray-200">{stats.task_count.toLocaleString()}</span>{" "}
             tasks
           </span>
         </div>
@@ -136,10 +136,10 @@ export default async function HomePage({
       {/* Area cards grid */}
       <div id="browse" className="scroll-mt-16">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             Browse by Research Area
           </h2>
-          <Link href="/tasks" className="text-xs text-blue-600 hover:underline">
+          <Link href="/tasks" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
             View All Tasks →
           </Link>
         </div>
