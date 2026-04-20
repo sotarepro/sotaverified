@@ -50,6 +50,12 @@ reported results actually reproduce — for humans and autonomous agents alike.
 - Stage 3-discover ✅ DONE — repo_discover_hf.py (Hugging Face Papers API),
   repo_discover_abstracts.py (abstract regex extraction); auto-discovers
   GitHub repos for papers without code links; 11,095 repos from abstracts alone
+- Stage 3-perf ✅ DONE — robots.txt throttling (Crawl-delay: 10, SEO bot blocks);
+  paper pages refactored to ISR-cacheable static shell (revalidate=86400,
+  s-maxage=86400); /api/me/paper-state endpoint + usePaperState hook move
+  user-specific UI (hype, author claim, repro/author form gating, agent promote)
+  into client components; eliminates per-request DB queries and serverless
+  invocations for bot/crawler hits on /papers/[id]
 
 ---
 
@@ -260,6 +266,36 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
 - Indexes: idx_tasks_area, paper_tasks_pkey (paper_id, task_id), paper_tasks_task_idx,
   idx_papers_recent_sort, idx_papers_hype_score, idx_papers_verification_score,
   activity_log_created_at_idx, idx_activity_log_paper_id
+
+### ISR + Client Session Pattern (paper pages)
+- `/papers/[id]` is ISR-cached: `export const revalidate = 86400`,
+  `dynamic = "force-static"`, `generateStaticParams = async () => []`
+- Server component renders only public data (title, abstract, benchmarks,
+  badge, code links, agent repros); does NOT call `getEffectiveSession()`
+- User-specific state comes from `GET /api/me/paper-state?paper_id=X` →
+  `{logged_in, upvoted, claim}` — fetched client-side via `usePaperState(paperId)`
+  hook in `lib/use-paper-state.ts` (module-level Promise cache, one fetch per
+  paper per session; `invalidatePaperState(paperId)` busts on mutations)
+- Client components driving user UI: `UpvoteButton`, `AuthorClaimButton`,
+  `AuthorVerifiedCTA` (swaps CTA copy for verified authors), `PaperReproSection`
+  (gates `ReproductionForm` vs `AuthorBenchmarkForm` by claim status),
+  `PromoteButton` (self-gates on `useSession`)
+- Cache-Control served to browser: `s-maxage=86400, stale-while-revalidate=31449600`
+- Verified locally via `next start`: first hit = cache MISS, second hit =
+  `x-nextjs-cache: HIT`
+- Gotcha: `layout.tsx` reads `cookies()` when `isTestToolsEnabled()` is true
+  (dev OR `ENABLE_TEST_TOOLS=true`), which forces every page dynamic. In
+  production `ENABLE_TEST_TOOLS` must be unset for ISR to activate — the
+  existing rule "NEVER enable test tools in production" already covers this,
+  but it's now load-bearing for caching, not just for safety.
+- Gotcha: `ReproductionList` previously relied on `key={Date.now()}` from the
+  server page to remount after submit. With ISR the server render is cached,
+  so `PaperReproSection` now owns a `reproVersion` state that increments via
+  `ReproductionForm`'s `onSubmitted` callback to force remount.
+
+### Bot Throttling
+- `web/public/robots.txt` — Crawl-delay: 10, Disallow /api/ and /admin/;
+  full Disallow for AhrefsBot, SemrushBot, DotBot, MJ12bot (zero-value SEO crawlers)
 
 ### Data Cleanup Scripts
 - `scripts/clean_methods_spam.py` — removes SEO spam from methods table (phone numbers,
@@ -574,6 +610,13 @@ Playwright + Chromium against localhost:3000. Requires dev server running.
 ## Parking Lot
 
 **High impact — build when there's traction:**
+- Extend ISR pattern to `/`, `/tasks`, `/tasks/[id]`: same refactor shape as
+  paper pages — remove `getEffectiveSession()` from the server component,
+  move user-specific hype-heart state into client components backed by a
+  `/api/me/*` endpoint. Homepage and tasks index have user-specific tab/pagination
+  state in URL that complicates full static caching; consider `unstable_cache`
+  around query functions as a lower-risk alternative that cuts DB egress without
+  eliminating function invocations.
 - Code links display — official vs community implementations:
   Many popular papers have community code links from other teams
   that built on or reimplemented the work. These show alongside
