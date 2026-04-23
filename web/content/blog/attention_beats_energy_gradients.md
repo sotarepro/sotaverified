@@ -1,6 +1,6 @@
 ---
 title: "Attention Beats Energy Gradients"
-date: "2026-04-22"
+date: "2026-04-23"
 excerpt: "A controlled comparison of URM-style transformer recurrence versus EBT-style MCMC refinement in shared hidden space on ARC-AGI. At matched compute, each transformer pass is a decisively better refinement step than each energy-gradient step. First-order trajectory ranking fails across five distinct failure modes. Second-order MCMC produces a correct energy landscape whose gradients don't improve decoding."
 author: "David Colmenares"
 tags: ["urm", "energy-based-models", "arc-agi", "recurrence", "refinement", "experiments"]
