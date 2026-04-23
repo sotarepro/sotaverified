@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { getAllPosts, getPostBySlug } from "@/lib/blog";
 
 type Props = {
@@ -78,8 +79,19 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
         )}
 
-        <div className="prose prose-sm prose-gray dark:prose-invert max-w-none leading-relaxed">
-          <ReactMarkdown>{post.content}</ReactMarkdown>
+        <div className="prose prose-sm prose-gray dark:prose-invert max-w-none leading-relaxed blog-content">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              table: ({ node: _node, ...props }) => (
+                <div className="overflow-x-auto -mx-1 my-6">
+                  <table {...props} />
+                </div>
+              ),
+            }}
+          >
+            {post.content}
+          </ReactMarkdown>
         </div>
       </article>
     </div>

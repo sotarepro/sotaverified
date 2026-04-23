@@ -25,3 +25,50 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Blog markdown tables (GFM) */
+.blog-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.blog-content thead {
+  border-bottom: 1px solid rgb(209 213 219); /* gray-300 */
+}
+
+.blog-content th {
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: rgb(17 24 39); /* gray-900 */
+  white-space: nowrap;
+}
+
+.blog-content td {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid rgb(229 231 235); /* gray-200 */
+  color: rgb(55 65 81); /* gray-700 */
+  vertical-align: top;
+}
+
+.blog-content tbody tr:nth-child(even) td {
+  background-color: rgb(249 250 251); /* gray-50 */
+}
+
+@media (prefers-color-scheme: dark) {
+  .blog-content thead {
+    border-bottom-color: rgb(55 65 81); /* gray-700 */
+  }
+  .blog-content th {
+    color: rgb(243 244 246); /* gray-100 */
+  }
+  .blog-content td {
+    border-top-color: rgb(31 41 55); /* gray-800 */
+    color: rgb(209 213 219); /* gray-300 */
+  }
+  .blog-content tbody tr:nth-child(even) td {
+    background-color: rgb(17 24 39 / 0.4); /* gray-900/40 */
+  }
+}
