@@ -38,19 +38,31 @@ export default async function sitemap({
   if (chunkId === 0) return getStaticEntries();
 
   const offset = (chunkId - 1) * PAPER_CHUNK_SIZE;
-  const papers = await getSitemapPaperChunk(offset, PAPER_CHUNK_SIZE);
-  return papers.map((p) => ({
-    url: `${BASE_URL}/papers/${p.id}`,
-    lastModified: p.updated_at,
-  }));
+  try {
+    const papers = await getSitemapPaperChunk(offset, PAPER_CHUNK_SIZE);
+    return papers.map((p) => ({
+      url: `${BASE_URL}/papers/${p.id}`,
+      lastModified: p.updated_at,
+    }));
+  } catch (err) {
+    // DB unavailable at build/revalidate time — degrade to an empty chunk
+    // rather than failing the whole build; next 24h revalidation retries.
+    console.error(`sitemap: getSitemapPaperChunk failed for chunk ${chunkId}`, err);
+    return [];
+  }
 }
 
 async function getStaticEntries(): Promise<MetadataRoute.Sitemap> {
-  const [areas, tasks, posts] = await Promise.all([
-    getAreaSummaries(),
-    getSitemapTaskIds(),
-    Promise.resolve(getAllPosts()),
-  ]);
+  let areas: Awaited<ReturnType<typeof getAreaSummaries>> = [];
+  let tasks: Awaited<ReturnType<typeof getSitemapTaskIds>> = [];
+  const posts = getAllPosts();
+  try {
+    [areas, tasks] = await Promise.all([getAreaSummaries(), getSitemapTaskIds()]);
+  } catch (err) {
+    // DB unavailable at build/revalidate time — degrade to static-only pages
+    // (nav/about/blog) rather than failing the whole build.
+    console.error("sitemap: getStaticEntries DB queries failed, falling back to static-only pages", err);
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "daily", priority: 1 },
