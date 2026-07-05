@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signIn, signInAsAdmin, signInAsTestUser, ensureTestData, signOut } from "./helpers/auth";
+import { signIn, signInAsAdmin, signInAsTestUser, ensureTestData, resetTestData, signOut } from "./helpers/auth";
 
 const BASE = "http://localhost:3000";
 
@@ -10,11 +10,23 @@ const BASE = "http://localhost:3000";
 test.describe("Author claim scoping", () => {
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
+    // signInAsTestUser aliases the same admin account used across spec
+    // files — reset first so an earlier file's leftover claim on
+    // test_basic/test_full doesn't leak into this file's "fresh claim"
+    // assertions.
+    await resetTestData(page);
     await ensureTestData(page);
     await page.close();
   });
 
-  test("claim on paper A pending, reject A → paper B still pending", async ({ page }) => {
+  // This test's whole premise (claim → pending_admin → reject) requires the
+  // claim-author route's contributor check to be active. It's currently
+  // bypassed: app/api/papers/[id]/claim-author/route.ts hardcodes
+  // SKIP_CONTRIBUTOR_CHECK = true (auto-approve-everyone, per CLAUDE.md's
+  // launch-phase decision), so claims resolve to 'verified' immediately and
+  // never reach a 'pending' state to reject. Re-enable once
+  // SKIP_CONTRIBUTOR_CHECK is flipped back to false.
+  test.skip("claim on paper A pending, reject A → paper B still pending", async ({ page }) => {
     // Sign in as test_user and attempt claims on two papers
     await signInAsTestUser(page);
 

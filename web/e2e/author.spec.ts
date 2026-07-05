@@ -1,9 +1,14 @@
 import { test, expect } from "@playwright/test";
-import { signInAsAdmin, signInAsTestUser, signInAsTestAuthor, ensureTestData, signOut } from "./helpers/auth";
+import { signInAsAdmin, signInAsTestUser, signInAsTestAuthor, ensureTestData, resetTestData, signOut } from "./helpers/auth";
 
 test.describe("Persona 3 — Author flow", () => {
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
+    // signInAsTestUser aliases the same admin account used across spec
+    // files — reset first so an earlier file's leftover claim on
+    // test_basic/test_full doesn't leak into this file's "fresh claim"
+    // assertions.
+    await resetTestData(page);
     await ensureTestData(page);
     await page.close();
   });
@@ -21,7 +26,14 @@ test.describe("Persona 3 — Author flow", () => {
     await expect(page.getByText("Sign in to claim authorship")).toBeVisible();
   });
 
-  test("paper with no code repo shows repo URL field on claim form", async ({ page }) => {
+  // These two tests assert on the pre-claim repo-URL-input flow, which only
+  // exists when the claim-author route's contributor check is active. That
+  // check is currently bypassed: app/api/papers/[id]/claim-author/route.ts
+  // hardcodes SKIP_CONTRIBUTOR_CHECK = true (auto-approve-everyone, per
+  // CLAUDE.md's launch-phase decision), so every claim returns 'verified'
+  // immediately and AuthorClaimButton never renders a pre-claim repo input.
+  // Re-enable once SKIP_CONTRIBUTOR_CHECK is flipped back to false.
+  test.skip("paper with no code repo shows repo URL field on claim form", async ({ page }) => {
     await signInAsTestUser(page);
     await page.goto("/papers/test_basic");
 
@@ -31,7 +43,7 @@ test.describe("Persona 3 — Author flow", () => {
     await signOut(page);
   });
 
-  test("author claim with repo URL: auto-approved and repo linked", async ({ page }) => {
+  test.skip("author claim with repo URL: auto-approved and repo linked", async ({ page }) => {
     await signInAsTestUser(page);
     await page.goto("/papers/test_basic");
 

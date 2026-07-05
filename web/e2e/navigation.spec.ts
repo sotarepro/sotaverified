@@ -60,6 +60,6 @@ test.describe("Persona 1 — Static pages and navigation", () => {
 
   test("profile page renders for existing user", async ({ page }) => {
     await page.goto("/profile/uberdavid-bot");
-    await expect(page.getByText("uberdavid-bot")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "uberdavid-bot" })).toBeVisible();
   });
 });

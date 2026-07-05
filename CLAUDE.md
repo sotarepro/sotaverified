@@ -345,8 +345,18 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
 ### Tables added in launch sprint
 - `users` — github_id TEXT PK, username, email, avatar_url, account_created_at,
   is_flagged_new_account BOOLEAN DEFAULT false, reputation_score INT DEFAULT 0,
-  is_test BOOLEAN DEFAULT false, is_system BOOLEAN DEFAULT false, created_at
+  is_test BOOLEAN DEFAULT false, is_system BOOLEAN DEFAULT false, created_at,
+  display_name TEXT, bio TEXT, company TEXT, location TEXT (all nullable, no default)
   - `is_system=true` for pwc-import-bot (excluded from leaderboard/profiles)
+  - **Schema drift — resolved 2026-07-04:** `lib/auth.ts`, `app/leaderboard/page.tsx`,
+    `app/admin/page.tsx`, and `app/profile/[username]/page.tsx` all read/write
+    `display_name`, `bio`, `company`, `location` columns on `users`. These columns
+    existed on Railway prod (confirmed via prod `\d users`) but were missing from
+    the local dev DB (`pwc`), causing `/leaderboard`, `/admin`, and
+    `/profile/[username]` to 500 locally (22 Playwright failures, all traced to
+    this one cause). Fixed via `ALTER TABLE users ADD COLUMN IF NOT EXISTS
+    display_name/bio/company/location text` against local `pwc` — local now
+    matches prod.
 - `upvotes` — paper_id, user_id, created_at (UNIQUE paper_id+user_id)
 - `reproductions` — id SERIAL PK, paper_id, user_id, tier_claimed (1-3),
   hardware_spec, run_log_url (nullable), notes, upvote_count INT DEFAULT 0,
@@ -356,7 +366,20 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
 - `reproduction_flags` — reproduction_id, user_id (UNIQUE)
 - `reproduction_upvotes` — reproduction_id, user_id (UNIQUE)
 - `paper_authors` — paper_id, user_id, verified BOOLEAN, verified_at,
-  verification_method TEXT, status TEXT (verified/pending_admin)
+  verification_method TEXT, status TEXT (verified/pending_admin),
+  admin_reviewed BOOLEAN DEFAULT false (nullable)
+  - **Schema drift — resolved 2026-07-04:** `app/admin/page.tsx` and
+    `app/api/admin/paper-authors/[paperId]/[userId]/route.ts` read/write
+    `admin_reviewed` on `paper_authors`, which existed on Railway prod
+    (confirmed via prod `\d paper_authors`: boolean, nullable, default false)
+    but was missing locally — same direction as the `users` drift above, found
+    right after fixing it. Caused `/admin` to 500 locally, cascading into 11 of
+    13 remaining Playwright failures (admin page tests + claim-author flows
+    that touch `paper_authors`). Fixed via `ALTER TABLE paper_authors ADD
+    COLUMN IF NOT EXISTS admin_reviewed boolean DEFAULT false` against local
+    `pwc` — local now matches prod. Given two drift instances found in one
+    session, local `pwc` schema should be diffed against prod wholesale before
+    the next work session, rather than fixing columns one 500 at a time.
 - `activity_log` — id BIGSERIAL PK, event_type, user_id (FK SET NULL),
   paper_id (FK SET NULL), metadata JSONB, created_at
 - `api_keys` — id SERIAL PK, user_id FK CASCADE, key_hash TEXT (SHA-256),
@@ -498,6 +521,29 @@ All DB/auth/API mocked, no external deps.
 
 ### E2E Tests (`npm run test:e2e`) — 75 tests, 14 spec files
 Playwright + Chromium against localhost:3000. Requires dev server running.
+(Note: this count is stale — the suite has grown to 26 spec files/~114 tests
+since this section was last updated; not reconciled below, out of scope of
+the 2026-07-04/05 sitemap work that found the issues below.)
+
+**Known gaps found 2026-07-04/05, not yet resolved:**
+- `signInAsTestUser()` in `e2e/helpers/auth.ts` is a literal alias for
+  `signInAsAdmin()` — both sign in as `ADMIN_GITHUB_ID`. Every spec file that
+  calls it shares one real identity, not a distinct persona. Combined with
+  `seed-test-data` permanently marking that same account as verified author of
+  `test_full`, this can leak claim state across spec files that assume a fresh
+  identity. `resetTestData()` does NOT clean this up — its deletion scope is
+  `WHERE user_id IN (SELECT github_id FROM users WHERE is_test = true)`, and
+  the admin account has `is_test = false` by design. Fixing this properly
+  means either giving specs distinct test-user personas or accepting the
+  shared-identity model and writing specs accordingly — not done, needs a
+  decision.
+- 3 tests are `test.skip()`'d in `author.spec.ts` and
+  `author-claim-scoping.spec.ts` — they assert on the claim-author route's
+  contributor-check path (`pending`/`no_repo` statuses, a pre-claim repo-URL
+  input), which is dead code while `SKIP_CONTRIBUTOR_CHECK = true` in
+  `app/api/papers/[id]/claim-author/route.ts` (see Design Decisions →
+  Access Model & Thresholds). Re-enable these tests when that flag flips back
+  to `false`.
 
 - `e2e/homepage.spec.ts` — hero, stats, 5 tabs, pagination, area cards (7 tests)
 - `e2e/paper-detail.spec.ts` — title, badge, CTA, code repos, benchmarks, arXiv, tasks (13 tests)

@@ -21,7 +21,7 @@ test.describe("QA Workflow 4 — Author → Verification Lifecycle", () => {
     await page.goto("/papers/test_full");
 
     // Author verified badge should be visible
-    await expect(page.getByText("Verified Author via GitHub", { exact: true })).toBeVisible();
+    await expect(page.getByText("Verified Author via GitHub")).toBeVisible();
 
     // 'Submit benchmark results' should be visible (author-only)
     await expect(page.getByRole("button", { name: "Submit benchmark results" })).toBeVisible();

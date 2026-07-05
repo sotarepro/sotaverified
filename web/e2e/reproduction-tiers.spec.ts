@@ -44,17 +44,19 @@ test.describe("Reproduction tier-specific behavior", () => {
     const modelInput = page.locator("input[placeholder*='ResNet']");
     await expect(modelInput).toBeVisible();
 
-    // Dataset: dropdown from existing benchmarks should be visible
-    const datasetSelect = page.locator("select").nth(1);
-    await expect(datasetSelect).toBeVisible();
+    // Dataset: searchable combobox — focusing it with no query shows the
+    // paper's existing benchmark datasets as default suggestions
+    const datasetInput = page.locator("input[placeholder*='Search datasets']");
+    await expect(datasetInput).toBeVisible();
+    await datasetInput.click();
 
-    // Select CIFAR dataset
-    const opts = await datasetSelect.locator("option").allTextContents();
-    const cifarOpt = opts.find((o) => o.includes("CIFAR"));
-    if (cifarOpt) {
-      await datasetSelect.selectOption({ label: cifarOpt });
+    // Select CIFAR dataset from the suggestion list
+    const cifarOption = page.locator("li button", { hasText: "CIFAR" }).first();
+    if (await cifarOption.count() > 0) {
+      await cifarOption.click();
+      await expect(page.getByText(/^Selected: CIFAR/)).toBeVisible();
 
-      // Metric value field should appear
+      // Metric value field should appear (paper has a matching benchmark)
       const metricInput = page.locator("input[type='number']").first();
       await expect(metricInput).toBeVisible();
     }

@@ -14,8 +14,8 @@ test.describe("Persona 4 — Admin", () => {
     await expect(page.locator("h1")).toContainText(/admin/i);
     // Activity feed section
     await expect(page.getByRole("heading", { name: /Activity Feed/ })).toBeVisible();
-    // Pending author claims section
-    await expect(page.getByRole("heading", { name: /Pending Author Claims/ })).toBeVisible();
+    // Author claims section
+    await expect(page.getByRole("heading", { name: /Author Claims/ })).toBeVisible();
     // Agent submissions section
     await expect(page.getByRole("heading", { name: /Agent Submissions/ })).toBeVisible();
   });
