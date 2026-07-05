@@ -158,10 +158,10 @@ def insert_papers(conn, records: list[dict]) -> int:
             """
             INSERT INTO papers
               (id, arxiv_id, title, abstract, authors, published,
-               url_abs, url_pdf, tasks, methods, verification)
+               url_abs, url_pdf, tasks, verification)
             VALUES
               (%s, %s, %s, %s, %s, %s,
-               %s, %s, '{}', '{}', 'unverified')
+               %s, %s, '{}', 'unverified')
             ON CONFLICT (arxiv_id) DO NOTHING
             """,
             (
