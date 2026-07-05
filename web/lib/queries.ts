@@ -696,22 +696,15 @@ export async function getPaperBenchmarks(paperId: string): Promise<{
 /**
  * Papers worth indexing in the sitemap: at least one code link, leaderboard
  * result, reproduction, or hype/activity signal. Excludes bare arXiv stubs
- * with no verifiable content.
+ * with no verifiable content. Backed by the precomputed sitemap_papers
+ * table (see scripts/refresh_sitemap_papers.py) rather than a live filter —
+ * the live 6-way EXISTS query took ~31s on prod. `position` is a dense,
+ * stable ordering assigned at refresh time, so chunking is a keyset range
+ * scan on the primary key instead of OFFSET.
  */
-const SITEMAP_PAPER_FILTER = sql`
-  papers.is_test = false AND (
-    EXISTS (SELECT 1 FROM paper_code_links pcl WHERE pcl.paper_id = papers.id)
-    OR EXISTS (SELECT 1 FROM leaderboard_results lr WHERE lr.paper_id = papers.id)
-    OR EXISTS (SELECT 1 FROM reproductions r WHERE r.paper_id = papers.id)
-    OR papers.hype_score > 0
-    OR EXISTS (SELECT 1 FROM upvotes u WHERE u.paper_id = papers.id)
-    OR EXISTS (SELECT 1 FROM activity_log al WHERE al.paper_id = papers.id)
-  )
-`;
-
 export async function getSitemapPaperCount(): Promise<number> {
   const [{ n }] = await sql<{ n: number }[]>`
-    SELECT COUNT(*)::int AS n FROM papers WHERE ${SITEMAP_PAPER_FILTER}
+    SELECT COUNT(*)::int AS n FROM sitemap_papers
   `;
   return n;
 }
@@ -721,10 +714,9 @@ export async function getSitemapPaperChunk(
   limit: number
 ): Promise<{ id: string; updated_at: Date }[]> {
   return sql<{ id: string; updated_at: Date }[]>`
-    SELECT id, updated_at FROM papers
-    WHERE ${SITEMAP_PAPER_FILTER}
-    ORDER BY id
-    LIMIT ${limit} OFFSET ${offset}
+    SELECT paper_id AS id, updated_at FROM sitemap_papers
+    WHERE position > ${offset} AND position <= ${offset + limit}
+    ORDER BY position
   `;
 }
 

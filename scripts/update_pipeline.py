@@ -8,6 +8,8 @@ Runs weekly (or on-demand):
   3. repo_discover_hf     — find repos via HF API for remaining papers
   4. github_enrich        — get star/fork counts for repos
   5. backup               — backup user-generated data
+  6. refresh_sitemap_papers — rebuild the sitemap population table (must run
+     last — it reflects the code links / hype / etc. touched by steps 1-4)
 
 Environment variables (required):
   DATABASE_URL   — Railway PostgreSQL connection string
@@ -83,6 +85,8 @@ def main():
                         help="Repos to enrich with GitHub stars (default: 2000)")
     parser.add_argument("--skip-backup", action="store_true",
                         help="Skip the backup step")
+    parser.add_argument("--skip-sitemap-refresh", action="store_true",
+                        help="Skip the sitemap_papers refresh step")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print what would run without executing")
     args = parser.parse_args()
@@ -131,6 +135,12 @@ def main():
         steps.append((
             "Backup user-generated data",
             [str(SCRIPT_DIR / "backup_reproductions.sh"), db_url],
+        ))
+
+    if not args.skip_sitemap_refresh:
+        steps.append((
+            "Refresh sitemap_papers",
+            [python, str(SCRIPT_DIR / "refresh_sitemap_papers.py"), "--db", db_url],
         ))
 
     results = []

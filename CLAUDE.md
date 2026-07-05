@@ -207,6 +207,8 @@ Steps run in sequence:
 3. `repo_discover_hf.py --limit 2000 --since 2025-01-01` — discover repos via HF API for papers still missing code links (2 req/s)
 4. `github_enrich.py --limit 2000` — fetch star/fork counts from GitHub
 5. `backup_reproductions.sh` — CSV backup of user-generated tables
+6. `refresh_sitemap_papers.py` — rebuild the `sitemap_papers` population
+   table (see Design Decisions → Sitemap); must run last
 
 Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-backup`, `--dry-run`
 
@@ -309,13 +311,54 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
   `sitemap-index.xml` (not `sitemap.xml`) because a folder literally named
   `app/sitemap.xml/` collides with the reserved `app/sitemap.ts` convention path
   and produces a silent "Duplicate page" 500 at build/runtime.
-- Paper inclusion query (`getSitemapPaperCount` / `getSitemapPaperChunk` in
-  `lib/queries.ts`): only papers with ≥1 code link, ≥1 leaderboard result, ≥1
+- Paper inclusion: only papers with ≥1 code link, ≥1 leaderboard result, ≥1
   reproduction, or hype/upvote/activity signal are listed (183,717 of 471,889
-  papers locally). Excluded papers remain fully live at `/papers/[id]` — this
-  only changes what crawlers are pointed at, not what's servable.
+  papers locally as of table creation; 189,075 on prod). Excluded papers
+  remain fully live at `/papers/[id]` — this only changes what crawlers are
+  pointed at, not what's servable.
 - Both the index and chunk routes use `revalidate = 86400` (24h ISR) so repeat
   crawler fetches don't hit the DB.
+- Both routes wrap their DB calls in try/catch and degrade to a static-only
+  (chunk 0) sitemap on failure instead of crashing the whole Vercel build —
+  added 2026-07-05 after a Railway DB restart mid-build failed two deploys in
+  a row (see `railway_resource_limit_deploy_collision` memory / root-cause
+  note below).
+- **`sitemap_papers` population table (added 2026-07-05):** `getSitemapPaperCount`
+  / `getSitemapPaperChunk` in `lib/queries.ts` now read from a precomputed
+  `sitemap_papers` table (`position BIGINT PRIMARY KEY, paper_id TEXT
+  REFERENCES papers(id), updated_at TIMESTAMPTZ`) instead of running the
+  6-way `EXISTS`/hype filter live against `papers`. The live version of that
+  filter took ~31s on prod (~1.9s locally) — `EXPLAIN ANALYZE` showed the
+  `paper_code_links` `EXISTS` subplan running as a per-row correlated lookup
+  (478k loops) rather than the hashed semi-join Postgres used for the other
+  four (smaller) tables, and on prod's resource-constrained instance this was
+  slow enough to time out the `/sitemap/1.xml` build-time prerender.
+  - Refresh: `scripts/refresh_sitemap_papers.py` — `TRUNCATE` + `INSERT ...
+    SELECT row_number() OVER (ORDER BY p.id), p.id, p.updated_at FROM papers
+    JOIN (UNION of paper_code_links/leaderboard_results/reproductions/
+    upvotes/activity_log paper_ids, plus hype_score>0 papers) ...` in one
+    transaction — idempotent, safe to re-run, a failed/killed run rolls back
+    to the prior state (verified). Takes ~8s locally, ~152s on prod (disk
+    I/O bound on the constrained instance) — acceptable since it only runs
+    as part of the periodic pipeline, never per-request.
+  - Wired as the **final** step of `update_pipeline.py` (after backup) via
+    `--skip-sitemap-refresh` to opt out. Must run last since it reflects
+    whatever the arxiv/repo-discovery/enrichment/hype steps just changed.
+  - `getSitemapPaperChunk`'s `offset`/`limit` params now map to a keyset
+    range on `position` (`WHERE position > offset AND position <= offset +
+    limit`) — an indexed PK range scan, not `OFFSET` on `papers`. Verified
+    exact row-for-row match against the old live-filter query at both the
+    first page and a mid-range boundary (offset 50000) before cutover.
+  - Post-fix timing on prod: count query 109ms, one full 50k-row chunk
+    704ms (both previously part of the same ~31s live query).
+  - **Deliberate two-sided migration, not drift:** `CREATE TABLE
+    sitemap_papers` and the first `refresh_sitemap_papers.py` run were
+    applied to both local `pwc` and Railway prod on 2026-07-05, in that
+    order, with the exact same DDL. Unlike the `methods`/`admin_reviewed`
+    drift incidents elsewhere in this doc, this was planned and verified on
+    both hosts in the same session — if a future session finds
+    `sitemap_papers` schema differences between local/prod, that would be
+    real drift to fix, not this migration being incomplete.
 
 ### Data Cleanup Scripts
 - `scripts/clean_methods_spam.py` — removes SEO spam from methods table (phone numbers,
@@ -395,6 +438,11 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
   paper_id (FK SET NULL), metadata JSONB, created_at
 - `api_keys` — id SERIAL PK, user_id FK CASCADE, key_hash TEXT (SHA-256),
   label TEXT, created_at
+- `sitemap_papers` — position BIGINT PK, paper_id TEXT REFERENCES papers(id)
+  ON DELETE CASCADE, updated_at TIMESTAMPTZ. Precomputed sitemap population
+  table, rebuilt by `scripts/refresh_sitemap_papers.py` (see Design
+  Decisions → Sitemap). Added 2026-07-05 on both local `pwc` and Railway
+  prod — deliberate two-sided migration, not drift.
 
 ### Reproduction status lifecycle
 **Human reproductions:**
