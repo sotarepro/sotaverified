@@ -295,7 +295,27 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
 
 ### Bot Throttling
 - `web/public/robots.txt` — Crawl-delay: 10, Disallow /api/ and /admin/;
-  full Disallow for AhrefsBot, SemrushBot, DotBot, MJ12bot (zero-value SEO crawlers)
+  full Disallow for AhrefsBot, SemrushBot, DotBot, MJ12bot (zero-value SEO crawlers);
+  `Sitemap:` line points to `/sitemap-index.xml`
+
+### Sitemap
+- `web/app/sitemap.ts` — `generateSitemaps()` produces chunk id 0 (static pages +
+  area pages + task pages + blog posts, ~4,840 URLs) plus one chunk per 50,000
+  papers (id 1..N). Next.js serves these at `/sitemap/[id].xml` — it does **not**
+  auto-generate an index at `/sitemap.xml` despite doc examples implying otherwise
+  (confirmed empirically: `/sitemap.xml` 404s even with `generateSitemaps` present).
+- `web/app/sitemap-index.xml/route.ts` — hand-written `<sitemapindex>` XML listing
+  all chunk URLs; this is what `robots.txt` actually references. Named
+  `sitemap-index.xml` (not `sitemap.xml`) because a folder literally named
+  `app/sitemap.xml/` collides with the reserved `app/sitemap.ts` convention path
+  and produces a silent "Duplicate page" 500 at build/runtime.
+- Paper inclusion query (`getSitemapPaperCount` / `getSitemapPaperChunk` in
+  `lib/queries.ts`): only papers with ≥1 code link, ≥1 leaderboard result, ≥1
+  reproduction, or hype/upvote/activity signal are listed (183,717 of 471,889
+  papers locally). Excluded papers remain fully live at `/papers/[id]` — this
+  only changes what crawlers are pointed at, not what's servable.
+- Both the index and chunk routes use `revalidate = 86400` (24h ISR) so repeat
+  crawler fetches don't hit the DB.
 
 ### Data Cleanup Scripts
 - `scripts/clean_methods_spam.py` — removes SEO spam from methods table (phone numbers,
@@ -306,7 +326,9 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
 ## Database Schema
 
 ### Core tables (from PWC import)
-- `papers` — 658k rows (575k original + 23k arXiv backfill 2025-07–2026-03)
+- `papers` — 471,889 rows (local dev DB count, verified 2026-07-04 during sitemap audit;
+  prior "658k" figure was from an earlier snapshot and hasn't been re-confirmed against
+  Railway prod — local dev DB may lag production)
   - id TEXT PK, arxiv_id, title, abstract, published DATE, authors TEXT[],
     tasks TEXT[], methods TEXT[], verification verification_tier DEFAULT 'unverified',
     hype_score INT DEFAULT 0, verification_score INT DEFAULT 0, is_test BOOLEAN DEFAULT false

@@ -693,6 +693,47 @@ export async function getPaperBenchmarks(paperId: string): Promise<{
   return rows.map((r) => ({ ...r, model_names: r.model_names ?? [] }));
 }
 
+/**
+ * Papers worth indexing in the sitemap: at least one code link, leaderboard
+ * result, reproduction, or hype/activity signal. Excludes bare arXiv stubs
+ * with no verifiable content.
+ */
+const SITEMAP_PAPER_FILTER = sql`
+  papers.is_test = false AND (
+    EXISTS (SELECT 1 FROM paper_code_links pcl WHERE pcl.paper_id = papers.id)
+    OR EXISTS (SELECT 1 FROM leaderboard_results lr WHERE lr.paper_id = papers.id)
+    OR EXISTS (SELECT 1 FROM reproductions r WHERE r.paper_id = papers.id)
+    OR papers.hype_score > 0
+    OR EXISTS (SELECT 1 FROM upvotes u WHERE u.paper_id = papers.id)
+    OR EXISTS (SELECT 1 FROM activity_log al WHERE al.paper_id = papers.id)
+  )
+`;
+
+export async function getSitemapPaperCount(): Promise<number> {
+  const [{ n }] = await sql<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n FROM papers WHERE ${SITEMAP_PAPER_FILTER}
+  `;
+  return n;
+}
+
+export async function getSitemapPaperChunk(
+  offset: number,
+  limit: number
+): Promise<{ id: string; updated_at: Date }[]> {
+  return sql<{ id: string; updated_at: Date }[]>`
+    SELECT id, updated_at FROM papers
+    WHERE ${SITEMAP_PAPER_FILTER}
+    ORDER BY id
+    LIMIT ${limit} OFFSET ${offset}
+  `;
+}
+
+export async function getSitemapTaskIds(): Promise<{ id: string }[]> {
+  return sql<{ id: string }[]>`
+    SELECT id FROM tasks WHERE is_visible = true ORDER BY id
+  `;
+}
+
 /** Verified metrics from reproductions, grouped by paper+dataset. */
 export async function getVerifiedMetrics(
   paperIds: string[],
