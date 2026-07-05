@@ -15,7 +15,15 @@ const BASE_URL = (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/
 // id 0 = static/task/area/blog entries (small, well under the 50k limit).
 // id 1..N = paper chunks of PAPER_CHUNK_SIZE each.
 export async function generateSitemaps() {
-  const paperCount = await getSitemapPaperCount();
+  let paperCount = 0;
+  try {
+    paperCount = await getSitemapPaperCount();
+  } catch (err) {
+    // DB unavailable at build/revalidate time (e.g. transient Railway restart)
+    // shouldn't fail the whole site build — degrade to static-pages-only
+    // chunk for this cycle; next 24h revalidation will retry.
+    console.error("sitemap: getSitemapPaperCount failed, falling back to chunk 0 only", err);
+  }
   const paperChunks = Math.ceil(paperCount / PAPER_CHUNK_SIZE);
   return Array.from({ length: paperChunks + 1 }, (_, i) => ({ id: i }));
 }

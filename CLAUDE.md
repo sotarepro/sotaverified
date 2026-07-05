@@ -380,6 +380,17 @@ Tuning flags: `--days 14`, `--hf-limit 5000`, `--enrich-limit 5000`, `--skip-bac
     `pwc` — local now matches prod. Given two drift instances found in one
     session, local `pwc` schema should be diffed against prod wholesale before
     the next work session, rather than fixing columns one 500 at a time.
+  - **Schema drift — resolved 2026-07-05 (reverse direction):** `papers.methods`
+    (TEXT[]) exists on local `pwc` but not on Railway prod. `insert_papers()` in
+    `scripts/arxiv_backfill.py` (shared by `arxiv_backfill.py` and
+    `arxiv_delta.py`) inserted into it as a hardcoded `'{}'` literal — never
+    real data — so running `update_pipeline.py` against prod failed with
+    `psycopg2.errors.UndefinedColumn: column "methods" of relation "papers"
+    does not exist`. Fixed by dropping `methods` from the INSERT column list
+    and VALUES entirely (no behavior change; it was always empty). Opposite
+    direction from the drift above: there local was missing columns prod had;
+    here local has a column prod lacks. Confirms the wholesale schema diff
+    flagged above is still outstanding and would have caught this too.
 - `activity_log` — id BIGSERIAL PK, event_type, user_id (FK SET NULL),
   paper_id (FK SET NULL), metadata JSONB, created_at
 - `api_keys` — id SERIAL PK, user_id FK CASCADE, key_hash TEXT (SHA-256),

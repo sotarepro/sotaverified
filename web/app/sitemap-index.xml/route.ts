@@ -9,7 +9,15 @@ const BASE_URL = (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/
 // /sitemap/[id].xml — Next.js does not auto-generate an index file. This
 // route is the actual entry point crawlers/robots.txt should reference.
 export async function GET() {
-  const paperCount = await getSitemapPaperCount();
+  let paperCount = 0;
+  try {
+    paperCount = await getSitemapPaperCount();
+  } catch (err) {
+    // DB unavailable at build/revalidate time (e.g. transient Railway restart)
+    // shouldn't fail the whole site build — degrade to static-pages-only
+    // chunk for this cycle; next 24h revalidation will retry.
+    console.error("sitemap-index: getSitemapPaperCount failed, falling back to chunk 0 only", err);
+  }
   const paperChunks = Math.ceil(paperCount / PAPER_CHUNK_SIZE);
   const chunkIds = Array.from({ length: paperChunks + 1 }, (_, i) => i);
 
