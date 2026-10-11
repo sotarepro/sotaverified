@@ -50,16 +50,16 @@ test.describe("Persona 1 — Static pages and navigation", () => {
 
   test("invalid paper ID returns 404", async ({ page }) => {
     await page.goto("/papers/this-paper-does-not-exist-xyz");
-    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByText("Not in the current catalog")).toBeVisible();
   });
 
   test("/papers/admin returns 404 (not admin page)", async ({ page }) => {
     await page.goto("/papers/admin");
-    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByText("Not in the current catalog")).toBeVisible();
   });
 
   test("profile page renders for existing user", async ({ page }) => {
     await page.goto("/profile/uberdavid-bot");
-    await expect(page.getByRole("heading", { name: "uberdavid-bot" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 });

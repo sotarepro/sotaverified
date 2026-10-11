@@ -74,7 +74,7 @@ test.describe("Persona 2 — Hype flow", () => {
   });
 
   test("unauthenticated user cannot hype (API returns 401)", async ({ page }) => {
-    const res = await page.request.post("http://localhost:3000/api/upvotes", {
+    const res = await page.request.post(`${process.env.E2E_BASE_URL ?? "http://localhost:3000"}/api/upvotes`, {
       data: { paper_id: "attention-is-all-you-need" },
     });
     expect(res.status()).toBe(401);

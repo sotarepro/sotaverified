@@ -1,6 +1,6 @@
 import { type Page, type BrowserContext, expect } from "@playwright/test";
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 const ADMIN_GITHUB_ID = process.env.ADMIN_GITHUB_ID ?? "252498040";
 const ADMIN_USERNAME = "uberdavid-bot";

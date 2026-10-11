@@ -113,7 +113,22 @@ anonymous reads served from Vercel cache so scrapers can't keep the DB awake.
   - Hobby facts (vercel docs, fetched 2026-10-10): Web Analytics 50k events/mo, 1-month window,
     NO custom events (no click tracking); WAF on all plans, 1 rate-limit rule/project (IP or JA4,
     10s–10min window), 3 custom rules total, Bot Protection + AI Bots managed rulesets on all plans.
-- Phase 4: Neon restore + verify, e2e, REVIVAL.md, Vercel preview only.
+- Phase 4 DONE except Vercel preview + user manual steps (2026-10-10/11):
+  - Neon (PG18.6, `C.UTF-8` collation) restored from `sotaverified_trimmed`, `recompute_task_counts.sql` run
+    (1,274 visible / 3,544 hidden tasks); row counts + checksums match trimmed. Prod build + smoke against
+    Neon pooled URL OK; scale-to-zero verified (compute suspends/cold-starts even with idle pooler sessions).
+  - `web/.env.local` holds NEON_DIRECT_URL (restore/scripts) and NEON_POOLED_URL (app runtime); DATABASE_URL
+    stays empty (local trimmed default); override per command only. Never print them.
+  - **GitHub sign-in bug fixed:** GitHub now sends RFC 9207 `iss` on the callback; next-auth 4.24 /
+    openid-client 5.7 failed with `OAuthCallbackError: issuer must be configured on the issuer`. Fix:
+    `issuer: "https://github.com/login/oauth"` on the provider in `lib/auth.ts` (also affects `v1-live`).
+    Verified with real sign-in against Neon; hype/unhype worked; test activity rows removed.
+  - Playwright: specs take `E2E_BASE_URL` (default localhost:3000); run against a dev server on the local
+    trimmed DB (`... next dev --webpack -p 3100`, NEXTAUTH_URL=http://localhost:3100, then
+    `E2E_BASE_URL=http://localhost:3100 npx playwright test`): 111 passed, 3 skipped (pre-existing).
+    404 text is now "Not in the current catalog"; code-repo test uses attention-is-all-you-need.
+  - `REVIVAL.md` written (merge procedure tested; strip `setval` lines).
+  - Vercel preview NOT deployed: no Vercel CLI/link in repo; needs user (push branch / dashboard env vars).
 
 ---
 

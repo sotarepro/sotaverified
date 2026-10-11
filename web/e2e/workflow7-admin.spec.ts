@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 import { signIn, signInAsAdmin, signInAsTestUser, ensureTestData, signOut } from "./helpers/auth";
 
 /**
@@ -16,7 +17,7 @@ test.describe("QA Workflow 7 — Admin Functions", () => {
   test("WF7.4-5: admin removes reproduction via API, then restores it", async ({ page }) => {
     // Create a reproduction as admin (guaranteed to exist in DB)
     await signInAsAdmin(page);
-    const createRes = await page.context().request.post("http://localhost:3000/api/reproductions", {
+    const createRes = await page.context().request.post(`${BASE}/api/reproductions`, {
       data: {
         paper_id: "attention-is-all-you-need",
         tier_claimed: 3,
@@ -27,19 +28,19 @@ test.describe("QA Workflow 7 — Admin Functions", () => {
     const { id: reproId } = await createRes.json();
 
     // Admin removes it
-    const removeRes = await page.context().request.patch(`http://localhost:3000/api/admin/reproductions/${reproId}`, {
+    const removeRes = await page.context().request.patch(`${BASE}/api/admin/reproductions/${reproId}`, {
       data: { action: "remove" },
     });
     expect(removeRes.ok()).toBe(true);
 
     // Admin restores it
-    const restoreRes = await page.context().request.patch(`http://localhost:3000/api/admin/reproductions/${reproId}`, {
+    const restoreRes = await page.context().request.patch(`${BASE}/api/admin/reproductions/${reproId}`, {
       data: { action: "restore" },
     });
     expect(restoreRes.ok()).toBe(true);
 
     // Verify it's back via GET API
-    const listRes = await page.context().request.get("http://localhost:3000/api/reproductions?paper_id=attention-is-all-you-need");
+    const listRes = await page.context().request.get(`${BASE}/api/reproductions?paper_id=attention-is-all-you-need`);
     const repros = await listRes.json();
     const restored = repros.find((r: { id: number }) => r.id === reproId);
     expect(restored).toBeDefined();
@@ -83,16 +84,16 @@ test.describe("QA Workflow 7 — Admin Functions", () => {
     await signInAsAdmin(page);
 
     // First verify test data exists
-    const beforeRes = await page.context().request.get("http://localhost:3000/api/admin/test/users");
+    const beforeRes = await page.context().request.get(`${BASE}/api/admin/test/users`);
     const beforeUsers = await beforeRes.json();
     expect(beforeUsers.length).toBeGreaterThan(0);
 
     // Reset
-    const resetRes = await page.context().request.post("http://localhost:3000/api/admin/test/reset");
+    const resetRes = await page.context().request.post(`${BASE}/api/admin/test/reset`);
     expect(resetRes.ok()).toBe(true);
 
     // Verify test users are gone
-    const afterRes = await page.context().request.get("http://localhost:3000/api/admin/test/users");
+    const afterRes = await page.context().request.get(`${BASE}/api/admin/test/users`);
     const afterUsers = await afterRes.json();
     expect(afterUsers.length).toBe(0);
 

@@ -32,14 +32,14 @@ test.describe("Persona 4 — Admin", () => {
   test("non-admin user gets not-found on /admin", async ({ page }) => {
     await signIn(page, "non_admin_user", "regular_user");
     await page.goto("/admin");
-    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByText("Not in the current catalog")).toBeVisible();
     await signOut(page);
   });
 
   test("unauthenticated gets not-found on /admin", async ({ page }) => {
     await signOut(page);
     await page.goto("/admin");
-    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByText("Not in the current catalog")).toBeVisible();
   });
 
   test("admin test tools visible in dev mode", async ({ page }) => {
