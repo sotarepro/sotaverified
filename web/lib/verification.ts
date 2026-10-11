@@ -1,10 +1,19 @@
 import sql from "./db";
+import { revalidateAfterWrite } from "./cache";
 
 // Recomputes and saves verification_score for a paper.
 // Call this after any event that affects score:
 // - reproduction created/hidden/removed/verified
 // - author claim verified
 export async function recomputeVerificationScore(paperId: string): Promise<number> {
+  const score = await computeAndStoreVerificationScore(paperId);
+  // Every write that changes a paper's badge/score/repros ends here: drop the cached
+  // lists and re-render the statically generated paper page on its next visit.
+  revalidateAfterWrite({ paperId });
+  return score;
+}
+
+async function computeAndStoreVerificationScore(paperId: string): Promise<number> {
   // +5 if any code repo exists (official or community)
   const [repoRow] = await sql<[{ has_repo: boolean }]>`
     SELECT EXISTS(

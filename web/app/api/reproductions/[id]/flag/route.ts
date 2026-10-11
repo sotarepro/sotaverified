@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
@@ -5,7 +6,7 @@ import { logEvent } from "@/lib/activity";
 import { THRESHOLDS } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(
+async function POSTHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -77,3 +78,5 @@ export async function POST(
     return NextResponse.json({ flagged: true, count: r.flag_count, hidden: shouldHide && r.status !== "hidden" });
   }
 }
+
+export const POST = withDbGuard(POSTHandler);

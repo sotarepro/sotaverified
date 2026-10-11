@@ -1,7 +1,16 @@
+# Maintenance mode: keep crawlers off every endpoint that can reach the database.
 User-agent: *
 Crawl-delay: 10
 Disallow: /api/
 Disallow: /admin/
+Disallow: /search
+Disallow: /auth/
+# Filtered / paginated listing variants (each is a distinct server render)
+Disallow: /*?*page=
+Disallow: /*?*pageSize=
+Disallow: /*?*tab=
+Disallow: /*?*sort=
+Disallow: /*?*dataset=
 
 User-agent: AhrefsBot
 Disallow: /

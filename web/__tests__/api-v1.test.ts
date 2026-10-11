@@ -10,6 +10,10 @@ jest.mock("@/lib/db", () => {
   return { __esModule: true, default: sql };
 });
 
+// The route validates the id against the cached catalog index before any keyed query.
+jest.mock("@/lib/queries", () => ({ getPaperIndex: jest.fn() }));
+
+import { getPaperIndex } from "@/lib/queries";
 import { GET } from "@/app/api/v1/papers/[arxiv_id]/route";
 import { NextRequest } from "next/server";
 
@@ -54,6 +58,7 @@ const fakeCodeLinks = [
 describe("GET /api/v1/papers/[arxiv_id]", () => {
   beforeEach(() => {
     mockSql.mockClear();
+    (getPaperIndex as jest.Mock).mockResolvedValue([{ id: "paper-internal-id-42", arxiv_id: "1706.03762" }]);
   });
 
   it("returns structured JSON with required top-level fields", async () => {
@@ -144,8 +149,7 @@ describe("GET /api/v1/papers/[arxiv_id]", () => {
   });
 
   it("returns 404 when paper is not found", async () => {
-    // Paper lookup returns empty array
-    mockSql.mockResolvedValueOnce([]);
+    // Id is not in the cached index: rejected without any DB call
 
     const params = { params: Promise.resolve({ arxiv_id: "0000.00000" }) };
     const res = await GET(makeReq(), params);
@@ -153,8 +157,15 @@ describe("GET /api/v1/papers/[arxiv_id]", () => {
 
     expect(res.status).toBe(404);
     expect(json).toHaveProperty("error");
-    // No further sql calls after empty paper result
-    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
+
+  it("sets CDN cache headers so repeat hits don't reach a function", async () => {
+    mockSql.mockResolvedValueOnce([fakePaper]);
+    mockSql.mockResolvedValueOnce([]);
+    mockSql.mockResolvedValueOnce([]);
+    const res = await GET(makeReq(), { params: Promise.resolve({ arxiv_id: "1706.03762" }) });
+    expect(res.headers.get("cache-control")).toContain("s-maxage");
   });
 
   it("returns empty arrays for leaderboard_results and code_links when none exist", async () => {

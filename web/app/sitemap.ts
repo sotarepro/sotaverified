@@ -7,7 +7,11 @@ import {
 } from "@/lib/queries";
 import { getAllPosts } from "@/lib/blog";
 
-export const revalidate = 86400; // 24h — crawler re-fetches shouldn't hit the DB every time
+// Generated once at build time and served statically: crawler fetches never reach the DB.
+// DB errors are intentionally NOT caught anywhere in this file — if the database is
+// unreachable the build must fail so the previous (complete) deployment stays live,
+// rather than shipping a degraded sitemap. (Reverses the 2026-07-05 try/catch guards.)
+export const revalidate = false;
 
 const PAPER_CHUNK_SIZE = 50000;
 const BASE_URL = (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
@@ -15,15 +19,7 @@ const BASE_URL = (process.env.NEXTAUTH_URL ?? "http://localhost:3000").replace(/
 // id 0 = static/task/area/blog entries (small, well under the 50k limit).
 // id 1..N = paper chunks of PAPER_CHUNK_SIZE each.
 export async function generateSitemaps() {
-  let paperCount = 0;
-  try {
-    paperCount = await getSitemapPaperCount();
-  } catch (err) {
-    // DB unavailable at build/revalidate time (e.g. transient Railway restart)
-    // shouldn't fail the whole site build — degrade to static-pages-only
-    // chunk for this cycle; next 24h revalidation will retry.
-    console.error("sitemap: getSitemapPaperCount failed, falling back to chunk 0 only", err);
-  }
+  const paperCount = await getSitemapPaperCount();
   const paperChunks = Math.ceil(paperCount / PAPER_CHUNK_SIZE);
   return Array.from({ length: paperChunks + 1 }, (_, i) => ({ id: i }));
 }
@@ -38,31 +34,16 @@ export default async function sitemap({
   if (chunkId === 0) return getStaticEntries();
 
   const offset = (chunkId - 1) * PAPER_CHUNK_SIZE;
-  try {
-    const papers = await getSitemapPaperChunk(offset, PAPER_CHUNK_SIZE);
-    return papers.map((p) => ({
-      url: `${BASE_URL}/papers/${p.id}`,
-      lastModified: p.updated_at,
-    }));
-  } catch (err) {
-    // DB unavailable at build/revalidate time — degrade to an empty chunk
-    // rather than failing the whole build; next 24h revalidation retries.
-    console.error(`sitemap: getSitemapPaperChunk failed for chunk ${chunkId}`, err);
-    return [];
-  }
+  const papers = await getSitemapPaperChunk(offset, PAPER_CHUNK_SIZE);
+  return papers.map((p) => ({
+    url: `${BASE_URL}/papers/${p.id}`,
+    lastModified: p.updated_at,
+  }));
 }
 
 async function getStaticEntries(): Promise<MetadataRoute.Sitemap> {
-  let areas: Awaited<ReturnType<typeof getAreaSummaries>> = [];
-  let tasks: Awaited<ReturnType<typeof getSitemapTaskIds>> = [];
   const posts = getAllPosts();
-  try {
-    [areas, tasks] = await Promise.all([getAreaSummaries(), getSitemapTaskIds()]);
-  } catch (err) {
-    // DB unavailable at build/revalidate time — degrade to static-only pages
-    // (nav/about/blog) rather than failing the whole build.
-    console.error("sitemap: getStaticEntries DB queries failed, falling back to static-only pages", err);
-  }
+  const [areas, tasks] = await Promise.all([getAreaSummaries(), getSitemapTaskIds()]);
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: BASE_URL, changeFrequency: "daily", priority: 1 },

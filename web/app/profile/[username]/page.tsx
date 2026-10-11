@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getEffectiveSession } from "@/lib/effective-session";
-import sql from "@/lib/db";
+import { getProfileData, getUsernameIndex } from "@/lib/public-data";
 
 export default async function ProfilePage({
   params,
@@ -11,60 +11,12 @@ export default async function ProfilePage({
   const { username } = await params;
   const session = await getEffectiveSession();
 
-  const [user] = await sql<{
-    github_id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-    bio: string | null;
-    company: string | null;
-    location: string | null;
-    reputation_score: number;
-    created_at: string;
-  }[]>`
-    SELECT github_id, username, display_name, avatar_url, bio, company, location,
-           reputation_score, created_at::text
-    FROM users WHERE username = ${username} AND COALESCE(is_system, false) = false
-  `;
-
-  if (!user) notFound();
-
+  // Only real usernames reach the keyed query (cached index) — junk URLs never wake the DB.
+  if (!(await getUsernameIndex()).includes(username)) notFound();
+  const data = await getProfileData(username);
+  if (!data) notFound();
+  const { user, reproductions, authoredPapers, rank } = data;
   const isOwn = session?.user?.github_id === user.github_id;
-
-  const reproductions = await sql<{
-    id: number;
-    paper_id: string;
-    paper_title: string | null;
-    tier_claimed: number;
-    status: string;
-    created_at: string;
-  }[]>`
-    SELECT r.id, r.paper_id, p.title AS paper_title,
-           r.tier_claimed, r.status, r.created_at::text
-    FROM reproductions r
-    LEFT JOIN papers p ON p.id = r.paper_id
-    WHERE r.user_id = ${user.github_id}
-      AND r.status NOT IN ('hidden', 'removed')
-    ORDER BY r.created_at DESC
-    LIMIT 50
-  `;
-
-  const authoredPapers = await sql<{
-    paper_id: string;
-    paper_title: string | null;
-  }[]>`
-    SELECT pa.paper_id, p.title AS paper_title
-    FROM paper_authors pa
-    LEFT JOIN papers p ON p.id = pa.paper_id
-    WHERE pa.user_id = ${user.github_id} AND pa.status = 'verified'
-    ORDER BY p.published DESC NULLS LAST
-    LIMIT 50
-  `;
-
-  const [rankRow] = await sql<[{ rank: number }]>`
-    SELECT COUNT(*)::int + 1 AS rank FROM users
-    WHERE reputation_score > ${user.reputation_score} AND COALESCE(is_system, false) = false
-  `;
 
   const TIER_LABELS: Record<number, string> = { 1: "Code runs", 2: "Metrics match", 3: "Independent" };
   const displayName = user.display_name || user.username;
@@ -97,7 +49,7 @@ export default async function ProfilePage({
           <div className="flex items-center gap-4 text-sm text-gray-500 mt-2">
             <span className="font-semibold text-gray-900">{user.reputation_score} reputation</span>
             {user.reputation_score > 0 && (
-              <span>#{rankRow.rank} on leaderboard</span>
+              <span>#{rank} on leaderboard</span>
             )}
             <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
           </div>

@@ -80,8 +80,39 @@ anonymous reads served from Vercel cache so scrapers can't keep the DB awake.
   against the trimmed DB use:
   `DATABASE_URL="" PGHOST=/var/run/postgresql PGPORT=5432 PGDATABASE=sotaverified_trimmed PGUSER=david npx next dev --webpack -p 3100`
   (lib/db.ts falls through to PG* env when DATABASE_URL is empty; TCP localhost needs a password).
-- Phase 3: ISR/caching + revalidation on writes, graceful DB-down, /maintenance page +
-  banner, ingestion cron off, robots, Vercel Analytics, Hobby audit.
+- Phase 3 DONE (2026-10-10) — how it works (keep in sync):
+  - **Caching:** `lib/cache.ts` `cached()` = `unstable_cache` with `revalidate:false`, keyed by
+    name + `CATALOG_VERSION` (bump/set env when the catalog is replaced wholesale — the Data
+    Cache persists across deployments). Tags: `catalog`, `users`, `paper:<id>`. Writes call
+    `revalidateAfterWrite()` (expire tags with `{expire:0}` + `revalidatePath`) — hooked into
+    `recomputeVerificationScore()` (all paper-affecting writes), the hype route, the sign-in
+    callback (`revalidateUsers`), and as a safety net in `withDbGuard` for any successful
+    non-GET. Public reads: `lib/queries.ts` (wrapped), `lib/public-data.ts`.
+  - **Unbounded input never reaches a keyed query:** page numbers clamped by cached totals;
+    ids/areas/datasets/usernames validated against cached indexes (`getTaskStatus`,
+    `getPaperIndex`, `getUsernameIndex`, area list); search and `/api/v1/sota` run in memory over
+    one cached corpus; form-helper GETs (`/api/datasets`, `/api/search-entities`,
+    `/api/papers/[id]/form-options`) require sign-in.
+  - **Paper pages:** `generateStaticParams` queries all papers at build (raw SQL, so an
+    unreachable DB FAILS the build — verified, exit 1), `revalidate=false`, `dynamicParams=true`
+    with a cached-index membership check so unknown ids 404 with no DB hit.
+  - **Sitemaps** are static (no try/catch, no revalidate). robots.txt disallows /api/, /admin/,
+    /search, /auth/ and filter/pagination query params.
+  - **Runtime DB outage:** `withDbGuard` (lib/api-guard.ts) -> 503 JSON `{error}` w/ friendly
+    text; `app/error.tsx` boundary; hype buttons show an inline notice.
+  - **DB client:** max 3, idle_timeout 10s (connections close, verified 0 left after idle),
+    `prepare:false` (Neon pooled = PgBouncer transaction mode), connect_timeout 15.
+  - **Task counts:** `scripts/recompute_task_counts.sql` sets paper_count/result_count and
+    `is_visible`; listings/areas/search/sitemap use `is_visible`; hidden task page -> /maintenance,
+    unknown -> 404. Rerun after any catalog change (incl. the Neon load).
+  - /maintenance page, styled 404 (`app/not-found.tsx`), slim banner, `lib/site.ts`
+    (`NEXT_PUBLIC_SUBSTACK_URL` env — link hidden until set; `NEXT_PUBLIC_CATALOG_SNAPSHOT_DATE`).
+  - No cron existed (never a vercel.json/workflows in git history); `scripts/MAINTENANCE_NOTE.md`.
+  - Measured (next start, trimmed DB, statement logging): 80 warm anonymous requests with random
+    junk inputs = 0 DB statements; cold pass of 40 URLs = 44 transactions (cache fill).
+  - Hobby facts (vercel docs, fetched 2026-10-10): Web Analytics 50k events/mo, 1-month window,
+    NO custom events (no click tracking); WAF on all plans, 1 rate-limit rule/project (IP or JA4,
+    10s–10min window), 3 custom rules total, Bot Protection + AI Bots managed rulesets on all plans.
 - Phase 4: Neon restore + verify, e2e, REVIVAL.md, Vercel preview only.
 
 ---

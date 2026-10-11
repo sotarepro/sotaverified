@@ -16,10 +16,12 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
   const [count, setCount] = useState(initialCount);
   const [hyped, setHyped] = useState(initialHyped);
   const inFlight = useRef(false); // ref-based guard: synchronous, no render cycle delay
+  const [unavailable, setUnavailable] = useState(false);
 
   async function handleClick() {
     if (!isAuthed || inFlight.current) return;
     inFlight.current = true;
+    setUnavailable(false);
     // Optimistic update
     const wasHyped = hyped;
     setHyped(!wasHyped);
@@ -46,10 +48,12 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
         // Request failed — revert
         setHyped(wasHyped);
         setCount((c) => c - (wasHyped ? -1 : 1));
+        if (res.status === 503) setUnavailable(true);
       }
     } catch {
       setHyped(wasHyped);
       setCount((c) => c - (wasHyped ? -1 : 1));
+      setUnavailable(true);
     } finally {
       inFlight.current = false;
     }
@@ -74,9 +78,10 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
   return (
     <button
       onClick={handleClick}
-      title={hyped ? "Remove hype" : "Hype this paper"}
+      title={unavailable ? "Temporarily unavailable — try again soon" : hyped ? "Remove hype" : "Hype this paper"}
       data-testid={`hype-btn-${paperId}`}
       data-hyped={hyped}
+      data-unavailable={unavailable || undefined}
       className={`inline-flex items-center gap-1 transition-colors ${
         hyped ? "text-pink-600 hover:text-pink-400" : "text-gray-400 hover:text-pink-500"
       }`}

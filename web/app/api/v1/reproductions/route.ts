@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { createHash } from "crypto";
 import sql from "@/lib/db";
 import { logEvent } from "@/lib/activity";
@@ -6,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { THRESHOLDS } from "@/lib/thresholds";
 
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   // Auth: check Authorization: Bearer <key> header
   const authHeader = req.headers.get("authorization") ?? "";
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
@@ -106,3 +107,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: row.id, status: "agent_pending" }, { status: 201 });
 }
+
+export const POST = withDbGuard(POSTHandler);

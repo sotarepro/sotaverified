@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import sql from "@/lib/db";
 import { stripLatex } from "@/lib/strip-latex";
 import {
+  getPaperIndex,
   getPaper,
   getPaperCodeLinks,
   getPaperLeaderboardEntries,
@@ -21,12 +22,19 @@ import AuthorClaimButton from "@/components/AuthorClaimButton";
 import AuthorVerifiedCTA from "@/components/AuthorVerifiedCTA";
 import PaperReproSection from "@/components/PaperReproSection";
 
-export const revalidate = 86400;
+// Pre-rendered at build for every paper in the catalog. NO time-based revalidation:
+// pages change only via on-demand revalidation after writes (see lib/cache.ts,
+// recomputeVerificationScore and the hype route). If the DB is unreachable at build
+// time this query throws and the build fails, which keeps the previous deployment live.
+export const revalidate = false;
 export const dynamic = "force-static";
+// Ids outside the generated set are checked against the cached catalog index and 404
+// without touching the database.
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-  return [];
+  const rows = await sql<{ id: string }[]>`SELECT id FROM papers WHERE NOT is_test ORDER BY id`;
+  return rows.map((r) => ({ id: r.id }));
 }
 
 export default async function PaperPage({
@@ -35,6 +43,9 @@ export default async function PaperPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+
+  // Dropped / unknown papers: cheap membership check against the cached index (no DB when warm).
+  if (!(await getPaperIndex()).some((p) => p.id === id)) notFound();
 
   const paper = await getPaper(id);
   if (!paper) notFound();

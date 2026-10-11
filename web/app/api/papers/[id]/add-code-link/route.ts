@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
@@ -9,7 +10,7 @@ function extractOwnerRepo(url: string): [string, string] | null {
   return [match[1], match[2]];
 }
 
-export async function POST(
+async function POSTHandler(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -69,3 +70,5 @@ export async function POST(
 
   return NextResponse.json({ ok: true, repo_url: repoUrl }, { status: 201 });
 }
+
+export const POST = withDbGuard(POSTHandler);

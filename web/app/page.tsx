@@ -2,7 +2,6 @@ import Link from "next/link";
 import { getEffectiveSession } from "@/lib/effective-session";
 import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount, getUserHypedSet } from "@/lib/queries";
 
-export const dynamic = "force-dynamic";
 import type { AreaSummary } from "@/lib/types";
 import PaperTabTable from "@/components/PaperTabTable";
 
@@ -74,22 +73,28 @@ export default async function HomePage({
   const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? ""))
     ? (tabParam as TabType)
     : "recent";
-  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const requestedPage = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
   const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);
   const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
+
+  // Cached reads only: anonymous views are served from the data cache and never wake
+  // the database. The page number is bounded by the cached total so arbitrary
+  // ?page=N values cannot create new cache keys.
+  const tabTotal = await getTabPapersCount(tab);
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(tabTotal / pageSize)));
   const offset = (page - 1) * pageSize;
 
+  // JWT session: reading it never touches the DB. Only signed-in users pay for a hype lookup.
   const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
-  const [areas, stats, tabPapers, tabTotal] = await Promise.all([
+  const [areas, stats, tabPapers] = await Promise.all([
     getAreaSummaries(),
     getSiteStats(),
     getTabPapers(tab, pageSize, undefined, offset),
-    getTabPapersCount(tab),
   ]);
 
-  const hypedSet = await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id));
+  const hypedSet = userId ? await getUserHypedSet(userId, tabPapers.map((p) => p.id)) : new Set<string>();
   const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
 
   return (

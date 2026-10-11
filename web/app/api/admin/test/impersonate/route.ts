@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isTestToolsEnabled } from "@/lib/test-tools";
@@ -10,7 +11,7 @@ function isAdmin(id: string | undefined) {
 }
 
 // POST — start impersonating a test user
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE — exit impersonation
-export async function DELETE() {
+async function DELETEHandler() {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -61,3 +62,6 @@ export async function DELETE() {
 
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withDbGuard(POSTHandler);
+export const DELETE = withDbGuard(DELETEHandler);

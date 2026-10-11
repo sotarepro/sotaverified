@@ -26,7 +26,9 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q, page: pageStr } = await searchParams;
+  const { q: qRaw, page: pageStr } = await searchParams;
+  // Search is an in-memory filter over a cached corpus (no DB); cap length anyway.
+  const q = qRaw?.trim().slice(0, 100);
 
   if (!q) {
     return (

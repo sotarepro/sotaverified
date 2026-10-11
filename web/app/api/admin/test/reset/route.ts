@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isTestToolsEnabled } from "@/lib/test-tools";
@@ -10,7 +11,7 @@ function isAdmin(id: string | undefined) {
   return !!id && id === process.env.ADMIN_GITHUB_ID;
 }
 
-export async function POST() {
+async function POSTHandler() {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -99,3 +100,5 @@ export async function POST() {
     return NextResponse.json({ error: "Reset failed", detail: message }, { status: 500 });
   }
 }
+
+export const POST = withDbGuard(POSTHandler);

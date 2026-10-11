@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isTestToolsEnabled } from "@/lib/test-tools";
@@ -25,7 +26,7 @@ const PRESETS = {
   },
 } as const;
 
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -61,7 +62,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, github_id: preset.github_id });
 }
 
-export async function GET() {
+async function GETHandler() {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -84,3 +85,6 @@ export async function GET() {
 
   return NextResponse.json(users);
 }
+
+export const POST = withDbGuard(POSTHandler);
+export const GET = withDbGuard(GETHandler);

@@ -1,4 +1,5 @@
 import sql from "./db";
+import { cached } from "./cache";
 import type { TaskRow, LeaderboardRow, PaperDetail, CodeLink, AreaSummary } from "./types";
 
 export type TabPaperRow = {
@@ -29,7 +30,7 @@ export async function getUserHypedSet(userId: string, paperIds: string[]): Promi
 // hype_score is the single source of truth for hype count (seeded + organic).
 export type TabType = "recent" | "hyped" | "active" | "unverified" | "verified";
 
-export async function getTabPapers(
+async function getTabPapersUncached(
   tab: TabType,
   limit = 10,
   scope?: { taskId?: string; area?: string },
@@ -275,7 +276,7 @@ export async function getTabPapers(
   }
 }
 
-export async function getTabPapersCount(
+async function getTabPapersCountUncached(
   tab: TabType,
   scope?: { taskId?: string; area?: string }
 ): Promise<number> {
@@ -353,26 +354,64 @@ export async function getTabPapersCount(
   }
 }
 
-export async function searchPapers(q: string, limit = 20, offset = 0): Promise<TabPaperRow[]> {
+/**
+ * Search runs in memory over a single cached corpus of the (small, ~2k paper)
+ * catalog, so arbitrary user-typed queries never reach the database. The corpus
+ * is invalidated by revalidateAfterWrite() like every other catalog read.
+ */
+async function getPaperIndexUncached(): Promise<TabPaperRow[]> {
   return sql<TabPaperRow[]>`
-    SELECT p.id, p.arxiv_id, p.title, p.published::text, p.tasks, p.verification,
-           p.verification_score, p.repro_count,
-           p.hype_score AS upvote_count
+    SELECT p.id, p.arxiv_id, p.title, p.published::text AS published, p.tasks,
+           p.verification, p.verification_score, p.repro_count,
+           p.hype_score AS upvote_count, false AS user_hyped
     FROM papers p
-    WHERE p.title ILIKE ${"%" + q + "%"}
-    ORDER BY upvote_count DESC, p.published DESC NULLS LAST
-    LIMIT ${limit} OFFSET ${offset}
+    ORDER BY p.hype_score DESC, p.published DESC NULLS LAST, p.id
   `;
+}
+export const getPaperIndex = cached("getPaperIndex", getPaperIndexUncached);
+
+async function getVisibleTasksUncached(): Promise<TaskRow[]> {
+  return sql<TaskRow[]>`
+    SELECT id, name, LEFT(description, 300) AS description, parent_id, area,
+           paper_count, result_count
+    FROM tasks
+    WHERE is_visible
+    ORDER BY result_count DESC, paper_count DESC, name
+  `;
+}
+export const getVisibleTasks = cached("getVisibleTasks", getVisibleTasksUncached);
+
+async function getTaskIndexUncached(): Promise<{ visible: string[]; hidden: string[] }> {
+  const rows = await sql<{ id: string; is_visible: boolean }[]>`SELECT id, is_visible FROM tasks`;
+  return {
+    visible: rows.filter((r) => r.is_visible).map((r) => r.id),
+    hidden: rows.filter((r) => !r.is_visible).map((r) => r.id),
+  };
+}
+export const getTaskIndex = cached("getTaskIndex", getTaskIndexUncached);
+
+/** 'visible' | 'hidden' (exists, zero papers → maintenance page) | 'missing' (→ 404). No DB hit when cached. */
+export async function getTaskStatus(id: string): Promise<"visible" | "hidden" | "missing"> {
+  const idx = await getTaskIndex();
+  if (idx.visible.includes(id)) return "visible";
+  if (idx.hidden.includes(id)) return "hidden";
+  return "missing";
+}
+
+function matchPapers(rows: TabPaperRow[], q: string): TabPaperRow[] {
+  const needle = q.toLowerCase();
+  return rows.filter((r) => r.title.toLowerCase().includes(needle));
+}
+
+export async function searchPapers(q: string, limit = 20, offset = 0): Promise<TabPaperRow[]> {
+  return matchPapers(await getPaperIndex(), q).slice(offset, offset + limit);
 }
 
 export async function searchPapersCount(q: string): Promise<number> {
-  const [{ n }] = await sql<[{ n: number }]>`
-    SELECT COUNT(*)::int AS n FROM papers WHERE title ILIKE ${"%" + q + "%"}
-  `;
-  return n;
+  return matchPapers(await getPaperIndex(), q).length;
 }
 
-export async function getAreaSummaries(): Promise<AreaSummary[]> {
+async function getAreaSummariesUncached(): Promise<AreaSummary[]> {
   const rows = await sql<{
     area: string;
     task_count: number;
@@ -385,7 +424,7 @@ export async function getAreaSummaries(): Promise<AreaSummary[]> {
       SUM(paper_count)::int AS paper_count,
       SUM(result_count)::int AS result_count
     FROM tasks
-    WHERE parent_id IS NULL AND area IS NOT NULL
+    WHERE parent_id IS NULL AND area IS NOT NULL AND is_visible
     GROUP BY area
     ORDER BY paper_count DESC
   `;
@@ -396,7 +435,7 @@ export async function getAreaSummaries(): Promise<AreaSummary[]> {
       SELECT area, name,
         ROW_NUMBER() OVER (PARTITION BY area ORDER BY result_count DESC, paper_count DESC) AS rn
       FROM tasks
-      WHERE parent_id IS NULL AND area IS NOT NULL
+      WHERE parent_id IS NULL AND area IS NOT NULL AND is_visible
     ) sub
     WHERE rn <= 3
     ORDER BY area, rn
@@ -415,7 +454,7 @@ export async function getAreaSummaries(): Promise<AreaSummary[]> {
   }));
 }
 
-export async function getTaskList(
+async function getTaskListUncached(
   page = 1,
   pageSize = 50,
   area?: string
@@ -431,7 +470,7 @@ export async function getTaskList(
       paper_count,
       result_count
     FROM tasks
-    WHERE parent_id IS NULL
+    WHERE parent_id IS NULL AND is_visible
       AND (${area ?? null}::text IS NULL OR area = ${area ?? null})
     ORDER BY result_count DESC, paper_count DESC, name
     LIMIT ${pageSize} OFFSET ${offset}
@@ -439,34 +478,23 @@ export async function getTaskList(
   return rows;
 }
 
-export async function getTaskCount(area?: string): Promise<number> {
+async function getTaskCountUncached(area?: string): Promise<number> {
   const [row] = await sql`
     SELECT COUNT(*)::int AS n FROM tasks
-    WHERE parent_id IS NULL
+    WHERE parent_id IS NULL AND is_visible
       AND (${area ?? null}::text IS NULL OR area = ${area ?? null})
   `;
   return row.n;
 }
 
 export async function searchTasks(q: string): Promise<TaskRow[]> {
-  const rows = await sql<TaskRow[]>`
-    SELECT
-      id,
-      name,
-      description,
-      parent_id,
-      area,
-      paper_count,
-      result_count
-    FROM tasks
-    WHERE name ILIKE ${"%" + q + "%"}
-    ORDER BY result_count DESC, paper_count DESC
-    LIMIT 30
-  `;
-  return rows;
+  const needle = q.toLowerCase();
+  return (await getVisibleTasks())
+    .filter((t) => t.name.toLowerCase().includes(needle))
+    .slice(0, 30);
 }
 
-export async function getTask(
+async function getTaskUncached(
   id: string
 ): Promise<{ id: string; name: string; description: string | null } | null> {
   const rows = await sql<{ id: string; name: string; description: string | null }[]>`
@@ -475,7 +503,7 @@ export async function getTask(
   return rows[0] ?? null;
 }
 
-export async function getLeaderboard(
+async function getLeaderboardUncached(
   taskId: string,
   datasetId?: string,
   sort: "metric" | "verification" | "date" = "metric"
@@ -548,7 +576,7 @@ export async function getLeaderboard(
   return rows;
 }
 
-export async function getTaskDatasets(
+async function getTaskDatasetsUncached(
   taskId: string
 ): Promise<{ id: string; name: string; submission_count: number }[]> {
   return sql`
@@ -611,7 +639,7 @@ export async function getPaperUpvoteInfo(
   return { count: row.count, upvoted: row.upvoted };
 }
 
-export async function getSiteStats(): Promise<{
+async function getSiteStatsUncached(): Promise<{
   paper_count: number;
   code_links_count: number;
   task_count: number;
@@ -622,7 +650,7 @@ export async function getSiteStats(): Promise<{
     SELECT
       (SELECT COUNT(*)::int FROM papers) AS paper_count,
       (SELECT COUNT(*)::int FROM paper_code_links) AS code_links_count,
-      (SELECT COUNT(*)::int FROM tasks WHERE parent_id IS NULL) AS task_count
+      (SELECT COUNT(*)::int FROM tasks WHERE parent_id IS NULL AND is_visible) AS task_count
   `;
   return row;
 }
@@ -751,3 +779,14 @@ export async function getVerifiedMetrics(
     GROUP BY paper_id, dataset_id
   `;
 }
+
+// Cached public reads (persistent data cache, expired only by revalidateAfterWrite()).
+export const getTabPapers = cached("getTabPapers", getTabPapersUncached);
+export const getTabPapersCount = cached("getTabPapersCount", getTabPapersCountUncached);
+export const getAreaSummaries = cached("getAreaSummaries", getAreaSummariesUncached);
+export const getTaskList = cached("getTaskList", getTaskListUncached);
+export const getTaskCount = cached("getTaskCount", getTaskCountUncached);
+export const getTask = cached("getTask", getTaskUncached);
+export const getLeaderboard = cached("getLeaderboard", getLeaderboardUncached);
+export const getTaskDatasets = cached("getTaskDatasets", getTaskDatasetsUncached);
+export const getSiteStats = cached("getSiteStats", getSiteStatsUncached);

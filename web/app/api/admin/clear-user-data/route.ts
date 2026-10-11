@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
@@ -8,7 +9,7 @@ function isAdmin(githubId: string | undefined): boolean {
   return !!githubId && githubId === process.env.ADMIN_GITHUB_ID;
 }
 
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!isAdmin(session?.user?.github_id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -100,3 +101,5 @@ export async function POST(req: NextRequest) {
     papers_recomputed: allAffectedPaperIds.size,
   });
 }
+
+export const POST = withDbGuard(POSTHandler);

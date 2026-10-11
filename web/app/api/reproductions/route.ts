@@ -1,3 +1,6 @@
+import { withDbGuard, PUBLIC_API_CACHE } from "@/lib/api-guard";
+import { getPaperIndex } from "@/lib/queries";
+import { getPaperReproductions } from "@/lib/public-data";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
@@ -5,7 +8,7 @@ import { logEvent } from "@/lib/activity";
 import { tierRepGain } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+async function GETHandler(req: NextRequest) {
   const paperId = req.nextUrl.searchParams.get("paper_id");
   if (!paperId) {
     return NextResponse.json({ error: "paper_id required" }, { status: 400 });
@@ -14,48 +17,11 @@ export async function GET(req: NextRequest) {
   const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
-  const rows = await sql<{
-    id: number;
-    user_id: string;
-    username: string | null;
-    display_name: string | null;
-    tier_claimed: number;
-    hardware_spec: string;
-    run_log_url: string | null;
-    notes: string | null;
-    upvote_count: number;
-    flag_count: number;
-    status: string;
-    created_at: string;
-    actual_metric_name: string | null;
-    actual_metric_value: number | null;
-    model_name: string | null;
-    dataset_name: string | null;
-  }[]>`
-    SELECT
-      r.id,
-      r.user_id,
-      u.username,
-      u.display_name,
-      r.tier_claimed,
-      r.hardware_spec,
-      r.run_log_url,
-      r.notes,
-      r.upvote_count,
-      r.flag_count,
-      r.status,
-      r.created_at::text,
-      r.actual_metric_name,
-      r.actual_metric_value,
-      r.model_name,
-      d.name AS dataset_name
-    FROM reproductions r
-    LEFT JOIN users u ON u.github_id = r.user_id
-    LEFT JOIN datasets d ON d.id = r.dataset_id
-    WHERE r.paper_id = ${paperId}
-      AND r.status NOT IN ('hidden', 'removed')
-    ORDER BY r.created_at DESC
-  `;
+  const index = await getPaperIndex();
+  if (!index.some((p) => p.id === paperId)) {
+    return NextResponse.json([], { headers: { "Cache-Control": PUBLIC_API_CACHE } });
+  }
+  const rows = await getPaperReproductions(paperId);
 
   // Check which reproductions the current user has upvoted
   let upvotedIds = new Set<number>();
@@ -67,13 +33,17 @@ export async function GET(req: NextRequest) {
     upvotedIds = new Set(upvoteRows.map((r) => r.reproduction_id));
   }
 
-  return NextResponse.json(rows.map((r) => ({
-    ...r,
-    user_upvoted: upvotedIds.has(r.id),
-  })));
+  return NextResponse.json(
+    rows.map((r) => ({ ...r, user_upvoted: upvotedIds.has(r.id) })),
+    {
+      // Anonymous: edge-cacheable (data comes from the data cache, no DB). Signed-in
+      // users get per-user upvote state and must see their own writes immediately.
+      headers: { "Cache-Control": userId ? "private, no-store" : "public, s-maxage=60, stale-while-revalidate=300" },
+    },
+  );
 }
 
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   const session = await getEffectiveSession();
   if (!session?.user?.github_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -213,3 +183,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ id: row.id }, { status: 201 });
 }
+
+export const GET = withDbGuard(GETHandler);
+export const POST = withDbGuard(POSTHandler);

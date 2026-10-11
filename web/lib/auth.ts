@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import sql from "./db";
+import { revalidateUsers } from "./cache";
 import { THRESHOLDS } from "./thresholds";
 import {
   extractProfileSignals,
@@ -128,6 +129,9 @@ export const authOptions: NextAuthOptions = {
           VALUES ('user_signin', ${githubId}, ${JSON.stringify({ returning: isReturning })})
         `;
       } catch { /* swallow */ }
+
+      // A new user means a new public profile page; returning users' profile edits too.
+      revalidateUsers();
 
       return true;
     },
