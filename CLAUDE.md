@@ -59,6 +59,23 @@ reported results actually reproduce — for humans and autonomous agents alike.
 
 ---
 
+## Active: Maintenance Mode (branch `maintenance-mode`, started 2026-10-10)
+Goal: ~$0/month. Neon Free (PG18, 0.5 GB, scale-to-zero) + Vercel Hobby, trimmed catalog,
+anonymous reads served from Vercel cache so scrapers can't keep the DB awake.
+`main` is preserved at tag `v1-live`. Railway prod is READ-ONLY for this whole task.
+- **Local Postgres is now 18** on port 5432 (`/usr/lib/postgresql/18/bin`); the old PG16
+  cluster is on 5433 and is down. Use PG18 client tools for everything (Railway is PG18.6).
+- Phase 1 DONE: `backups/sotaverified-prod-20261010.dump` (300 MB, gitignored) restored
+  cleanly to local `sotaverified_full`; table counts identical to prod.
+- Phase 2: build `sotaverified_trimmed` (restore dump again, delete only there).
+  NOTE: `verification_score > 0` matches 177k papers (+5 for any code repo), so the
+  keep rule uses user-generated signals + top-500 hype instead (see checkpoint 2).
+- Phase 3: ISR/caching + revalidation on writes, graceful DB-down, /maintenance page +
+  banner, ingestion cron off, robots, Vercel Analytics, Hobby audit.
+- Phase 4: Neon restore + verify, e2e, REVIVAL.md, Vercel preview only.
+
+---
+
 ## Next: Stage 3f — Going Live
 
 **TODO before deploying:**
