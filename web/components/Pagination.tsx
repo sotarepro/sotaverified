@@ -1,21 +1,16 @@
 "use client";
 
-import Link from "next/link";
-
 interface Props {
   page: number;
   total: number;
   pageSize: number;
-  /** Base URL, e.g. "/" or "/tasks/foo?dataset=bar" — page param is appended */
-  baseHref: string;
+  /** Builds the href for a page (also used by crawlers / middle-click). */
+  hrefFor: (page: number) => string;
+  /** Client-side navigation: pushState + state change, no server request. */
+  onPage: (page: number) => void;
 }
 
-function buildHref(base: string, page: number): string {
-  const sep = base.includes("?") ? "&" : "?";
-  return `${base}${sep}page=${page}`;
-}
-
-export default function Pagination({ page, total, pageSize, baseHref }: Props) {
+export default function Pagination({ page, total, pageSize, hrefFor, onPage }: Props) {
   const totalPages = Math.ceil(total / pageSize);
   if (totalPages <= 1) return null;
 
@@ -28,43 +23,40 @@ export default function Pagination({ page, total, pageSize, baseHref }: Props) {
     }
   }
 
+  const link = (p: number, label: React.ReactNode, cls: string) => (
+    <a
+      key={typeof label === "number" ? label : `n${p}`}
+      href={hrefFor(p)}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onPage(p);
+      }}
+      className={cls}
+    >
+      {label}
+    </a>
+  );
+
   return (
     <nav className="flex items-center gap-1 text-sm">
-      {page > 1 && (
-        <Link
-          href={buildHref(baseHref, page - 1)}
-          className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50"
-        >
-          ←
-        </Link>
-      )}
+      {page > 1 && link(page - 1, "←", "px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50")}
       {pages.map((p, i) =>
         p === "…" ? (
           <span key={`ellipsis-${i}`} className="px-2 py-1.5 text-gray-400">
             …
           </span>
         ) : (
-          <Link
-            key={p}
-            href={buildHref(baseHref, p as number)}
-            className={`px-3 py-1.5 rounded border ${
-              p === page
-                ? "bg-blue-600 text-white border-blue-600"
-                : "border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            {p}
-          </Link>
+          link(
+            p,
+            p,
+            `px-3 py-1.5 rounded border ${
+              p === page ? "bg-blue-600 text-white border-blue-600" : "border-gray-200 hover:bg-gray-50"
+            }`,
+          )
         )
       )}
-      {page < totalPages && (
-        <Link
-          href={buildHref(baseHref, page + 1)}
-          className="px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50"
-        >
-          →
-        </Link>
-      )}
+      {page < totalPages && link(page + 1, "→", "px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-50")}
     </nav>
   );
 }

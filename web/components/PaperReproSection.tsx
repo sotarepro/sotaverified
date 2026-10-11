@@ -4,13 +4,14 @@ import { useState } from "react";
 import { usePaperState } from "@/lib/use-paper-state";
 import ReproductionForm, { type BenchmarkOption } from "./ReproductionForm";
 import AuthorBenchmarkForm from "./AuthorBenchmarkForm";
-import ReproductionList from "./ReproductionList";
+import ReproductionList, { type InitialReproduction } from "./ReproductionList";
 
 interface Props {
   paperId: string;
   benchmarks: BenchmarkOption[];
   hasCodeRepo: boolean;
   paperTasks: string[];
+  initialReproductions: InitialReproduction[];
 }
 
 /**
@@ -19,7 +20,7 @@ interface Props {
  *   - Everyone else sees ReproductionForm
  * ReproductionList is always shown.
  */
-export default function PaperReproSection({ paperId, benchmarks, hasCodeRepo, paperTasks }: Props) {
+export default function PaperReproSection({ paperId, benchmarks, hasCodeRepo, paperTasks, initialReproductions }: Props) {
   const { state } = usePaperState(paperId);
   const isVerifiedAuthor = state?.claim?.status === "verified";
   const [reproVersion, setReproVersion] = useState(0);
@@ -43,7 +44,7 @@ export default function PaperReproSection({ paperId, benchmarks, hasCodeRepo, pa
             onSubmitted={() => setReproVersion((v) => v + 1)}
           />
         )}
-        <ReproductionList paperId={paperId} key={reproVersion} />
+        <ReproductionList paperId={paperId} key={reproVersion} initial={initialReproductions} forceFetch={reproVersion > 0} />
       </section>
     </>
   );

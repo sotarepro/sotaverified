@@ -1,5 +1,5 @@
 import sql from "./db";
-import { cached } from "./cache";
+import { cached, cachedBy, scopeTag, tag } from "./cache";
 import type { TaskRow, LeaderboardRow, PaperDetail, CodeLink, AreaSummary } from "./types";
 
 export type TabPaperRow = {
@@ -357,7 +357,7 @@ async function getTabPapersCountUncached(
 /**
  * Search runs in memory over a single cached corpus of the (small, ~2k paper)
  * catalog, so arbitrary user-typed queries never reach the database. The corpus
- * is invalidated by revalidateAfterWrite() like every other catalog read.
+ * is invalidated by revalidatePaperHype()/revalidatePaperChange() (lib/revalidate.ts).
  */
 async function getPaperIndexUncached(): Promise<TabPaperRow[]> {
   return sql<TabPaperRow[]>`
@@ -368,7 +368,14 @@ async function getPaperIndexUncached(): Promise<TabPaperRow[]> {
     ORDER BY p.hype_score DESC, p.published DESC NULLS LAST, p.id
   `;
 }
-export const getPaperIndex = cached("getPaperIndex", getPaperIndexUncached);
+/** Rows with live hype/badge data (search, hype GET). Expired by every paper write. */
+export const getPaperIndex = cached("getPaperIndex", getPaperIndexUncached, [tag.papersIndex]);
+
+async function getPaperKeysUncached(): Promise<{ id: string; arxiv_id: string | null }[]> {
+  return sql<{ id: string; arxiv_id: string | null }[]>`SELECT id, arxiv_id FROM papers`;
+}
+/** Membership only (404 checks). Changes only when papers are added/removed — admin revalidation. */
+export const getPaperKeys = cached("getPaperKeys", getPaperKeysUncached);
 
 async function getVisibleTasksUncached(): Promise<TaskRow[]> {
   return sql<TaskRow[]>`
@@ -506,7 +513,8 @@ async function getTaskUncached(
 async function getLeaderboardUncached(
   taskId: string,
   datasetId?: string,
-  sort: "metric" | "verification" | "date" = "metric"
+  sort: "metric" | "verification" | "date" = "metric",
+  limit = 1000
 ): Promise<LeaderboardRow[]> {
   const orderBy =
     sort === "verification"
@@ -571,7 +579,7 @@ async function getLeaderboardUncached(
       AND lr.best_metric_value IS NOT NULL
       AND lr.best_metric_value < 1e15
     ORDER BY ds_counts.submission_count DESC, d.name, ${orderBy}
-    LIMIT 200
+    LIMIT ${limit}
   `;
   return rows;
 }
@@ -780,13 +788,13 @@ export async function getVerifiedMetrics(
   `;
 }
 
-// Cached public reads (persistent data cache, expired only by revalidateAfterWrite()).
-export const getTabPapers = cached("getTabPapers", getTabPapersUncached);
-export const getTabPapersCount = cached("getTabPapersCount", getTabPapersCountUncached);
+// Cached public reads (persistent data cache, expired by the narrow helpers in lib/revalidate.ts).
+export const getTabPapers = cachedBy("getTabPapers", getTabPapersUncached, (_tab, _limit, scope) => [scopeTag(scope)]);
+export const getTabPapersCount = cachedBy("getTabPapersCount", getTabPapersCountUncached, (_tab, scope) => [scopeTag(scope)]);
 export const getAreaSummaries = cached("getAreaSummaries", getAreaSummariesUncached);
 export const getTaskList = cached("getTaskList", getTaskListUncached);
 export const getTaskCount = cached("getTaskCount", getTaskCountUncached);
 export const getTask = cached("getTask", getTaskUncached);
-export const getLeaderboard = cached("getLeaderboard", getLeaderboardUncached);
-export const getTaskDatasets = cached("getTaskDatasets", getTaskDatasetsUncached);
-export const getSiteStats = cached("getSiteStats", getSiteStatsUncached);
+export const getLeaderboard = cachedBy("getLeaderboard", getLeaderboardUncached, (taskId) => [tag.task(taskId)]);
+export const getTaskDatasets = cachedBy("getTaskDatasets", getTaskDatasetsUncached, (taskId) => [tag.task(taskId)]);
+export const getSiteStats = cached("getSiteStats", getSiteStatsUncached, [tag.siteStats]);

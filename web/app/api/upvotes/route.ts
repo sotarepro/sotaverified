@@ -3,7 +3,7 @@ import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { logEvent } from "@/lib/activity";
 import { getPaperIndex } from "@/lib/queries";
-import { revalidateAfterWrite } from "@/lib/cache";
+import { revalidatePaperHype, revalidateProfiles } from "@/lib/revalidate";
 import { NextRequest, NextResponse } from "next/server";
 
 async function GETHandler(req: NextRequest) {
@@ -78,7 +78,8 @@ async function POSTHandler(req: NextRequest) {
     paperId: paper_id,
   });
 
-  revalidateAfterWrite({ paperId: paper_id, users: false });
+  await revalidatePaperHype(paper_id, count);
+  await revalidateProfiles([userId]);
 
   return NextResponse.json({ upvoted: existing.length === 0, count });
 }

@@ -1,5 +1,5 @@
 import { withDbGuard } from "@/lib/api-guard";
-import { revalidateAfterWrite } from "@/lib/cache";
+import { revalidateEverything } from "@/lib/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isTestToolsEnabled } from "@/lib/test-tools";
@@ -34,7 +34,7 @@ async function POSTHandler(req: NextRequest) {
         title   = EXCLUDED.title,
         is_test = true
     `;
-    revalidateAfterWrite({ paperId: "test_basic" });
+    revalidateEverything();
     return NextResponse.json({ ok: true, paper_id: "test_basic" });
   }
 
@@ -63,7 +63,7 @@ async function POSTHandler(req: NextRequest) {
       VALUES ('test_full', ${codeRepo}, true, null)
     `;
 
-    revalidateAfterWrite({ paperId: "test_full" });
+    revalidateEverything();
     return NextResponse.json({ ok: true, paper_id: "test_full" });
   }
 

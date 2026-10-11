@@ -1,9 +1,9 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { notFound } from "next/navigation";
 import sql from "@/lib/db";
 import { stripLatex } from "@/lib/strip-latex";
 import {
-  getPaperIndex,
+  getPaperKeys,
   getPaper,
   getPaperCodeLinks,
   getPaperLeaderboardEntries,
@@ -11,6 +11,7 @@ import {
   getPaperBenchmarks,
 } from "@/lib/queries";
 import { getBadgeData } from "@/lib/verification";
+import { getPaperReproductions } from "@/lib/public-data";
 import VerificationBadge from "@/components/VerificationBadge";
 import UpvoteButton from "@/components/UpvoteButton";
 import CopyJsonButton from "@/components/CopyJsonButton";
@@ -45,17 +46,18 @@ export default async function PaperPage({
   const { id } = await params;
 
   // Dropped / unknown papers: cheap membership check against the cached index (no DB when warm).
-  if (!(await getPaperIndex()).some((p) => p.id === id)) notFound();
+  if (!(await getPaperKeys()).some((p) => p.id === id)) notFound();
 
   const paper = await getPaper(id);
   if (!paper) notFound();
 
-  const [codeLinks, lbEntries, upvoteInfo, badgeData, benchmarks] = await Promise.all([
+  const [codeLinks, lbEntries, upvoteInfo, badgeData, benchmarks, reproductions] = await Promise.all([
     getPaperCodeLinks(id),
     getPaperLeaderboardEntries(id),
     getPaperUpvoteInfo(id, null),
     getBadgeData(id),
     getPaperBenchmarks(id),
+    getPaperReproductions(id),
   ]);
 
   const agentRepros = await sql<{
@@ -249,6 +251,7 @@ export default async function PaperPage({
         benchmarks={benchmarks}
         hasCodeRepo={codeLinks.length > 0}
         paperTasks={paper.tasks ?? []}
+        initialReproductions={reproductions}
       />
 
       {/* Agent Verifications */}

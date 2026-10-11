@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { getEffectiveSession } from "@/lib/effective-session";
-import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount, getUserHypedSet } from "@/lib/queries";
+import Link from "@/components/Link";
+import { getAreaSummaries, getSiteStats, getTabPapers, getTabPapersCount } from "@/lib/queries";
 
 import type { AreaSummary } from "@/lib/types";
 import PaperTabTable from "@/components/PaperTabTable";
@@ -62,40 +61,19 @@ function AreaCard({ area }: { area: AreaSummary }) {
   );
 }
 
-import type { TabType } from "@/lib/queries";
+// Static shell, like /papers/[id]: no cookies, no searchParams, no session. Rebuilt only by
+// on-demand revalidation after writes (lib/cache.ts). The HTML holds the default view
+// (Recently Added, page 1, 10 rows); other tabs/pages/sizes come from /data/tabs/all.
+export const dynamic = "force-static";
+export const revalidate = false;
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tab?: string; page?: string; pageSize?: string }>;
-}) {
-  const { tab: tabParam, page: pageStr, pageSize: pageSizeStr } = await searchParams;
-  const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? ""))
-    ? (tabParam as TabType)
-    : "recent";
-  const requestedPage = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
-  const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);
-  const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
-
-  // Cached reads only: anonymous views are served from the data cache and never wake
-  // the database. The page number is bounded by the cached total so arbitrary
-  // ?page=N values cannot create new cache keys.
-  const tabTotal = await getTabPapersCount(tab);
-  const page = Math.min(requestedPage, Math.max(1, Math.ceil(tabTotal / pageSize)));
-  const offset = (page - 1) * pageSize;
-
-  // JWT session: reading it never touches the DB. Only signed-in users pay for a hype lookup.
-  const session = await getEffectiveSession();
-  const userId = session?.user?.github_id ?? null;
-
-  const [areas, stats, tabPapers] = await Promise.all([
+export default async function HomePage() {
+  const [areas, stats, papers, total] = await Promise.all([
     getAreaSummaries(),
     getSiteStats(),
-    getTabPapers(tab, pageSize, undefined, offset),
+    getTabPapers("recent", 10, undefined, 0),
+    getTabPapersCount("recent"),
   ]);
-
-  const hypedSet = userId ? await getUserHypedSet(userId, tabPapers.map((p) => p.id)) : new Set<string>();
-  const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
 
   return (
     <div>
@@ -129,13 +107,11 @@ export default async function HomePage({
 
       {/* Paper tab table */}
       <PaperTabTable
-        tab={tab}
-        papers={papers}
+        dataUrl="/data/tabs/all"
         baseHref="/"
         title="Papers"
-        page={page}
-        pageSize={pageSize}
-        total={tabTotal}
+        initialRows={papers}
+        initialTotal={total}
       />
 
       {/* Area cards grid */}

@@ -2,6 +2,7 @@ import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateSiteStats } from "@/lib/revalidate";
 import { NextRequest, NextResponse } from "next/server";
 
 function extractOwnerRepo(url: string): [string, string] | null {
@@ -67,6 +68,7 @@ async function POSTHandler(
   `;
 
   await recomputeVerificationScore(paperId);
+  revalidateSiteStats(); // hero "code links" count
 
   return NextResponse.json({ ok: true, repo_url: repoUrl }, { status: 201 });
 }

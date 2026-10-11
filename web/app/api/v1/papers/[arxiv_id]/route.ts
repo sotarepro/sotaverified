@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPaperIndex } from "@/lib/queries";
+import { getPaperKeys } from "@/lib/queries";
 import { getApiPaper } from "@/lib/public-data";
 import { withDbGuard } from "@/lib/api-guard";
 import { PUBLIC_API_CACHE as CACHE_HEADERS_VALUE } from "@/lib/api-guard";
@@ -15,7 +15,7 @@ export const GET = withDbGuard(async function GET(
 
   // Only ids in the (cached) catalog index may reach a keyed query, so scrapers
   // enumerating arbitrary ids get a cheap 404 and never wake the database.
-  const index = await getPaperIndex();
+  const index = await getPaperKeys();
   if (!index.some((p) => p.arxiv_id === arxiv_id)) {
     return NextResponse.json({ error: "Not found" }, { status: 404, headers: CACHE_HEADERS });
   }

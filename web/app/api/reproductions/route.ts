@@ -1,9 +1,10 @@
 import { withDbGuard, PUBLIC_API_CACHE } from "@/lib/api-guard";
-import { getPaperIndex } from "@/lib/queries";
+import { getPaperKeys } from "@/lib/queries";
 import { getPaperReproductions } from "@/lib/public-data";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateProfiles } from "@/lib/revalidate";
 import { logEvent } from "@/lib/activity";
 import { tierRepGain } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +18,7 @@ async function GETHandler(req: NextRequest) {
   const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
-  const index = await getPaperIndex();
+  const index = await getPaperKeys();
   if (!index.some((p) => p.id === paperId)) {
     return NextResponse.json([], { headers: { "Cache-Control": PUBLIC_API_CACHE } });
   }
@@ -174,6 +175,7 @@ async function POSTHandler(req: NextRequest) {
   }
 
   await recomputeVerificationScore(paper_id);
+  await revalidateProfiles([session.user.github_id], { reputation: true });
 
   await logEvent("reproduction_submitted", {
     userId: session.user.github_id,

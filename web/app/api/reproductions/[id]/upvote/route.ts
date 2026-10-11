@@ -2,6 +2,7 @@ import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { THRESHOLDS } from "@/lib/thresholds";
+import { revalidatePaperRepros, revalidateProfiles } from "@/lib/revalidate";
 import { NextRequest, NextResponse } from "next/server";
 
 async function POSTHandler(
@@ -39,9 +40,10 @@ async function POSTHandler(
     await sql`
       UPDATE reproductions SET upvote_count = upvote_count - 1 WHERE id = ${reproId}
     `;
-    const [r] = await sql<[{ upvote_count: number }]>`
-      SELECT upvote_count FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ upvote_count: number; paper_id: string }]>`
+      SELECT upvote_count, paper_id FROM reproductions WHERE id = ${reproId}
     `;
+    revalidatePaperRepros(r.paper_id);
     return NextResponse.json({ upvoted: false, count: r.upvote_count });
   } else {
     // Upvote
@@ -53,8 +55,8 @@ async function POSTHandler(
       UPDATE reproductions SET upvote_count = upvote_count + 1 WHERE id = ${reproId}
     `;
 
-    const [r] = await sql<[{ upvote_count: number; user_id: string }]>`
-      SELECT upvote_count, user_id FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ upvote_count: number; user_id: string; paper_id: string }]>`
+      SELECT upvote_count, user_id, paper_id FROM reproductions WHERE id = ${reproId}
     `;
 
     // Award +REP_PER_UPVOTE to submitter for every upvote (no status change)
@@ -63,6 +65,8 @@ async function POSTHandler(
       WHERE github_id = ${r.user_id}
     `;
 
+    revalidatePaperRepros(r.paper_id);
+    await revalidateProfiles([r.user_id], { reputation: true }); // +rep to the submitter
     return NextResponse.json({ upvoted: true, count: r.upvote_count });
   }
 }

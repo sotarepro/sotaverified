@@ -1,15 +1,16 @@
-import Link from "next/link";
-import { getEffectiveSession } from "@/lib/effective-session";
+import Link from "@/components/Link";
+import { MeRow, YouTag } from "@/components/MeOnly";
 import { getLeaderboardData } from "@/lib/public-data";
 import { THRESHOLDS } from "@/lib/thresholds";
 
 export const metadata = { title: "Leaderboard — SOTAVerified" };
 
 
-export default async function LeaderboardPage() {
-  const session = await getEffectiveSession();
-  const currentUserId = session?.user?.github_id ?? null;
+// Static shell: no session read. "(you)" / row highlight are applied client-side for signed-in users.
+export const dynamic = "force-static";
+export const revalidate = false;
 
+export default async function LeaderboardPage() {
   const { users, needsVerification } = await getLeaderboardData();
 
   return (
@@ -39,14 +40,7 @@ export default async function LeaderboardPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {users.map((u, idx) => (
-                  <tr
-                    key={u.github_id}
-                    className={
-                      u.github_id === currentUserId
-                        ? "bg-blue-50 hover:bg-blue-100"
-                        : "hover:bg-gray-50"
-                    }
-                  >
+                  <MeRow key={u.github_id} githubId={u.github_id}>
                     <td className="px-4 py-3 text-right text-gray-400 tabular-nums font-medium">
                       {idx + 1}
                     </td>
@@ -64,9 +58,7 @@ export default async function LeaderboardPage() {
                         )}
                         <span className="font-medium text-gray-900">
                           {u.display_name || u.username}
-                          {u.github_id === currentUserId && (
-                            <span className="ml-1 text-blue-600 text-xs">(you)</span>
-                          )}
+                          <YouTag githubId={u.github_id} />
                         </span>
                         {u.display_name && (
                           <span className="text-xs text-gray-400 ml-1">@{u.username}</span>
@@ -82,7 +74,7 @@ export default async function LeaderboardPage() {
                     <td className="px-4 py-3 text-right tabular-nums text-gray-600">
                       {u.authored_count}
                     </td>
-                  </tr>
+                  </MeRow>
                 ))}
               </tbody>
             </table>

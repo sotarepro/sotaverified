@@ -2,6 +2,7 @@ import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateProfiles } from "@/lib/revalidate";
 import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -182,6 +183,7 @@ async function POSTHandler(
     WHERE github_id = ${userId}
   `;
   await recomputeVerificationScore(paperId);
+  await revalidateProfiles([userId], { reputation: true });
   await logEvent("author_claimed", {
     userId,
     paperId,

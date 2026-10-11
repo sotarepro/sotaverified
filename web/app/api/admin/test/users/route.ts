@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 import sql from "@/lib/db";
+import { revalidateEverything } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 function isAdmin(id: string | undefined) {
@@ -59,6 +60,7 @@ async function POSTHandler(req: NextRequest) {
       is_test                = true
   `;
 
+  revalidateEverything(); // test tooling only
   return NextResponse.json({ ok: true, github_id: preset.github_id });
 }
 

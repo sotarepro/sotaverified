@@ -10,3 +10,6 @@ data/
 .claude/
 backups/
 test-results/
+
+# Static JSON route handlers (client-side tabs / task lists) live under web/app/data
+!web/app/data/

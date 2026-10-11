@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateProfiles } from "@/lib/revalidate";
 import { THRESHOLDS } from "@/lib/thresholds";
 import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
@@ -33,6 +34,9 @@ async function PATCHHandler(
           admin_reviewed = true
       WHERE paper_id = ${paperId} AND user_id = ${userId}
     `;
+    // Approval makes the paper "author verified": recompute its score and refresh the claimant's profile.
+    await recomputeVerificationScore(paperId);
+    await revalidateProfiles([userId]);
     await logEvent("author_claim_approved", {
       userId,
       paperId,
@@ -54,6 +58,9 @@ async function PATCHHandler(
         WHERE github_id = ${userId}
       `;
       await recomputeVerificationScore(paperId);
+      await revalidateProfiles([userId], { reputation: true });
+    } else {
+      await revalidateProfiles([userId]);
     }
     await logEvent("author_claim_rejected", {
       userId,

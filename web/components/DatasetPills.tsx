@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { stripLatex } from "@/lib/strip-latex";
 
 const VISIBLE_DEFAULT = 12;
@@ -15,21 +14,29 @@ interface Props {
   taskId: string;
   datasets: Dataset[];
   activeDatasetId: string | undefined;
+  /** Client-side filter change (pushState, no server request). */
+  onSelect: (datasetId: string | undefined) => void;
 }
 
-export default function DatasetPills({ taskId, datasets, activeDatasetId }: Props) {
+export default function DatasetPills({ taskId, datasets, activeDatasetId, onSelect }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   if (datasets.length <= 1) return null;
+
+  function pick(e: React.MouseEvent, id: string | undefined) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    onSelect(id);
+  }
 
   const visible = expanded ? datasets : datasets.slice(0, VISIBLE_DEFAULT);
   const hidden = datasets.length - VISIBLE_DEFAULT;
 
   return (
     <div className="flex flex-wrap gap-2 mb-6">
-      <Link
+      <a
         href={`/tasks/${taskId}`}
-        scroll={false}
+        onClick={(e) => pick(e, undefined)}
         className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
           !activeDatasetId
             ? "bg-blue-600 text-white border-blue-600"
@@ -37,13 +44,13 @@ export default function DatasetPills({ taskId, datasets, activeDatasetId }: Prop
         }`}
       >
         All datasets
-      </Link>
+      </a>
 
       {visible.map((d) => (
-        <Link
+        <a
           key={d.id}
-          href={`/tasks/${taskId}?dataset=${d.id}`}
-          scroll={false}
+          href={`/tasks/${taskId}?dataset=${encodeURIComponent(d.id)}`}
+          onClick={(e) => pick(e, d.id)}
           className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
             activeDatasetId === d.id
               ? "bg-blue-600 text-white border-blue-600"
@@ -51,7 +58,7 @@ export default function DatasetPills({ taskId, datasets, activeDatasetId }: Prop
           }`}
         >
           {stripLatex(d.name)}
-        </Link>
+        </a>
       ))}
 
       {!expanded && hidden > 0 && (

@@ -1,8 +1,8 @@
 import sql from "./db";
-import { cached, TAG_CATALOG, TAG_USERS } from "./cache";
+import { cached, cachedBy, tag } from "./cache";
 
 // Public user-facing reads, served from the persistent data cache (expired by
-// revalidateAfterWrite()). The session is read in the pages (JWT, no DB), never here.
+// lib/revalidate.ts helpers). The session is read in the pages (JWT, no DB), never here.
 
 async function leaderboardDataUncached() {
   // Top 50 users by reputation
@@ -48,7 +48,7 @@ async function leaderboardDataUncached() {
 
   return { users, needsVerification };
 }
-export const getLeaderboardData = cached("getLeaderboardData", leaderboardDataUncached, [TAG_USERS, TAG_CATALOG]);
+export const getLeaderboardData = cached("getLeaderboardData", leaderboardDataUncached, [tag.leaderboard]);
 
 async function usernameIndexUncached(): Promise<string[]> {
   const rows = await sql<{ username: string }[]>`
@@ -56,7 +56,7 @@ async function usernameIndexUncached(): Promise<string[]> {
   `;
   return rows.map((r) => r.username);
 }
-export const getUsernameIndex = cached("getUsernameIndex", usernameIndexUncached, [TAG_USERS]);
+export const getUsernameIndex = cached("getUsernameIndex", usernameIndexUncached, [tag.usersIndex]);
 
 async function profileDataUncached(username: string) {
   const [user] = await sql<{
@@ -114,7 +114,7 @@ async function profileDataUncached(username: string) {
 
   return { user, reproductions, authoredPapers, rank: rankRow.rank };
 }
-export const getProfileData = cached("getProfileData", profileDataUncached, [TAG_USERS, TAG_CATALOG]);
+export const getProfileData = cachedBy("getProfileData", profileDataUncached, (username) => [tag.profile(username)]);
 
 export type SotaPaper = {
   id: string;
@@ -140,7 +140,7 @@ async function sotaCorpusUncached(): Promise<SotaPaper[]> {
     FROM papers p
   `;
 }
-export const getSotaCorpus = cached("getSotaCorpus", sotaCorpusUncached, [TAG_CATALOG]);
+export const getSotaCorpus = cached("getSotaCorpus", sotaCorpusUncached, [tag.sotaCorpus]);
 
 async function apiPaperUncached(arxivId: string) {
   const papers = await sql<{
@@ -182,7 +182,7 @@ async function apiPaperUncached(arxivId: string) {
   return { paper, lbResults, codeLinks };
 }
 /** Per-paper API payload. Callers must validate arxivId against getPaperIndex() first. */
-export const getApiPaper = cached("getApiPaper", apiPaperUncached, [TAG_CATALOG]);
+export const getApiPaper = cachedBy("getApiPaper", apiPaperUncached, (arxivId) => [tag.arxiv(arxivId)]);
 
 async function paperReproductionsUncached(paperId: string) {
   return sql<{
@@ -229,4 +229,4 @@ async function paperReproductionsUncached(paperId: string) {
   `;
 }
 /** Public reproduction list for a paper (no per-user state). Validate paperId against the index first. */
-export const getPaperReproductions = cached("getPaperReproductions", paperReproductionsUncached, [TAG_CATALOG, TAG_USERS]);
+export const getPaperReproductions = cachedBy("getPaperReproductions", paperReproductionsUncached, (paperId) => [tag.paper(paperId)]);

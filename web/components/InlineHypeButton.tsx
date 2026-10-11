@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { recordHype, useHypedIds } from "@/lib/use-hyped";
 
 interface Props {
   paperId: string;
@@ -15,12 +16,19 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
 
   const [count, setCount] = useState(initialCount);
   const [hyped, setHyped] = useState(initialHyped);
+  const touched = useRef(false);
+  // Lists are static HTML: the user's own hyped state arrives client-side after sign-in.
+  const hypedIds = useHypedIds();
+  useEffect(() => {
+    if (hypedIds && !touched.current) setHyped(hypedIds.has(paperId)); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [hypedIds, paperId]);
   const inFlight = useRef(false); // ref-based guard: synchronous, no render cycle delay
   const [unavailable, setUnavailable] = useState(false);
 
   async function handleClick() {
     if (!isAuthed || inFlight.current) return;
     inFlight.current = true;
+    touched.current = true;
     setUnavailable(false);
     // Optimistic update
     const wasHyped = hyped;
@@ -43,6 +51,7 @@ export default function InlineHypeButton({ paperId, initialCount, initialHyped =
           setHyped(wasHyped);
           setCount((c) => c - (wasHyped ? -1 : 1));
         }
+        else recordHype(paperId, data.upvoted);
         // Don't call router.refresh() — it would re-sort the table and move the row
       } else {
         // Request failed — revert

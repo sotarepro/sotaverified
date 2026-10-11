@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { GITHUB_URL, SUBSTACK_URL, CATALOG_SNAPSHOT_DATE } from "@/lib/site";
 
 /** Shared body for /maintenance and the styled 404 (dropped catalog entries). */

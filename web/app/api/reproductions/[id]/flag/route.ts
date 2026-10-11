@@ -2,6 +2,7 @@ import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidatePaperRepros, revalidateProfiles } from "@/lib/revalidate";
 import { logEvent } from "@/lib/activity";
 import { THRESHOLDS } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
@@ -41,6 +42,7 @@ async function POSTHandler(
       paperId: r?.paper_id,
       metadata: { reproduction_id: reproId, flag_count: r?.flag_count },
     });
+    if (r?.paper_id) revalidatePaperRepros(r.paper_id);
     return NextResponse.json({ flagged: false, count: r.flag_count });
   } else {
     await sql`
@@ -73,6 +75,9 @@ async function POSTHandler(
         WHERE github_id = ${r.user_id}
       `;
       await recomputeVerificationScore(r.paper_id);
+      await revalidateProfiles([r.user_id], { reputation: true }); // spam penalty
+    } else {
+      revalidatePaperRepros(r.paper_id); // flag count shown in the reproduction list
     }
 
     return NextResponse.json({ flagged: true, count: r.flag_count, hidden: shouldHide && r.status !== "hidden" });

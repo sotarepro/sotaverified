@@ -5,6 +5,7 @@ import { isTestToolsEnabled } from "@/lib/test-tools";
 import { cookies } from "next/headers";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateEverything } from "@/lib/cache";
 import { NextResponse } from "next/server";
 
 function isAdmin(id: string | undefined) {
@@ -88,6 +89,9 @@ async function POSTHandler() {
         // Paper might have been a test paper (already deleted) — skip
       }
     }
+
+    // Test papers/users were deleted wholesale: admin/test tooling may drop everything.
+    revalidateEverything();
 
     // Clear impersonation cookie
     const cookieStore = await cookies();
