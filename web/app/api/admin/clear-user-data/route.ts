@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidatePaperHype, revalidateProfiles } from "@/lib/revalidate";
 import { NextRequest, NextResponse } from "next/server";
 
 function isAdmin(githubId: string | undefined): boolean {
@@ -93,6 +94,11 @@ async function POSTHandler(req: NextRequest) {
   for (const paperId of allAffectedPaperIds) {
     await recomputeVerificationScore(paperId);
   }
+  // Papers whose only change was a removed hype vote, and the user's profile (rep reset).
+  for (const row of upvoteRows) {
+    if (!allAffectedPaperIds.has(row.paper_id)) await revalidatePaperHype(row.paper_id);
+  }
+  await revalidateProfiles([userId], { reputation: true });
 
   return NextResponse.json({
     ok: true,

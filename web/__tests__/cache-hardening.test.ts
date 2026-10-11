@@ -92,3 +92,28 @@ describe("next.config", () => {
     });
   });
 });
+
+import { scopeTag, tag, TAG_CATALOG } from "@/lib/cache";
+
+describe("narrow revalidation tags", () => {
+  it("scopes map to per-scope tags", () => {
+    expect(scopeTag()).toBe("tabs:all");
+    expect(scopeTag({ taskId: "rag" })).toBe("tabs:task:rag");
+    expect(scopeTag({ area: "Language & Reasoning" })).toBe("tabs:area:language-reasoning");
+    // task wins when both are given (a task scope is the narrower one)
+    expect(scopeTag({ taskId: "rag", area: "Computer Vision" })).toBe("tabs:task:rag");
+  });
+  it("per-entity tags are distinct, and the catalog tag is separate (admin only)", () => {
+    const all = [tag.tabsAll, tag.tabsTask("a"), tag.tabsTask("b"), tag.task("a"), tag.paper("a"), tag.profile("a"), tag.arxiv("a"),
+      tag.leaderboard, tag.papersIndex, tag.sotaCorpus, tag.siteStats, tag.usersIndex];
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).not.toContain(TAG_CATALOG);
+  });
+  it("write helpers are no-ops under jest (no DB lookups)", async () => {
+    const { revalidatePaperHype, revalidatePaperChange, revalidateProfiles, revalidateSignIn } = await import("@/lib/revalidate");
+    await expect(revalidatePaperHype("p", 3)).resolves.toBeUndefined();
+    await expect(revalidatePaperChange("p")).resolves.toBeUndefined();
+    await expect(revalidateProfiles(["u"], { reputation: true })).resolves.toBeUndefined();
+    await expect(revalidateSignIn("1", "u", true)).resolves.toBeUndefined();
+  });
+});

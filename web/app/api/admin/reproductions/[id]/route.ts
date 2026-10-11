@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateProfiles } from "@/lib/revalidate";
 import { tierRepGain } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -40,10 +41,11 @@ async function PATCHHandler(
         WHERE github_id = ${r.user_id}
       `;
       await recomputeVerificationScore(r.paper_id);
+      await revalidateProfiles([r.user_id], { reputation: true });
     }
   } else if (action === "remove") {
-    const [r] = await sql<[{ paper_id: string }]>`
-      SELECT paper_id FROM reproductions WHERE id = ${reproId}
+    const [r] = await sql<[{ paper_id: string; user_id: string }]>`
+      SELECT paper_id, user_id FROM reproductions WHERE id = ${reproId}
     `;
     await sql`
       UPDATE reproductions
@@ -52,6 +54,7 @@ async function PATCHHandler(
     `;
     if (r) {
       await recomputeVerificationScore(r.paper_id);
+      await revalidateProfiles([r.user_id]);
     }
   } else if (action === "restore") {
     // Get reproduction details before restoring
@@ -74,6 +77,7 @@ async function PATCHHandler(
         `;
       }
       await recomputeVerificationScore(repro.paper_id);
+      await revalidateProfiles([repro.user_id], { reputation: true });
     }
   } else {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });

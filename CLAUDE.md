@@ -169,8 +169,21 @@ Protection challenges curl; user checks headers in browser after deploy; do NOT 
   requests per page view in a real browser.
 - robots.txt: AI crawler `Disallow: /` groups (GPTBot, ClaudeBot, CCBot, Bytespider, Amazonbot, PetalBot, Baiduspider, OAI-SearchBot,
   PerplexityBot) + `/data/`, `/browse/` disallowed. next.config redirect: host `sotaverified-zeta.vercel.app` -> sotaverified.org (permanent).
-- `revalidateAfterWrite` also revalidates `/browse` and `/data` layouts (verified on a prod build: a hype updates the home HTML and
-  `/data/tabs/all`; sign-out clears `sv_signed_in`).
+- **Narrow on-demand revalidation** (`lib/cache.ts` tags + `lib/revalidate.ts` helpers; there is NO blanket "any write expires the
+  catalog" anymore, `withDbGuard` no longer revalidates). Tags: `tabs:all|tabs:task:<id>|tabs:area:<slug>` (paper lists),
+  `task:<id>` (leaderboard + datasets), `paper:<id>` (repro list), `profile:<username>`, `leaderboard`, `papers-index`, `sota-corpus`,
+  `site-stats`, `arxiv:<id>`, `users-index`. Every entry also carries `catalog`, which only `revalidateEverything()` expires
+  (admin/test tooling and catalog replacement ONLY; test-tool routes call it). `cachedBy()` gives per-argument tags.
+  Helpers: `revalidatePaperHype(paperId,newHype)` (paper page, `/`, `/data/tabs/all`, the paper's task + area pages and their `/data` JSON,
+  `/leaderboard` only if the paper is/enters its needs-verification top 10), `revalidatePaperChange(paperId)` (called by every
+  `recomputeVerificationScore`: also task leaderboards, repro list, sota/arxiv API caches), `revalidatePaperRepros` (flag / repro upvote),
+  `revalidateProfiles(userIds,{reputation})`, `revalidateSignIn`, `revalidateSiteStats`. All are no-ops under jest and never throw.
+  Membership checks use `getPaperKeys()` (id+arxiv_id, `catalog` tag only) so hypes don't refresh it; `getPaperIndex()` (live rows for
+  search/hype GET) is expired by every paper write. **A new write route must call one of these helpers** (nothing catches it for you).
+  Known simplification: a reputation change regenerates the changed user's profile and `/leaderboard`, not other users' "#rank".
+  Also fixed: admin approve of an author claim now recomputes the paper's score (it previously did not).
+  Verified on a prod build: hype on a paper updated its page, `/`, `/data/tabs/{all,task,area}` and the task page HTML; 55 unrelated
+  URLs (25 paper pages, 12 tasks + JSON, area, misc) stayed cache HITs with 0 DB transactions.
 - `layout.tsx` no longer reads `cookies()` (that made every page dynamic when ENABLE_TEST_TOOLS=true). The dev-only impersonation banner
   now fetches `GET /api/admin/test/impersonate` client-side, and only when `isTestToolsEnabled()`; verified the build is static even
   with ENABLE_TEST_TOOLS=true. `StaleFlagGuard` (inside SessionProvider) clears a stale flag; do not clear it from NavUser (race with the

@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import sql from "@/lib/db";
 import { logEvent } from "@/lib/activity";
 import { recomputeVerificationScore } from "@/lib/verification";
+import { revalidateProfiles } from "@/lib/revalidate";
 import { NextRequest, NextResponse } from "next/server";
 
 import { THRESHOLDS } from "@/lib/thresholds";
@@ -98,6 +99,7 @@ async function POSTHandler(req: NextRequest) {
   `;
 
   await recomputeVerificationScore(paperId);
+  await revalidateProfiles([userId]);
 
   await logEvent("agent_reproduction_submitted", {
     userId,

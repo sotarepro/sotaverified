@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import sql from "@/lib/db";
 import { stripLatex } from "@/lib/strip-latex";
 import {
-  getPaperIndex,
+  getPaperKeys,
   getPaper,
   getPaperCodeLinks,
   getPaperLeaderboardEntries,
@@ -46,7 +46,7 @@ export default async function PaperPage({
   const { id } = await params;
 
   // Dropped / unknown papers: cheap membership check against the cached index (no DB when warm).
-  if (!(await getPaperIndex()).some((p) => p.id === id)) notFound();
+  if (!(await getPaperKeys()).some((p) => p.id === id)) notFound();
 
   const paper = await getPaper(id);
   if (!paper) notFound();

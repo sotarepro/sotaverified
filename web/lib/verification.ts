@@ -1,5 +1,5 @@
 import sql from "./db";
-import { revalidateAfterWrite } from "./cache";
+import { revalidatePaperChange } from "./revalidate";
 
 // Recomputes and saves verification_score for a paper.
 // Call this after any event that affects score:
@@ -7,9 +7,9 @@ import { revalidateAfterWrite } from "./cache";
 // - author claim verified
 export async function recomputeVerificationScore(paperId: string): Promise<number> {
   const score = await computeAndStoreVerificationScore(paperId);
-  // Every write that changes a paper's badge/score/repros ends here: drop the cached
-  // lists and re-render the statically generated paper page on its next visit.
-  revalidateAfterWrite({ paperId });
+  // Every write that changes a paper's badge/score/repros ends here: refresh just that paper's
+  // page, lists and leaderboards (narrow tags — see lib/revalidate.ts).
+  await revalidatePaperChange(paperId);
   return score;
 }
 

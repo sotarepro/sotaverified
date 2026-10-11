@@ -11,9 +11,9 @@ jest.mock("@/lib/db", () => {
 });
 
 // The route validates the id against the cached catalog index before any keyed query.
-jest.mock("@/lib/queries", () => ({ getPaperIndex: jest.fn() }));
+jest.mock("@/lib/queries", () => ({ getPaperKeys: jest.fn() }));
 
-import { getPaperIndex } from "@/lib/queries";
+import { getPaperKeys } from "@/lib/queries";
 import { GET } from "@/app/api/v1/papers/[arxiv_id]/route";
 import { NextRequest } from "next/server";
 
@@ -58,7 +58,7 @@ const fakeCodeLinks = [
 describe("GET /api/v1/papers/[arxiv_id]", () => {
   beforeEach(() => {
     mockSql.mockClear();
-    (getPaperIndex as jest.Mock).mockResolvedValue([{ id: "paper-internal-id-42", arxiv_id: "1706.03762" }]);
+    (getPaperKeys as jest.Mock).mockResolvedValue([{ id: "paper-internal-id-42", arxiv_id: "1706.03762" }]);
   });
 
   it("returns structured JSON with required top-level fields", async () => {

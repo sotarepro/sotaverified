@@ -1,5 +1,5 @@
 import { withDbGuard } from "@/lib/api-guard";
-import { revalidateAfterWrite } from "@/lib/cache";
+import { revalidateEverything } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 import sql from "@/lib/db";
@@ -36,7 +36,7 @@ async function POSTHandler() {
       verified = true, status = 'verified', verification_method = 'github_contributor'
   `;
 
-  revalidateAfterWrite({ paperId: "test_full" });
+  revalidateEverything();
   return NextResponse.json({ ok: true });
 }
 

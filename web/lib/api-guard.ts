@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { isDbUnavailable } from "./db-errors";
-import { revalidateAfterWrite } from "./cache";
 
 /** Public GET API responses: edge-cacheable so repeat hits never reach a function or the DB. */
 export const PUBLIC_API_CACHE = "public, s-maxage=300, stale-while-revalidate=3600";
@@ -21,12 +20,8 @@ export function withDbGuard<A extends any[]>(handler: Handler<A>) {
   return async (...args: A): Promise<Response> => {
     try {
       const res = await handler(...args);
-      // Safety net: any successful mutating request drops the cached catalog reads.
-      // (Routes that know their paper id also revalidate that paper's page themselves.)
-      const method = (args[0] as { method?: string } | undefined)?.method;
-      if (method && !["GET", "HEAD", "OPTIONS"].includes(method) && res.status < 400) {
-        revalidateAfterWrite();
-      }
+      // NOTE: there is deliberately no blanket "any write -> expire everything" here. Each write
+      // route calls its own narrow helper from lib/revalidate.ts.
       return res;
     } catch (err) {
       if (isDbUnavailable(err)) {
