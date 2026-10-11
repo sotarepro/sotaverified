@@ -67,9 +67,19 @@ anonymous reads served from Vercel cache so scrapers can't keep the DB awake.
   cluster is on 5433 and is down. Use PG18 client tools for everything (Railway is PG18.6).
 - Phase 1 DONE: `backups/sotaverified-prod-20261010.dump` (300 MB, gitignored) restored
   cleanly to local `sotaverified_full`; table counts identical to prod.
-- Phase 2: build `sotaverified_trimmed` (restore dump again, delete only there).
-  NOTE: `verification_score > 0` matches 177k papers (+5 for any code repo), so the
-  keep rule uses user-generated signals + top-500 hype instead (see checkpoint 2).
+- Phase 2 DONE (2026-10-10): `sotaverified_trimmed` (PG18, 38 MB) built by
+  `scripts/maintenance_trim.sql` (re-runnable on a scratch restore of the dump; NEVER on
+  prod). Keep rule: 42 user-touched papers (reproduction / paper_authors / upvote /
+  non-pwc_import result / activity_log) + top 2,000 by hype_score (ties: max code-link
+  stars, then id) = 2,012 papers. Users, activity_log, claims, sign-ups, tasks, datasets,
+  methods all kept intact. `verification_score > 0` is NOT usable as a keep rule (177k
+  papers, +5 for any repo). sitemap_papers is rebuilt with contiguous positions.
+  Gotcha: sitemap_papers.paper_id FK has no index, so cascading deletes seq-scan it
+  (>11 min); the script truncates it first.
+- **`web/.env.local` DATABASE_URL points at Railway PROD.** To run the app/tests locally
+  against the trimmed DB use:
+  `DATABASE_URL="" PGHOST=/var/run/postgresql PGPORT=5432 PGDATABASE=sotaverified_trimmed PGUSER=david npx next dev --webpack -p 3100`
+  (lib/db.ts falls through to PG* env when DATABASE_URL is empty; TCP localhost needs a password).
 - Phase 3: ISR/caching + revalidation on writes, graceful DB-down, /maintenance page +
   banner, ingestion cron off, robots, Vercel Analytics, Hobby audit.
 - Phase 4: Neon restore + verify, e2e, REVIVAL.md, Vercel preview only.
