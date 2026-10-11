@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 import { signInAsAdmin, signInAsTestUser, signIn, ensureTestData, signOut } from "./helpers/auth";
 
 /**
@@ -15,7 +16,7 @@ test.describe("QA Workflow 5 — Flagging and Moderation", () => {
 
     // Create a reproduction to flag (via API as admin, on a real paper so it always exists)
     await signInAsAdmin(page);
-    const res = await page.context().request.post("http://localhost:3000/api/reproductions", {
+    const res = await page.context().request.post(`${BASE}/api/reproductions`, {
       data: {
         paper_id: "attention-is-all-you-need",
         tier_claimed: 3,
@@ -37,7 +38,7 @@ test.describe("QA Workflow 5 — Flagging and Moderation", () => {
     await signInAsTestUser(page);
 
     // Flag via API
-    const res = await page.context().request.post(`http://localhost:3000/api/reproductions/${reproId}/flag`);
+    const res = await page.context().request.post(`${BASE}/api/reproductions/${reproId}/flag`);
     expect(res.ok()).toBe(true);
     const data = await res.json();
     expect(data.flagged).toBe(true);
@@ -53,7 +54,7 @@ test.describe("QA Workflow 5 — Flagging and Moderation", () => {
     // Sign in as a different user to flag
     await signIn(page, "flag_user_2", "flag_user_2");
 
-    const res = await page.context().request.post(`http://localhost:3000/api/reproductions/${reproId}/flag`);
+    const res = await page.context().request.post(`${BASE}/api/reproductions/${reproId}/flag`);
     // May already be flagged from previous run — either ok (new flag) or 400 (already flagged)
     if (res.ok()) {
       const data = await res.json();
@@ -82,13 +83,13 @@ test.describe("QA Workflow 5 — Flagging and Moderation", () => {
     await signInAsAdmin(page);
 
     // Restore via API
-    const res = await page.context().request.patch(`http://localhost:3000/api/admin/reproductions/${reproId}`, {
+    const res = await page.context().request.patch(`${BASE}/api/admin/reproductions/${reproId}`, {
       data: { action: "restore" },
     });
     expect(res.ok()).toBe(true);
 
     // Verify it's visible again
-    const listRes = await page.context().request.get(`http://localhost:3000/api/reproductions?paper_id=attention-is-all-you-need`);
+    const listRes = await page.context().request.get(`${BASE}/api/reproductions?paper_id=attention-is-all-you-need`);
     const repros = await listRes.json();
     const restored = repros.find((r: { id: number }) => r.id === reproId);
     expect(restored).toBeDefined();

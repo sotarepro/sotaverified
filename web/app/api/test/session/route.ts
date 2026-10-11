@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { isTestToolsEnabled } from "@/lib/test-tools";
@@ -7,7 +8,7 @@ import { isTestToolsEnabled } from "@/lib/test-tools";
  * Only available when ENABLE_TEST_TOOLS=true or NODE_ENV=development.
  * Sets the NextAuth JWT cookie directly, bypassing GitHub OAuth.
  */
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools disabled" }, { status: 403 });
   }
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 /**
  * DELETE /api/test/session — Clear the test session.
  */
-export async function DELETE() {
+async function DELETEHandler() {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools disabled" }, { status: 403 });
   }
@@ -51,3 +52,6 @@ export async function DELETE() {
   res.cookies.set("sv_impersonate", "", { maxAge: 0, path: "/" });
   return res;
 }
+
+export const POST = withDbGuard(POSTHandler);
+export const DELETE = withDbGuard(DELETEHandler);

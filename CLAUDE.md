@@ -59,6 +59,79 @@ reported results actually reproduce — for humans and autonomous agents alike.
 
 ---
 
+## Active: Maintenance Mode (branch `maintenance-mode`, started 2026-10-10)
+Goal: ~$0/month. Neon Free (PG18, 0.5 GB, scale-to-zero) + Vercel Hobby, trimmed catalog,
+anonymous reads served from Vercel cache so scrapers can't keep the DB awake.
+`main` is preserved at tag `v1-live`. Railway prod is READ-ONLY for this whole task.
+- **Local Postgres is now 18** on port 5432 (`/usr/lib/postgresql/18/bin`); the old PG16
+  cluster is on 5433 and is down. Use PG18 client tools for everything (Railway is PG18.6).
+- Phase 1 DONE: `backups/sotaverified-prod-20261010.dump` (300 MB, gitignored) restored
+  cleanly to local `sotaverified_full`; table counts identical to prod.
+- Phase 2 DONE (2026-10-10): `sotaverified_trimmed` (PG18, 38 MB) built by
+  `scripts/maintenance_trim.sql` (re-runnable on a scratch restore of the dump; NEVER on
+  prod). Keep rule: 42 user-touched papers (reproduction / paper_authors / upvote /
+  non-pwc_import result / activity_log) + top 2,000 by hype_score (ties: max code-link
+  stars, then id) = 2,012 papers. Users, activity_log, claims, sign-ups, tasks, datasets,
+  methods all kept intact. `verification_score > 0` is NOT usable as a keep rule (177k
+  papers, +5 for any repo). sitemap_papers is rebuilt with contiguous positions.
+  Gotcha: sitemap_papers.paper_id FK has no index, so cascading deletes seq-scan it
+  (>11 min); the script truncates it first.
+- **`web/.env.local` DATABASE_URL points at Railway PROD.** To run the app/tests locally
+  against the trimmed DB use:
+  `DATABASE_URL="" PGHOST=/var/run/postgresql PGPORT=5432 PGDATABASE=sotaverified_trimmed PGUSER=david npx next dev --webpack -p 3100`
+  (lib/db.ts falls through to PG* env when DATABASE_URL is empty; TCP localhost needs a password).
+- Phase 3 DONE (2026-10-10) — how it works (keep in sync):
+  - **Caching:** `lib/cache.ts` `cached()` = `unstable_cache` with `revalidate:false`, keyed by
+    name + `CATALOG_VERSION` (bump/set env when the catalog is replaced wholesale — the Data
+    Cache persists across deployments). Tags: `catalog`, `users`, `paper:<id>`. Writes call
+    `revalidateAfterWrite()` (expire tags with `{expire:0}` + `revalidatePath`) — hooked into
+    `recomputeVerificationScore()` (all paper-affecting writes), the hype route, the sign-in
+    callback (`revalidateUsers`), and as a safety net in `withDbGuard` for any successful
+    non-GET. Public reads: `lib/queries.ts` (wrapped), `lib/public-data.ts`.
+  - **Unbounded input never reaches a keyed query:** page numbers clamped by cached totals;
+    ids/areas/datasets/usernames validated against cached indexes (`getTaskStatus`,
+    `getPaperIndex`, `getUsernameIndex`, area list); search and `/api/v1/sota` run in memory over
+    one cached corpus; form-helper GETs (`/api/datasets`, `/api/search-entities`,
+    `/api/papers/[id]/form-options`) require sign-in.
+  - **Paper pages:** `generateStaticParams` queries all papers at build (raw SQL, so an
+    unreachable DB FAILS the build — verified, exit 1), `revalidate=false`, `dynamicParams=true`
+    with a cached-index membership check so unknown ids 404 with no DB hit.
+  - **Sitemaps** are static (no try/catch, no revalidate). robots.txt disallows /api/, /admin/,
+    /search, /auth/ and filter/pagination query params.
+  - **Runtime DB outage:** `withDbGuard` (lib/api-guard.ts) -> 503 JSON `{error}` w/ friendly
+    text; `app/error.tsx` boundary; hype buttons show an inline notice.
+  - **DB client:** max 3, idle_timeout 10s (connections close, verified 0 left after idle),
+    `prepare:false` (Neon pooled = PgBouncer transaction mode), connect_timeout 15.
+  - **Task counts:** `scripts/recompute_task_counts.sql` sets paper_count/result_count and
+    `is_visible`; listings/areas/search/sitemap use `is_visible`; hidden task page -> /maintenance,
+    unknown -> 404. Rerun after any catalog change (incl. the Neon load).
+  - /maintenance page, styled 404 (`app/not-found.tsx`), slim banner, `lib/site.ts`
+    (`NEXT_PUBLIC_SUBSTACK_URL` env — link hidden until set; `NEXT_PUBLIC_CATALOG_SNAPSHOT_DATE`).
+  - No cron existed (never a vercel.json/workflows in git history); `scripts/MAINTENANCE_NOTE.md`.
+  - Measured (next start, trimmed DB, statement logging): 80 warm anonymous requests with random
+    junk inputs = 0 DB statements; cold pass of 40 URLs = 44 transactions (cache fill).
+  - Hobby facts (vercel docs, fetched 2026-10-10): Web Analytics 50k events/mo, 1-month window,
+    NO custom events (no click tracking); WAF on all plans, 1 rate-limit rule/project (IP or JA4,
+    10s–10min window), 3 custom rules total, Bot Protection + AI Bots managed rulesets on all plans.
+- Phase 4 DONE except Vercel preview + user manual steps (2026-10-10/11):
+  - Neon (PG18.6, `C.UTF-8` collation) restored from `sotaverified_trimmed`, `recompute_task_counts.sql` run
+    (1,274 visible / 3,544 hidden tasks); row counts + checksums match trimmed. Prod build + smoke against
+    Neon pooled URL OK; scale-to-zero verified (compute suspends/cold-starts even with idle pooler sessions).
+  - `web/.env.local` holds NEON_DIRECT_URL (restore/scripts) and NEON_POOLED_URL (app runtime); DATABASE_URL
+    stays empty (local trimmed default); override per command only. Never print them.
+  - **GitHub sign-in bug fixed:** GitHub now sends RFC 9207 `iss` on the callback; next-auth 4.24 /
+    openid-client 5.7 failed with `OAuthCallbackError: issuer must be configured on the issuer`. Fix:
+    `issuer: "https://github.com/login/oauth"` on the provider in `lib/auth.ts` (also affects `v1-live`).
+    Verified with real sign-in against Neon; hype/unhype worked; test activity rows removed.
+  - Playwright: specs take `E2E_BASE_URL` (default localhost:3000); run against a dev server on the local
+    trimmed DB (`... next dev --webpack -p 3100`, NEXTAUTH_URL=http://localhost:3100, then
+    `E2E_BASE_URL=http://localhost:3100 npx playwright test`): 111 passed, 3 skipped (pre-existing).
+    404 text is now "Not in the current catalog"; code-repo test uses attention-is-all-you-need.
+  - `REVIVAL.md` written (merge procedure tested; strip `setval` lines).
+  - Vercel preview NOT deployed: no Vercel CLI/link in repo; needs user (push branch / dashboard env vars).
+
+---
+
 ## Next: Stage 3f — Going Live
 
 **TODO before deploying:**

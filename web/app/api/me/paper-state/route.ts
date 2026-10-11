@@ -1,10 +1,11 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
+async function GETHandler(req: NextRequest) {
   const paperId = req.nextUrl.searchParams.get("paper_id");
   if (!paperId) {
     return NextResponse.json({ error: "paper_id required" }, { status: 400 });
@@ -36,3 +37,5 @@ export async function GET(req: NextRequest) {
     claim: claimRow[0] ?? null,
   });
 }
+
+export const GET = withDbGuard(GETHandler);

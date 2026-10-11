@@ -1,3 +1,5 @@
+import { withDbGuard } from "@/lib/api-guard";
+import { revalidateAfterWrite } from "@/lib/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isTestToolsEnabled } from "@/lib/test-tools";
@@ -8,7 +10,7 @@ function isAdmin(id: string | undefined) {
   return !!id && id === process.env.ADMIN_GITHUB_ID;
 }
 
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -32,6 +34,7 @@ export async function POST(req: NextRequest) {
         title   = EXCLUDED.title,
         is_test = true
     `;
+    revalidateAfterWrite({ paperId: "test_basic" });
     return NextResponse.json({ ok: true, paper_id: "test_basic" });
   }
 
@@ -60,13 +63,14 @@ export async function POST(req: NextRequest) {
       VALUES ('test_full', ${codeRepo}, true, null)
     `;
 
+    revalidateAfterWrite({ paperId: "test_full" });
     return NextResponse.json({ ok: true, paper_id: "test_full" });
   }
 
   return NextResponse.json({ error: "Invalid preset" }, { status: 400 });
 }
 
-export async function GET() {
+async function GETHandler() {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools not enabled" }, { status: 403 });
   }
@@ -88,3 +92,6 @@ export async function GET() {
 
   return NextResponse.json(papers);
 }
+
+export const POST = withDbGuard(POSTHandler);
+export const GET = withDbGuard(GETHandler);

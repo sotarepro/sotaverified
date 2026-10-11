@@ -1,9 +1,10 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { THRESHOLDS } from "@/lib/thresholds";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(
+async function POSTHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -65,3 +66,5 @@ export async function POST(
     return NextResponse.json({ upvoted: true, count: r.upvote_count });
   }
 }
+
+export const POST = withDbGuard(POSTHandler);

@@ -7,6 +7,7 @@ import SessionProvider from "@/components/SessionProvider";
 import NavUser from "@/components/NavUser";
 import MobileMenu from "@/components/MobileMenu";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
+import MaintenanceBanner from "@/components/MaintenanceBanner";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 import "./globals.css";
 
@@ -45,6 +46,7 @@ export default async function RootLayout({
       <body className={`${geist.className} bg-white text-gray-900 antialiased`}>
         <SessionProvider>
           {impersonatingUser && <ImpersonationBanner username={impersonatingUser} />}
+          <MaintenanceBanner />
           <header className="border-b border-gray-200 bg-white sticky top-0 z-10">
             <div className="mx-auto max-w-6xl px-4 h-12 flex items-center gap-4 md:gap-6">
               <Link

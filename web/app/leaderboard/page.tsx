@@ -1,56 +1,16 @@
 import Link from "next/link";
 import { getEffectiveSession } from "@/lib/effective-session";
-import sql from "@/lib/db";
+import { getLeaderboardData } from "@/lib/public-data";
 import { THRESHOLDS } from "@/lib/thresholds";
 
 export const metadata = { title: "Leaderboard — SOTAVerified" };
 
-export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
   const session = await getEffectiveSession();
   const currentUserId = session?.user?.github_id ?? null;
 
-  // Top 50 users by reputation
-  const users = await sql<{
-    github_id: string;
-    username: string;
-    display_name: string | null;
-    avatar_url: string | null;
-    reputation_score: number;
-    repro_count: number;
-    authored_count: number;
-  }[]>`
-    SELECT
-      u.github_id,
-      u.username,
-      u.display_name,
-      u.avatar_url,
-      u.reputation_score,
-      (SELECT COUNT(*)::int FROM reproductions r
-       WHERE r.user_id = u.github_id AND r.status NOT IN ('hidden', 'removed')) AS repro_count,
-      (SELECT COUNT(*)::int FROM paper_authors pa
-       WHERE pa.user_id = u.github_id AND pa.status = 'verified') AS authored_count
-    FROM users u
-    WHERE COALESCE(u.is_system, false) = false AND u.reputation_score > 0
-    ORDER BY u.reputation_score DESC
-    LIMIT 50
-  `;
-
-  // Papers needing verification (same as "Needs Verification" tab)
-  const needsVerification = await sql<{
-    id: string;
-    title: string;
-    hype_score: number;
-    published: string | null;
-  }[]>`
-    SELECT p.id, p.title,
-      p.hype_score,
-      p.published::text
-    FROM papers p
-    ORDER BY p.hype_score DESC, p.verification_score ASC
-    LIMIT 10
-  `;
+  const { users, needsVerification } = await getLeaderboardData();
 
   return (
     <div className="max-w-3xl">

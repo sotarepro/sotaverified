@@ -120,7 +120,21 @@ describe("GET /api/v1/sota", () => {
 
     const res = await GET(makeReq({ sort: "recent" }));
     expect(res.status).toBe(200);
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // Whole catalog is read once (cached corpus); sort/filter happen in memory.
+    expect(mockSql).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves any parameter combination from the same single corpus read and is CDN-cacheable", async () => {
+    mockSql.mockResolvedValueOnce([
+      { ...fakePaperRow, id: "a", arxiv_id: "1", verification_score: 5, repro_count: 0, published: "2020-01-01" },
+      { ...fakePaperRow, id: "b", arxiv_id: "2", verification_score: 25, repro_count: 3, published: "2024-01-01" },
+    ]);
+    const res = await GET(makeReq({ sort: "recent", min_score: "10", limit: "1" }));
+    const json = await res.json();
+    expect(json.total).toBe(1);
+    expect(json.papers[0].arxiv_id).toBe("2");
+    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect(res.headers.get("cache-control")).toContain("s-maxage");
   });
 
   it("accepts sort=reproductions parameter", async () => {

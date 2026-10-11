@@ -1,3 +1,5 @@
+import { withDbGuard } from "@/lib/api-guard";
+import { revalidateAfterWrite } from "@/lib/cache";
 import { NextResponse } from "next/server";
 import { isTestToolsEnabled } from "@/lib/test-tools";
 import sql from "@/lib/db";
@@ -7,7 +9,7 @@ import sql from "@/lib/db";
  * for test papers. Idempotent — safe to call multiple times.
  * Only available when ENABLE_TEST_TOOLS=true or NODE_ENV=development.
  */
-export async function POST() {
+async function POSTHandler() {
   if (!isTestToolsEnabled()) {
     return NextResponse.json({ error: "Test tools disabled" }, { status: 403 });
   }
@@ -34,5 +36,8 @@ export async function POST() {
       verified = true, status = 'verified', verification_method = 'github_contributor'
   `;
 
+  revalidateAfterWrite({ paperId: "test_full" });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withDbGuard(POSTHandler);

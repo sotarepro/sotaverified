@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import { getEffectiveSession } from "@/lib/effective-session";
 import {
   getTask,
+  getTaskStatus,
   getLeaderboard,
   getTaskDatasets,
   getTabPapers,
@@ -57,25 +58,38 @@ export default async function TaskPage({
   const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? ""))
     ? (tabParam as TabType)
     : "recent";
-  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const requestedPage = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
   const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);
   const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
+
+  // Zero-paper tasks (catalog was trimmed) go to the maintenance page; unknown ids 404.
+  // Both decisions come from a cached index, so random /tasks/<junk> URLs never hit the DB.
+  const status = await getTaskStatus(id);
+  if (status === "missing") notFound();
+  if (status === "hidden") redirect("/maintenance");
+
+  const [task, datasets, tabTotal] = await Promise.all([
+    getTask(id),
+    getTaskDatasets(id),
+    getTabPapersCount(tab, { taskId: id }),
+  ]);
+  if (!task) notFound();
+
+  // Only datasets that belong to this task may be used as a filter (bounded cache keys).
+  const validDatasetFilter = datasetFilter && datasets.some((d) => d.id === datasetFilter) ? datasetFilter : undefined;
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(tabTotal / pageSize)));
   const offset = (page - 1) * pageSize;
 
   const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
-  const [task, datasets, rows, tabPapers, tabTotal] = await Promise.all([
-    getTask(id),
-    getTaskDatasets(id),
-    getLeaderboard(id, datasetFilter, sort),
+  const [rows, tabPapers] = await Promise.all([
+    getLeaderboard(id, validDatasetFilter, sort),
     getTabPapers(tab, pageSize, { taskId: id }, offset),
-    getTabPapersCount(tab, { taskId: id }),
   ]);
 
-  if (!task) notFound();
+  const hypedSet = userId ? await getUserHypedSet(userId, tabPapers.map((p) => p.id)) : new Set<string>();
 
-  const hypedSet = await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id));
   const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
 
   // Group leaderboard by dataset
@@ -120,7 +134,7 @@ export default async function TaskPage({
       <DatasetPills
         taskId={id}
         datasets={datasets}
-        activeDatasetId={datasetFilter}
+        activeDatasetId={validDatasetFilter}
       />
 
       {rows.length === 0 && (
@@ -140,7 +154,7 @@ export default async function TaskPage({
                 datasetName={dsName}
                 rows={dsRows}
                 submissionCount={dsRows.length}
-                defaultExpanded={idx === 0 || byDataset.size <= 3 || !!datasetFilter}
+                defaultExpanded={idx === 0 || byDataset.size <= 3 || !!validDatasetFilter}
                 isLowerBetter={isLowerBetterMetric(firstMetricName)}
               />
             );

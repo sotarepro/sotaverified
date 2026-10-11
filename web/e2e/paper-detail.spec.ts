@@ -38,8 +38,8 @@ test.describe("Persona 1 — Paper detail page", () => {
   });
 
   test("code repos sorted by stars with expand button for many repos", async ({ page }) => {
-    // YOLOv4 has 200+ repos
-    await page.goto("/papers/yolov4-optimal-speed-and-accuracy-of-object");
+    // attention-is-all-you-need has 500+ repos (kept in the trimmed catalog)
+    await page.goto("/papers/attention-is-all-you-need");
     await expect(page.getByRole("heading", { name: "Code" })).toBeVisible();
     await expect(page.getByText(/Show all \d+ repos/)).toBeVisible();
   });

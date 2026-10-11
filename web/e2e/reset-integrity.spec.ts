@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { signIn, signInAsAdmin, signInAsTestUser, ensureTestData, resetTestData, signOut } from "./helpers/auth";
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const REAL_PAPER = "attention-is-all-you-need";
 
 /**

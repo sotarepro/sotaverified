@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
@@ -7,7 +8,7 @@ function isAdmin(githubId: string | undefined): boolean {
   return !!githubId && githubId === process.env.ADMIN_GITHUB_ID;
 }
 
-export async function GET() {
+async function GETHandler() {
   const session = await getServerSession(authOptions);
   if (!isAdmin(session?.user?.github_id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -23,7 +24,7 @@ export async function GET() {
   return NextResponse.json(rows);
 }
 
-export async function PATCH(req: NextRequest) {
+async function PATCHHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!isAdmin(session?.user?.github_id)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -57,3 +58,6 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 }
+
+export const GET = withDbGuard(GETHandler);
+export const PATCH = withDbGuard(PATCHHandler);

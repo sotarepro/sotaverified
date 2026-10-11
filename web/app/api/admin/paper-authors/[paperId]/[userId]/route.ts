@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
@@ -10,7 +11,7 @@ function isAdmin(githubId: string | undefined): boolean {
   return !!githubId && githubId === process.env.ADMIN_GITHUB_ID;
 }
 
-export async function PATCH(
+async function PATCHHandler(
   req: NextRequest,
   { params }: { params: Promise<{ paperId: string; userId: string }> }
 ) {
@@ -65,3 +66,5 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true });
 }
+
+export const PATCH = withDbGuard(PATCHHandler);

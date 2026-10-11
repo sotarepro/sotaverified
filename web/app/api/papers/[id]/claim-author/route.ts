@@ -1,3 +1,4 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
@@ -45,7 +46,7 @@ async function getGitHubContributorsAndOwner(
   return [...logins];
 }
 
-export async function POST(
+async function POSTHandler(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -191,3 +192,5 @@ export async function POST(
     message: "Author claim verified",
   });
 }
+
+export const POST = withDbGuard(POSTHandler);

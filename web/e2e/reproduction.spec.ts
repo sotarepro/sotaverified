@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 import { signInAsTestUser, signInAsAdmin, ensureTestData, signOut } from "./helpers/auth";
 
 test.describe("Persona 2 — Reproduction flow", () => {
@@ -82,7 +83,7 @@ test.describe("Persona 2 — Reproduction flow", () => {
   });
 
   test("unauthenticated user cannot submit reproduction (API 401)", async ({ page }) => {
-    const res = await page.request.post("http://localhost:3000/api/reproductions", {
+    const res = await page.request.post(`${BASE}/api/reproductions`, {
       data: { paper_id: "test_basic", tier_claimed: 3, hardware_spec: "test" },
     });
     expect(res.status()).toBe(401);

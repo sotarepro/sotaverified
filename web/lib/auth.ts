@@ -1,6 +1,7 @@
 import type { NextAuthOptions } from "next-auth";
 import GithubProvider from "next-auth/providers/github";
 import sql from "./db";
+import { revalidateUsers } from "./cache";
 import { THRESHOLDS } from "./thresholds";
 import {
   extractProfileSignals,
@@ -52,6 +53,9 @@ export const authOptions: NextAuthOptions = {
     GithubProvider({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
+      // GitHub now returns RFC 9207 `iss` on the callback; openid-client throws
+      // "issuer must be configured on the issuer" unless the provider declares it.
+      issuer: "https://github.com/login/oauth",
     }),
   ],
   session: { strategy: "jwt" },
@@ -128,6 +132,9 @@ export const authOptions: NextAuthOptions = {
           VALUES ('user_signin', ${githubId}, ${JSON.stringify({ returning: isReturning })})
         `;
       } catch { /* swallow */ }
+
+      // A new user means a new public profile page; returning users' profile edits too.
+      revalidateUsers();
 
       return true;
     },

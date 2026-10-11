@@ -85,6 +85,7 @@ describe("Persona 2: Authenticated user — hype toggle", () => {
 
     // Hype
     mockSession.mockResolvedValueOnce(userSession());
+    mockSql.mockResolvedValueOnce([{}]);            // paper exists
     mockSql.mockResolvedValueOnce([]);              // no existing upvote
     mockSql.mockResolvedValueOnce([]);              // INSERT upvote
     mockSql.mockResolvedValueOnce([]);              // UPDATE papers hype_score + 1
@@ -97,6 +98,7 @@ describe("Persona 2: Authenticated user — hype toggle", () => {
 
     // Unhype
     mockSession.mockResolvedValueOnce(userSession());
+    mockSql.mockResolvedValueOnce([{}]);            // paper exists
     mockSql.mockResolvedValueOnce([{}]);            // existing upvote found
     mockSql.mockResolvedValueOnce([]);              // DELETE upvote
     mockSql.mockResolvedValueOnce([]);              // UPDATE papers hype_score - 1
@@ -310,7 +312,15 @@ describe("Cross-cutting: thresholds.ts exports", () => {
 // ── CROSS-CUTTING: Search entities API ─────────────────────────────────────
 
 describe("Cross-cutting: GET /api/search-entities", () => {
-  beforeEach(() => mockSql.mockReset());
+  beforeEach(() => { mockSql.mockReset(); mockSession.mockReset(); mockSession.mockResolvedValue(userSession()); });
+
+  it("requires sign-in and never queries the DB for anonymous callers", async () => {
+    mockSession.mockResolvedValue(null as never);
+    const { GET } = await import("@/app/api/search-entities/route");
+    const res = await GET(makeReq("GET", undefined, "http://localhost/api/search-entities?type=tasks&q=image"));
+    expect(res.status).toBe(401);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
 
   it("returns popular defaults for short query", async () => {
     const { GET } = await import("@/app/api/search-entities/route");

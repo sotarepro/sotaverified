@@ -1,10 +1,11 @@
+import { withDbGuard } from "@/lib/api-guard";
 import { getEffectiveSession } from "@/lib/effective-session";
 import sql from "@/lib/db";
 import { recomputeVerificationScore } from "@/lib/verification";
 import { logEvent } from "@/lib/activity";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(
+async function POSTHandler(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -97,3 +98,5 @@ export async function POST(
 
   return NextResponse.json({ id: row.id }, { status: 201 });
 }
+
+export const POST = withDbGuard(POSTHandler);

@@ -19,6 +19,7 @@ export default function UpvoteButton({ paperId, initialCount }: Props) {
   const [count, setCount] = useState(initialCount);
   const [upvoted, setUpvoted] = useState(false);
   const inFlight = useRef(false);
+  const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
     if (state) setUpvoted(state.upvoted);
@@ -39,6 +40,7 @@ export default function UpvoteButton({ paperId, initialCount }: Props) {
   async function toggle() {
     if (inFlight.current) return;
     inFlight.current = true;
+    setUnavailable(false);
     const wasUpvoted = upvoted;
     setUpvoted(!wasUpvoted);
     setCount((c) => c + (wasUpvoted ? -1 : 1));
@@ -57,16 +59,19 @@ export default function UpvoteButton({ paperId, initialCount }: Props) {
       } else {
         setUpvoted(wasUpvoted);
         setCount((c) => c - (wasUpvoted ? -1 : 1));
+        if (res.status === 503) setUnavailable(true);
       }
     } catch {
       setUpvoted(wasUpvoted);
       setCount((c) => c - (wasUpvoted ? -1 : 1));
+      setUnavailable(true);
     } finally {
       inFlight.current = false;
     }
   }
 
   return (
+    <span className="inline-flex items-center gap-2">
     <button
       onClick={toggle}
       data-testid="detail-hype-btn"
@@ -89,5 +94,11 @@ export default function UpvoteButton({ paperId, initialCount }: Props) {
       </svg>
       <span data-testid="detail-hype-count">{count}</span>
     </button>
+    {unavailable && (
+      <span role="alert" data-testid="hype-unavailable" className="text-xs text-amber-700">
+        Temporarily unavailable — try again soon.
+      </span>
+    )}
+    </span>
   );
 }

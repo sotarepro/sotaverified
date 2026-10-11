@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getEffectiveSession } from "@/lib/effective-session";
-import { getTaskList, getTaskCount, getTabPapers, getUserHypedSet, type TabType } from "@/lib/queries";
+import { getAreaSummaries, getTaskList, getTaskCount, getTabPapers, getUserHypedSet, type TabType } from "@/lib/queries";
 import Pagination from "@/components/Pagination";
 import PaperTabTable from "@/components/PaperTabTable";
 
@@ -36,23 +37,35 @@ export default async function TasksPage({
 }: {
   searchParams: Promise<{ page?: string; area?: string; tab?: string }>;
 }) {
-  const { page: pageStr, area, tab: tabParam } = await searchParams;
-  const page = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
+  const { page: pageStr, area: areaParam, tab: tabParam } = await searchParams;
   const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? "")) ? (tabParam as TabType) : "recent";
 
+  // Only known research areas may reach a keyed query (cached list; no DB when warm).
+  let area: string | undefined;
+  if (areaParam) {
+    const areas = await getAreaSummaries();
+    if (!areas.some((a) => a.area === areaParam)) redirect("/tasks");
+    area = areaParam;
+  }
+
   const baseHref = area ? `/tasks?area=${encodeURIComponent(area)}` : "/tasks";
+
+  const total = await getTaskCount(area);
+  const page = Math.min(
+    Math.max(1, parseInt(pageStr ?? "1", 10) || 1),
+    Math.max(1, Math.ceil(total / PAGE_SIZE)),
+  );
 
   const session = await getEffectiveSession();
   const userId = session?.user?.github_id ?? null;
 
-  const [tasks, total, tabPapers] = await Promise.all([
+  const [tasks, tabPapers] = await Promise.all([
     getTaskList(page, PAGE_SIZE, area),
-    getTaskCount(area),
     area ? getTabPapers(tab, 10, { area }) : Promise.resolve(null),
   ]);
 
   const areaPapers = tabPapers
-    ? await getUserHypedSet(userId ?? "", tabPapers.map((p) => p.id)).then(
+    ? await (userId ? getUserHypedSet(userId, tabPapers.map((p) => p.id)) : Promise.resolve(new Set<string>())).then(
         (hypedSet) => tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }))
       )
     : null;

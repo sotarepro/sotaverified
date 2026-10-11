@@ -7,5 +7,8 @@ export default function SessionProvider({
 }: {
   children: React.ReactNode;
 }) {
-  return <NextAuthSessionProvider>{children}</NextAuthSessionProvider>;
+  // No refetch on tab focus: every refetch is a function invocation (Hobby quota).
+  return (
+    <NextAuthSessionProvider refetchOnWindowFocus={false}>{children}</NextAuthSessionProvider>
+  );
 }
