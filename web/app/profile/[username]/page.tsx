@@ -1,7 +1,17 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { notFound } from "next/navigation";
-import { getEffectiveSession } from "@/lib/effective-session";
+import { OwnerOnly } from "@/components/MeOnly";
 import { getProfileData, getUsernameIndex } from "@/lib/public-data";
+
+// Static per-user pages, pre-rendered at build and refreshed by on-demand revalidation
+// (sign-ins / writes). No session read: the owner-only section is shown client-side.
+export const dynamic = "force-static";
+export const revalidate = false;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return (await getUsernameIndex()).map((username) => ({ username }));
+}
 
 export default async function ProfilePage({
   params,
@@ -9,14 +19,12 @@ export default async function ProfilePage({
   params: Promise<{ username: string }>;
 }) {
   const { username } = await params;
-  const session = await getEffectiveSession();
 
   // Only real usernames reach the keyed query (cached index) — junk URLs never wake the DB.
   if (!(await getUsernameIndex()).includes(username)) notFound();
   const data = await getProfileData(username);
   if (!data) notFound();
   const { user, reproductions, authoredPapers, rank } = data;
-  const isOwn = session?.user?.github_id === user.github_id;
 
   const TIER_LABELS: Record<number, string> = { 1: "Code runs", 2: "Metrics match", 3: "Independent" };
   const displayName = user.display_name || user.username;
@@ -110,7 +118,7 @@ export default async function ProfilePage({
         )}
       </section>
 
-      {isOwn && (
+      <OwnerOnly githubId={user.github_id}>
         <section className="mb-8">
           <h2 className="text-base font-semibold mb-3">API Keys</h2>
           <p className="text-sm text-gray-500">
@@ -121,7 +129,7 @@ export default async function ProfilePage({
             to request an API key for agent submissions.
           </p>
         </section>
-      )}
+      </OwnerOnly>
     </div>
   );
 }

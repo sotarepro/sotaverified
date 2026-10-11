@@ -130,6 +130,56 @@ anonymous reads served from Vercel cache so scrapers can't keep the DB awake.
   - `REVIVAL.md` written (merge procedure tested; strip `setval` lines).
   - Vercel preview NOT deployed: no Vercel CLI/link in repo; needs user (push branch / dashboard env vars).
 
+## Active: Cache Hardening (branch `cache-hardening`, started 2026-10-10)
+Live on Neon + Vercel Pro (Hobby paused the account over last month's rolling 30-day usage) behind Cloudflare
+(SSL Full Strict, Bot Fight + AI-crawler block, 1-day edge cache rule skipping /api/, /admin, session-token cookie).
+Problem: Vercel CDN hit rate 0% on `/`, `/tasks`, `/tasks/[id]`, `/leaderboard`, `/profile/[username]`, and
+anonymous page loads fire `/api/auth/session`, `/api/me/paper-state`, `/api/reproductions`, `/api/papers/[id]/form-options`.
+Plan: (0) audit, (1) make those pages anonymous-cacheable (no session/cookie/searchParams reads server-side),
+(2) `sv_signed_in` flag cookie gates session/paper-state fetches; lazy-load repro/form-options, (3) robots.txt AI-crawler
+Disallow groups, (4) redirect sotaverified-zeta.vercel.app -> sotaverified.org, (5) verify, wait for user go-ahead before merge/push
+(push to main deploys), (6) post-deploy cf-cache-status check.
+Audit findings (2026-10-10): with prod-like env (`ENABLE_TEST_TOOLS=false`) static: /about /agents /blog /maintenance;
+dynamic (before): `/`, `/tasks`, `/tasks/[id]`, `/leaderboard`, `/profile/[username]` (all via `getEffectiveSession()`; `/`, `/tasks`,
+`/tasks/[id]` also via `searchParams`). NOTE `.env.local` ENABLE_TEST_TOOLS=true makes the layout `cookies()` call force EVERYTHING
+dynamic in local builds; build with `ENABLE_TEST_TOOLS=false` to see the real route table. Prod curl audit skipped (Vercel Bot
+Protection challenges curl; user checks headers in browser after deploy; do NOT spoof/bypass).
+**Implemented (branch `cache-hardening`)**
+- All five pages are now `force-static`, `revalidate=false` (profile/task: `generateStaticParams` + `dynamicParams=true` w/ cached-index
+  check). No session/cookie/searchParams reads server-side; build shows them as ○/●. Build ~30s. Output: zero Set-Cookie.
+- **Client-side views, URLs unchanged** (`?tab=&page=&pageSize=`, `?dataset=`, `/tasks?page=`): the HTML embeds the default view only;
+  the client parses `location.search` after mount, uses `history.pushState` (NO router navigation / RSC request), and reads **build-time
+  static JSON** from force-static route handlers: `/data/tabs/{all | area/<slug> | task/<id>}` (all 5 tabs, ordered ids + row map) and
+  `/data/tasks/{all | area/<slug>}`. `dynamicParams=false` so unknown scopes 404 without running code. Bad tab/pageSize -> defaults;
+  out-of-range page -> page 1, decided client-side. Helpers: `lib/tab-data.ts` (server), `lib/tab-data-shared.ts` (client-safe `sliceTab`).
+  `?sort=` on task pages was dropped (no UI ever produced it). Leaderboard rows embedded for all datasets (LIMIT now 1000, was 200).
+- `/tasks?area=<Area>` is **rewritten** (next.config `rewrites().beforeFiles`, one rule per area from `lib/areas.ts`) to static
+  `/browse/area/<slug>` so each area has a correct first paint; unknown `?area=` just shows All Tasks. **Adding a research area =
+  edit `lib/areas.ts`** (build throws via `assertKnownAreas` if the DB has an area not listed).
+- Per-user UI on static pages is client-side: `components/MeOnly.tsx` (leaderboard "(you)"/row highlight, profile API-keys section),
+  hype hearts via `lib/use-hyped.ts` -> `GET /api/me/hyped` (one call per session, signed-in only).
+- **`sv_signed_in` flag cookie** (`lib/signed-in-flag.ts`, non-httpOnly, 30d, a HINT only): set/cleared by the wrapped NextAuth route
+  (`app/api/auth/[...nextauth]/route.ts` mirrors the session cookie) and `/api/test/session`. `SessionProvider` passes
+  `session={null}` (no fetch) unless the flag is present; NavUser clears a stale flag. **Existing signed-in users have no flag until they
+  sign in once more.** usePaperState / hype hooks only fire when `status==='authenticated'`.
+- Paper page embeds the public reproduction list (`getPaperReproductions`); `ReproductionList` fetches `/api/reproductions` only for
+  signed-in users with a non-empty list (user_upvoted) or after submitting; `ReproductionForm` fetches `form-options` only when opened
+  by a signed-in user.
+- `components/Link.tsx` = next/link with **prefetch off by default** (all imports swapped): viewport prefetch was firing 50-100 `?_rsc=`
+  requests per page view in a real browser.
+- robots.txt: AI crawler `Disallow: /` groups (GPTBot, ClaudeBot, CCBot, Bytespider, Amazonbot, PetalBot, Baiduspider, OAI-SearchBot,
+  PerplexityBot) + `/data/`, `/browse/` disallowed. next.config redirect: host `sotaverified-zeta.vercel.app` -> sotaverified.org (permanent).
+- `revalidateAfterWrite` also revalidates `/browse` and `/data` layouts (verified on a prod build: a hype updates the home HTML and
+  `/data/tabs/all`; sign-out clears `sv_signed_in`).
+- `layout.tsx` no longer reads `cookies()` (that made every page dynamic when ENABLE_TEST_TOOLS=true). The dev-only impersonation banner
+  now fetches `GET /api/admin/test/impersonate` client-side, and only when `isTestToolsEnabled()`; verified the build is static even
+  with ENABLE_TEST_TOOLS=true. `StaleFlagGuard` (inside SessionProvider) clears a stale flag; do not clear it from NavUser (race with the
+  initial anonymous render).
+- Verified 2026-10-10: build ~30s, all 5 targets static; 200 junk-param requests on `next start` = 0 DB transactions; anonymous browser
+  loads = 0 `/api/*` calls; tab click fetches only `/data/tabs/*`; jest 200 pass; Playwright 111 passed / 3 skipped (unchanged baseline).
+- **Pending:** user go-ahead to merge `cache-hardening` -> main and push (deploys); then step 6 header check (user, in browser).
+Never run writes against Railway/Neon without explicit approval; never ENABLE_TEST_TOOLS against Neon.
+
 ---
 
 ## Next: Stage 3f — Going Live

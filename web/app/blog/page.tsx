@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { getAllPosts } from "@/lib/blog";
 
 export const metadata = {

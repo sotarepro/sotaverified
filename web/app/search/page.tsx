@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { searchPapers, searchPapersCount, searchTasks } from "@/lib/queries";
 import VerificationBadge from "@/components/VerificationBadge";
 import { stripLatex } from "@/lib/strip-latex";

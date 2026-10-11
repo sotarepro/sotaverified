@@ -2,6 +2,7 @@ import { withDbGuard } from "@/lib/api-guard";
 import { NextRequest, NextResponse } from "next/server";
 import { encode } from "next-auth/jwt";
 import { isTestToolsEnabled } from "@/lib/test-tools";
+import { SIGNED_IN_COOKIE, SIGNED_IN_MAX_AGE } from "@/lib/signed-in-flag";
 
 /**
  * POST /api/test/session — Create a NextAuth session for E2E testing.
@@ -36,6 +37,7 @@ async function POSTHandler(req: NextRequest) {
     path: "/",
     maxAge: 60 * 60 * 24,
   });
+  res.cookies.set(SIGNED_IN_COOKIE, "1", { sameSite: "lax", path: "/", maxAge: Math.min(SIGNED_IN_MAX_AGE, 60 * 60 * 24) });
   return res;
 }
 
@@ -50,6 +52,7 @@ async function DELETEHandler() {
   const res = NextResponse.json({ ok: true });
   res.cookies.set("next-auth.session-token", "", { maxAge: 0, path: "/" });
   res.cookies.set("sv_impersonate", "", { maxAge: 0, path: "/" });
+  res.cookies.set(SIGNED_IN_COOKIE, "", { maxAge: 0, path: "/" });
   return res;
 }
 

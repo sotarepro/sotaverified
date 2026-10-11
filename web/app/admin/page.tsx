@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import sql from "@/lib/db";
-import Link from "next/link";
+import Link from "@/components/Link";
 import AdminActions from "./AdminActions";
 import AdminAuthorActions from "./AdminAuthorActions";
 import { SignupAction, ClearAllSignups } from "./SignupActions";

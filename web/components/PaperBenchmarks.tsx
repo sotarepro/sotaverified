@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { stripLatex } from "@/lib/strip-latex";
 import VerificationBadge from "./VerificationBadge";
 import type { VerificationTier } from "@/lib/types";

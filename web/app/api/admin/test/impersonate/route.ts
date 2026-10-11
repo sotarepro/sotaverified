@@ -46,6 +46,23 @@ async function POSTHandler(req: NextRequest) {
   return NextResponse.json({ ok: true, username: user.username });
 }
 
+// GET — who (if anyone) is being impersonated; read by the dev-only banner (layout is static)
+async function GETHandler() {
+  if (!isTestToolsEnabled()) {
+    return NextResponse.json({ username: null }, { status: 403 });
+  }
+  const raw = (await cookies()).get("sv_impersonate")?.value;
+  let username: string | null = null;
+  if (raw) {
+    try {
+      username = (JSON.parse(raw) as { username?: string }).username ?? null;
+    } catch {
+      /* malformed cookie */
+    }
+  }
+  return NextResponse.json({ username }, { headers: { "Cache-Control": "private, no-store" } });
+}
+
 // DELETE — exit impersonation
 async function DELETEHandler() {
   if (!isTestToolsEnabled()) {
@@ -63,5 +80,6 @@ async function DELETEHandler() {
   return NextResponse.json({ ok: true });
 }
 
+export const GET = withDbGuard(GETHandler);
 export const POST = withDbGuard(POSTHandler);
 export const DELETE = withDbGuard(DELETEHandler);

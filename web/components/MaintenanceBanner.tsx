@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { CATALOG_SNAPSHOT_DATE } from "@/lib/site";
 
 export default function MaintenanceBanner() {

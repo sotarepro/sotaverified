@@ -60,6 +60,8 @@ export function revalidateAfterWrite(opts: { paperId?: string | null; users?: bo
   // Server-rendered pages whose output embeds catalog data.
   path("/", "page");
   path("/tasks", "layout");
+  path("/browse", "layout"); // /tasks?area=X rewrite targets
+  path("/data", "layout"); // static JSON behind the client-side tabs / task lists
   path("/leaderboard", "page");
   path("/profile/[username]", "page");
 }

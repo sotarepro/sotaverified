@@ -1,7 +1,6 @@
-import Link from "next/link";
+import Link from "@/components/Link";
 import { notFound, redirect } from "next/navigation";
 import ReactMarkdown from "react-markdown";
-import { getEffectiveSession } from "@/lib/effective-session";
 import {
   getTask,
   getTaskStatus,
@@ -9,11 +8,9 @@ import {
   getTaskDatasets,
   getTabPapers,
   getTabPapersCount,
-  getUserHypedSet,
 } from "@/lib/queries";
-import DatasetPills from "@/components/DatasetPills";
 import PaperTabTable from "@/components/PaperTabTable";
-import LeaderboardSection from "@/components/LeaderboardSection";
+import TaskLeaderboards from "@/components/TaskLeaderboards";
 
 /** Strip all HTML tags and decode entities from imported task descriptions */
 function cleanDescription(raw: string): string {
@@ -28,77 +25,37 @@ function cleanDescription(raw: string): string {
     .trim();
 }
 
-function isLowerBetterMetric(metricName: string | null): boolean {
-  if (!metricName) return false;
-  const lower = metricName.toLowerCase();
-  return ["error", "loss", "perplexity", "fid", "fpr", "mae", "mse", "rmse", "wer", "cer"].some(
-    (k) => lower.includes(k)
-  );
+import sql from "@/lib/db";
+
+// Static shell (no searchParams / session). Tab, page and page size are client-side over
+// /data/tabs/task/<id>; the dataset filter is client-side over the embedded leaderboard rows.
+export const dynamic = "force-static";
+export const revalidate = false;
+// Ids outside the generated set are checked against the cached task index (404 / maintenance
+// redirect) without touching the database.
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const rows = await sql<{ id: string }[]>`SELECT id FROM tasks WHERE is_visible ORDER BY id`;
+  return rows.map((r) => ({ id: r.id }));
 }
 
-import type { TabType } from "@/lib/queries";
-
-export default async function TaskPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ dataset?: string; sort?: string; tab?: string; page?: string; pageSize?: string }>;
-}) {
+export default async function TaskPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const {
-    dataset: datasetFilter,
-    sort: sortParam,
-    tab: tabParam,
-    page: pageStr,
-    pageSize: pageSizeStr,
-  } = await searchParams;
-
-  const sort = sortParam === "verification" ? "verification" : sortParam === "date" ? "date" : "metric";
-  const tab: TabType = (["recent", "hyped", "active", "unverified", "verified"].includes(tabParam ?? ""))
-    ? (tabParam as TabType)
-    : "recent";
-  const requestedPage = Math.max(1, parseInt(pageStr ?? "1", 10) || 1);
-  const parsedPageSize = parseInt(pageSizeStr ?? "10", 10);
-  const pageSize = [10, 25, 50].includes(parsedPageSize) ? parsedPageSize : 10;
 
   // Zero-paper tasks (catalog was trimmed) go to the maintenance page; unknown ids 404.
-  // Both decisions come from a cached index, so random /tasks/<junk> URLs never hit the DB.
   const status = await getTaskStatus(id);
   if (status === "missing") notFound();
   if (status === "hidden") redirect("/maintenance");
 
-  const [task, datasets, tabTotal] = await Promise.all([
+  const [task, datasets, tabTotal, papers, rows] = await Promise.all([
     getTask(id),
     getTaskDatasets(id),
-    getTabPapersCount(tab, { taskId: id }),
+    getTabPapersCount("recent", { taskId: id }),
+    getTabPapers("recent", 10, { taskId: id }, 0),
+    getLeaderboard(id),
   ]);
   if (!task) notFound();
-
-  // Only datasets that belong to this task may be used as a filter (bounded cache keys).
-  const validDatasetFilter = datasetFilter && datasets.some((d) => d.id === datasetFilter) ? datasetFilter : undefined;
-  const page = Math.min(requestedPage, Math.max(1, Math.ceil(tabTotal / pageSize)));
-  const offset = (page - 1) * pageSize;
-
-  const session = await getEffectiveSession();
-  const userId = session?.user?.github_id ?? null;
-
-  const [rows, tabPapers] = await Promise.all([
-    getLeaderboard(id, validDatasetFilter, sort),
-    getTabPapers(tab, pageSize, { taskId: id }, offset),
-  ]);
-
-  const hypedSet = userId ? await getUserHypedSet(userId, tabPapers.map((p) => p.id)) : new Set<string>();
-
-  const papers = tabPapers.map((p) => ({ ...p, user_hyped: hypedSet.has(p.id) }));
-
-  // Group leaderboard by dataset
-  const byDataset = new Map<string, typeof rows>();
-  for (const row of rows) {
-    const key = row.dataset_name;
-    if (!byDataset.has(key)) byDataset.set(key, []);
-    byDataset.get(key)!.push(row);
-  }
 
   return (
     <div>
@@ -121,46 +78,14 @@ export default async function TaskPage({
 
       {/* Paper tab table */}
       <PaperTabTable
-        tab={tab}
-        papers={papers}
+        dataUrl={`/data/tabs/task/${id}`}
         baseHref={`/tasks/${id}`}
         title="Papers"
-        page={page}
-        pageSize={pageSize}
-        total={tabTotal}
+        initialRows={papers}
+        initialTotal={tabTotal}
       />
 
-      {/* Dataset filter pills — collapses after 12 */}
-      <DatasetPills
-        taskId={id}
-        datasets={datasets}
-        activeDatasetId={validDatasetFilter}
-      />
-
-      {rows.length === 0 && (
-        <p className="text-gray-500">No leaderboard results yet.</p>
-      )}
-
-      {/* Dataset leaderboards */}
-      {rows.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Benchmark Results</h2>
-          {[...byDataset.entries()].map(([dsName, dsRows], idx) => {
-            // Detect metric direction from first row with a metric name
-            const firstMetricName = dsRows.find((r) => r.best_metric_name)?.best_metric_name ?? null;
-            return (
-              <LeaderboardSection
-                key={dsName}
-                datasetName={dsName}
-                rows={dsRows}
-                submissionCount={dsRows.length}
-                defaultExpanded={idx === 0 || byDataset.size <= 3 || !!validDatasetFilter}
-                isLowerBetter={isLowerBetterMetric(firstMetricName)}
-              />
-            );
-          })}
-        </div>
-      )}
+      <TaskLeaderboards taskId={id} datasets={datasets} rows={rows} />
     </div>
   );
 }

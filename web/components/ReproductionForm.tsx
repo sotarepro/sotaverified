@@ -97,12 +97,15 @@ export default function ReproductionForm({ paperId, benchmarks = [], hasCodeRepo
 
   // Load paper's tasks on mount as default quick-pick options
   const [paperTaskOptions, setPaperTaskOptions] = useState<{ id: string; name: string }[]>([]);
+  // Lazy: only once a signed-in user opens the form (the endpoint requires sign-in anyway).
+  const signedIn = !!session;
   useEffect(() => {
+    if (!open || !signedIn) return;
     fetch(`/api/papers/${paperId}/form-options?type=tasks`)
       .then(r => r.ok ? r.json() : [])
       .then(data => setPaperTaskOptions(data))
       .catch(() => {});
-  }, [paperId]);
+  }, [paperId, open, signedIn]);
 
   function handleTaskSearch(query: string) {
     setTaskSearch(query);

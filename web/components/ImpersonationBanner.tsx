@@ -1,6 +1,25 @@
 "use client";
 
-export default function ImpersonationBanner({ username }: { username: string }) {
+import { useEffect, useState } from "react";
+
+/**
+ * Dev/test-tools only. The layout is static (no cookie reads), so the banner asks the server
+ * who is being impersonated. `enabled` is false in production: no request is ever made.
+ */
+export default function ImpersonationBanner({ enabled }: { enabled: boolean }) {
+  const [username, setUsername] = useState<string | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    fetch("/api/admin/test/impersonate", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { username: null }))
+      .then((d: { username: string | null }) => setUsername(d.username))
+      .catch(() => {});
+  }, [enabled]);
+  if (!username) return null;
+  return <Banner username={username} />;
+}
+
+function Banner({ username }: { username: string }) {
   async function handleExit() {
     await fetch("/api/admin/test/impersonate", { method: "DELETE" });
     window.location.href = "/admin";

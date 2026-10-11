@@ -37,19 +37,30 @@ const TIER_COLORS: Record<number, string> = {
   4: "bg-purple-50 text-purple-700",
 };
 
+export type InitialReproduction = Omit<Reproduction, "user_upvoted">;
+
 interface Props {
   paperId: string;
+  /** Public list embedded in the static paper page (no request needed for anonymous visitors). */
+  initial: InitialReproduction[];
+  /** Re-read from the API (after this user submits a reproduction). */
+  forceFetch?: boolean;
 }
 
-export default function ReproductionList({ paperId }: Props) {
-  const { data: session } = useSession();
-  const [items, setItems] = useState<Reproduction[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function ReproductionList({ paperId, initial, forceFetch = false }: Props) {
+  const { data: session, status } = useSession();
+  const [items, setItems] = useState<Reproduction[]>(() => initial.map((r) => ({ ...r, user_upvoted: false })));
+  const [loading, setLoading] = useState(false);
   const [userVotes, setUserVotes] = useState<Record<number, boolean>>({});
   const [userFlags, setUserFlags] = useState<Record<number, boolean>>({});
 
+  // Anonymous visitors render the embedded list and make NO request. Signed-in users fetch once
+  // (only if there is something to show) to learn which items they have upvoted.
+  const shouldFetch = forceFetch || (status === "authenticated" && initial.length > 0);
   useEffect(() => {
-    fetch(`/api/reproductions?paper_id=${paperId}`)
+    if (!shouldFetch) return;
+    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect
+    fetch(`/api/reproductions?paper_id=${paperId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : [];
@@ -63,7 +74,7 @@ export default function ReproductionList({ paperId }: Props) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [paperId]);
+  }, [paperId, shouldFetch]);
 
   async function handleUpvote(id: number) {
     if (!session) return;

@@ -506,7 +506,8 @@ async function getTaskUncached(
 async function getLeaderboardUncached(
   taskId: string,
   datasetId?: string,
-  sort: "metric" | "verification" | "date" = "metric"
+  sort: "metric" | "verification" | "date" = "metric",
+  limit = 1000
 ): Promise<LeaderboardRow[]> {
   const orderBy =
     sort === "verification"
@@ -571,7 +572,7 @@ async function getLeaderboardUncached(
       AND lr.best_metric_value IS NOT NULL
       AND lr.best_metric_value < 1e15
     ORDER BY ds_counts.submission_count DESC, d.name, ${orderBy}
-    LIMIT 200
+    LIMIT ${limit}
   `;
   return rows;
 }

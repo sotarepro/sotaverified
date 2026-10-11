@@ -3,15 +3,46 @@ User-agent: *
 Crawl-delay: 10
 Disallow: /api/
 Disallow: /admin/
+Disallow: /data/
+Disallow: /browse/
 Disallow: /search
 Disallow: /auth/
-# Filtered / paginated listing variants (each is a distinct server render)
+# Filtered / paginated listing variants (client-side views of the same static page)
 Disallow: /*?*page=
 Disallow: /*?*pageSize=
 Disallow: /*?*tab=
 Disallow: /*?*sort=
 Disallow: /*?*dataset=
 
+# AI training / answer-engine crawlers: not welcome (Googlebot and Bingbot stay allowed above).
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+User-agent: Baiduspider
+Disallow: /
+
+User-agent: OAI-SearchBot
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+# Zero-value SEO crawlers
 User-agent: AhrefsBot
 Disallow: /
 

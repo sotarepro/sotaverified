@@ -2,7 +2,7 @@
  * Server component — rendered inside admin page when test tools are enabled.
  * Queries current test users and papers, then renders them with client buttons.
  */
-import Link from "next/link";
+import Link from "@/components/Link";
 import sql from "@/lib/db";
 import {
   CreateUserButtons,
